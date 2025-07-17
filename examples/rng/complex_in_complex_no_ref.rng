@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grammar ns="" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+    <start>
+        <element name="person">
+            <element name="name">
+                <text/>
+            </element>
+            <element name="age">
+                <data type="integer"/>
+            </element>
+            <element name="stats">
+                <element name="height">
+                    <data type="double"/>
+                </element>
+                <element name="weight">
+                    <data type="double"/>
+                </element>
+            </element>
+        </element>
+    </start>
+</grammar>

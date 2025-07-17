@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grammar ns="" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+    <start>
+        <element name="person">
+            <ref name="name"/>
+            <ref name="age"/>
+            <ref name="stats"/>
+        </element>
+    </start>
+    <define name="name">
+        <element name="name">
+            <text/>
+        </element>
+    </define>
+    <define name="age">
+        <element name="age">
+            <data type="integer"/>
+        </element>
+    </define>
+    <define name="stats">
+        <element name="stats">
+            <element name="height">
+                <data type="double"/>
+            </element>
+            <element name="weight">
+                <data type="double"/>
+            </element>
+        </element>
+    </define>
+</grammar>
