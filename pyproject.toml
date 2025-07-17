@@ -29,5 +29,8 @@ classifiers = [
     "Topic :: Text Processing :: Markup :: XML"
 ]
 
+[dependency-groups]
+dev = ["pytest", "ruff", "coverage"]
+
 [tool.hatch.version]
 path = "xmlgenerator/__init__.py"
