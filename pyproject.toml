@@ -1,10 +1,33 @@
+[build-system]
+requires = ["hatchling >= 1.26"]
+build-backend = "hatchling.build"
+
 [project]
 name = "XMLGenerator"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Generate fake XML files from schema"
+authors = [
+    { name = "Z M Williams", email = "z.m.will@icloud.com" }
+]
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = [
     "faker>=37.4.2",
     "lxml>=6.0.0"
 ]
+keywords = ["Python", "XML", "XSD", "Testing", "DataGeneration"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Intended Audience :: Developers",
+    "Topic :: Text Processing :: Markup :: XML"
+]
 
+[tool.hatch.version]
+path = "xmlgenerator/__init__.py"
