@@ -1,285 +1,285 @@
-import random
-import string
-from datetime import datetime, timedelta
-from decimal import Decimal
+import xml.etree.ElementTree as ET
 from lxml import etree
 from faker import Faker
-import xml.etree.ElementTree as ET
+import random
+import re
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional, List
 
-fake = Faker()
+
+class XMLGenerator:
+    def __init__(self, schema_path: str):
+        self.schema_path = schema_path
+        self.fake = Faker()
+        self.schema_doc = etree.parse(schema_path)
+        self.schema = etree.XMLSchema(self.schema_doc)
+        self.target_namespace = self.schema_doc.getroot().get('targetNamespace', '')
+        self.elements = {}
+        self.complex_types = {}
+        self.simple_types = {}
+        self._parse_schema()
+
+    def _parse_schema(self):
+        """Parse the XSD schema and extract element, complex type, and simple type definitions."""
+        root = self.schema_doc.getroot()
+        ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
+
+        # Extract elements
+        for elem in root.xpath('//xs:element', namespaces=ns):
+            name = elem.get('name')
+            if name:
+                self.elements[name] = elem
+
+        # Extract complex types
+        for ct in root.xpath('//xs:complexType', namespaces=ns):
+            name = ct.get('name')
+            if name:
+                self.complex_types[name] = ct
+
+        # Extract simple types
+        for st in root.xpath('//xs:simpleType', namespaces=ns):
+            name = st.get('name')
+            if name:
+                self.simple_types[name] = st
+
+    def _get_fake_data_for_type(self, xsd_type: str, restrictions: Dict[str, Any] = None) -> str:
+        """Generate fake data based on XSD type and restrictions."""
+        restrictions = restrictions or {}
+
+        if xsd_type in ['xs:string', 'string']:
+            if 'enumeration' in restrictions:
+                return random.choice(restrictions['enumeration'])
+            elif 'pattern' in restrictions:
+                # Simple pattern matching for common cases
+                pattern = restrictions['pattern']
+                if r'\d' in pattern:
+                    return ''.join([str(random.randint(0, 9)) for _ in range(5)])
+                else:
+                    return self.fake.word()
+            else:
+                max_length = restrictions.get('maxLength', 50)
+                return self.fake.text(max_nb_chars=min(max_length, 50))
+
+        elif xsd_type in ['xs:int', 'xs:integer', 'int', 'integer']:
+            min_val = restrictions.get('minInclusive', 1)
+            max_val = restrictions.get('maxInclusive', 1000)
+            return str(random.randint(int(min_val), int(max_val)))
+
+        elif xsd_type in ['xs:decimal', 'xs:double', 'xs:float', 'decimal', 'double', 'float']:
+            return str(round(random.uniform(1.0, 1000.0), 2))
+
+        elif xsd_type in ['xs:boolean', 'boolean']:
+            return str(random.choice(['true', 'false']))
+
+        elif xsd_type in ['xs:date', 'date']:
+            return self.fake.date()
+
+        elif xsd_type in ['xs:dateTime', 'dateTime']:
+            return self.fake.date_time().isoformat()
+
+        elif xsd_type in ['xs:time', 'time']:
+            return self.fake.time()
+
+        else:
+            return self.fake.word()
+
+    def _extract_restrictions(self, element) -> Dict[str, Any]:
+        """Extract restrictions from an element or type definition."""
+        restrictions = {}
+        ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
+
+        # Look for restrictions in simpleType or complexType
+        for restriction in element.xpath('.//xs:restriction', namespaces=ns):
+            # Enumerations
+            enums = restriction.xpath('.//xs:enumeration/@value', namespaces=ns)
+            if enums:
+                restrictions['enumeration'] = enums
+
+            # Pattern
+            pattern = restriction.xpath('.//xs:pattern/@value', namespaces=ns)
+            if pattern:
+                restrictions['pattern'] = pattern[0]
+
+            # Length restrictions
+            for attr in ['minLength', 'maxLength', 'length']:
+                value = restriction.xpath(f'.//xs:{attr}/@value', namespaces=ns)
+                if value:
+                    restrictions[attr] = int(value[0])
+
+            # Numeric restrictions
+            for attr in ['minInclusive', 'maxInclusive', 'minExclusive', 'maxExclusive']:
+                value = restriction.xpath(f'.//xs:{attr}/@value', namespaces=ns)
+                if value:
+                    restrictions[attr] = value[0]
+
+        return restrictions
+
+    def _generate_element(self, element_def, parent_element: ET.Element, depth: int = 0):
+        """Generate XML element based on schema definition."""
+        if depth > 10:  # Prevent infinite recursion
+            return
+
+        ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
+        name = element_def.get('name')
+        type_attr = element_def.get('type', '')
+
+        # Handle minOccurs and maxOccurs
+        min_occurs = int(element_def.get('minOccurs', '1'))
+        max_occurs = element_def.get('maxOccurs', '1')
+        if max_occurs == 'unbounded':
+            max_occurs = random.randint(1, 3)  # Generate 1-3 elements for unbounded
+        else:
+            max_occurs = int(max_occurs)
+
+        occurs = random.randint(min_occurs, max_occurs) if min_occurs <= max_occurs else min_occurs
+
+        for _ in range(occurs):
+            elem = ET.SubElement(parent_element, name)
+
+            # Handle attributes
+            for attr in element_def.xpath('.//xs:attribute', namespaces=ns):
+                attr_name = attr.get('name')
+                attr_type = attr.get('type', 'xs:string')
+                attr_use = attr.get('use', 'optional')
+
+                if attr_use == 'required' or random.choice([True, False]):
+                    restrictions = self._extract_restrictions(attr)
+                    attr_value = self._get_fake_data_for_type(attr_type, restrictions)
+                    elem.set(attr_name, attr_value)
+
+            # Handle element content
+            if type_attr:
+                if type_attr.startswith('xs:'):
+                    # Simple type
+                    restrictions = self._extract_restrictions(element_def)
+                    elem.text = self._get_fake_data_for_type(type_attr, restrictions)
+                elif type_attr in self.complex_types:
+                    # Complex type
+                    self._generate_complex_type(self.complex_types[type_attr], elem, depth + 1)
+                elif type_attr in self.simple_types:
+                    # Custom simple type
+                    restrictions = self._extract_restrictions(self.simple_types[type_attr])
+                    base_type = self.simple_types[type_attr].xpath('.//xs:restriction/@base', namespaces=ns)
+                    if base_type:
+                        elem.text = self._get_fake_data_for_type(base_type[0], restrictions)
+                    else:
+                        elem.text = self._get_fake_data_for_type('xs:string', restrictions)
+            else:
+                # Inline type definition
+                complex_type = element_def.xpath('./xs:complexType', namespaces=ns)
+                simple_type = element_def.xpath('./xs:simpleType', namespaces=ns)
+
+                if complex_type:
+                    self._generate_complex_type(complex_type[0], elem, depth + 1)
+                elif simple_type:
+                    restrictions = self._extract_restrictions(simple_type[0])
+                    base_type = simple_type[0].xpath('.//xs:restriction/@base', namespaces=ns)
+                    if base_type:
+                        elem.text = self._get_fake_data_for_type(base_type[0], restrictions)
+                    else:
+                        elem.text = self._get_fake_data_for_type('xs:string', restrictions)
+                else:
+                    # Default to string
+                    elem.text = self.fake.word()
+
+    def _generate_complex_type(self, complex_type_def, parent_element: ET.Element, depth: int = 0):
+        """Generate content for a complex type."""
+        if depth > 10:  # Prevent infinite recursion
+            return
+
+        ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
+
+        # Handle sequences
+        for sequence in complex_type_def.xpath('.//xs:sequence', namespaces=ns):
+            for child_elem in sequence.xpath('./xs:element', namespaces=ns):
+                self._generate_element(child_elem, parent_element, depth + 1)
+
+        # Handle choices
+        for choice in complex_type_def.xpath('.//xs:choice', namespaces=ns):
+            child_elements = choice.xpath('./xs:element', namespaces=ns)
+            if child_elements:
+                chosen_elem = random.choice(child_elements)
+                self._generate_element(chosen_elem, parent_element, depth + 1)
+
+        # Handle all
+        for all_group in complex_type_def.xpath('.//xs:all', namespaces=ns):
+            for child_elem in all_group.xpath('./xs:element', namespaces=ns):
+                self._generate_element(child_elem, parent_element, depth + 1)
+
+    def generate_xml(self, root_element_name: str = None, output_path: str = None) -> str:
+        """Generate XML file with fake data."""
+        if root_element_name is None:
+            # Find the first global element as root
+            if self.elements:
+                root_element_name = next(iter(self.elements))
+            else:
+                raise ValueError("No root element specified and no global elements found in schema")
+
+        if root_element_name not in self.elements:
+            raise ValueError(f"Root element '{root_element_name}' not found in schema")
+
+        root_def = self.elements[root_element_name]
+        root = ET.Element(root_element_name)
+
+        # Add namespace if present
+        if self.target_namespace:
+            root.set('xmlns', self.target_namespace)
+
+        self._generate_element(root_def, ET.Element('temp'))
+
+        # Copy children from temp element to actual root
+        temp_root = ET.Element('temp')
+        self._generate_element(root_def, temp_root)
+
+        # Create the actual root element
+        root = ET.Element(root_element_name)
+        if self.target_namespace:
+            root.set('xmlns', self.target_namespace)
+
+        # Generate content for root element
+        type_attr = root_def.get('type', '')
+        if type_attr and type_attr in self.complex_types:
+            self._generate_complex_type(self.complex_types[type_attr], root)
+        else:
+            # Handle inline complex type or simple content
+            ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
+            complex_type = root_def.xpath('./xs:complexType', namespaces=ns)
+            if complex_type:
+                self._generate_complex_type(complex_type[0], root)
+
+        # Create XML tree and format it
+        tree = ET.ElementTree(root)
+        ET.indent(tree, space="  ", level=0)
+
+        if output_path:
+            tree.write(output_path, encoding='utf-8', xml_declaration=True)
+            return output_path
+        else:
+            return ET.tostring(root, encoding='unicode')
 
 
-def generate_xml_from_schema(schema_path, output_path=None, root_element=None, max_occurs_limit=3):
+def generate_xml_from_schema(schema_path: str, root_element: str = None, output_path: str = None) -> str:
     """
-    Generate an XML file with fake data based on an XSD schema.
+    Generate XML file with fake data based on XSD schema.
 
     Args:
         schema_path: Path to the XSD schema file
-        output_path: Path where the generated XML will be saved (optional)
-        root_element: Name of the root element to generate (if schema has multiple)
-        max_occurs_limit: Maximum number of elements to generate for unbounded elements
+        root_element: Name of the root element (optional, will use first global element if not specified)
+        output_path: Path where to save the generated XML file (optional)
 
     Returns:
-        Generated XML as string
+        Generated XML as string or path to saved file
     """
-
-    # Parse the schema
-    with open(schema_path, 'r') as f:
-        schema_doc = etree.parse(f)
-
-    schema = etree.XMLSchema(schema_doc)
-
-    # Get namespace
-    schema_root = schema_doc.getroot()
-    target_namespace = schema_root.get('targetNamespace', '')
-
-    # Find root element
-    if root_element is None:
-        # Try to find the first global element
-        elements = schema_doc.xpath('//xs:element[@name]',
-                                    namespaces={'xs': 'http://www.w3.org/2001/XMLSchema'})
-        if elements:
-            root_element = elements[0].get('name')
-        else:
-            raise ValueError("No root element found in schema")
-
-    # Generate the XML
-    nsmap = {None: target_namespace} if target_namespace else None
-    root = etree.Element(root_element, nsmap=nsmap)
-
-    # Find the root element definition in schema
-    root_def = schema_doc.xpath(f'//xs:element[@name="{root_element}"]',
-                                namespaces={'xs': 'http://www.w3.org/2001/XMLSchema'})[0]
-
-    # Process the root element
-    process_element(root, root_def, schema_doc, target_namespace, max_occurs_limit)
-
-    # Create the XML tree
-    tree = etree.ElementTree(root)
-
-    # Generate XML string
-    xml_string = etree.tostring(tree, pretty_print=True,
-                                xml_declaration=True, encoding='UTF-8').decode('utf-8')
-
-    # Save to file if output path provided
-    if output_path:
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(xml_string)
-
-    return xml_string
+    generator = XMLGenerator(schema_path)
+    return generator.generate_xml(root_element, output_path)
 
 
-def process_element(parent, element_def, schema_doc, namespace, max_occurs_limit):
-    """Process an element definition and add appropriate content."""
-
-    # Check if element has a type attribute
-    type_attr = element_def.get('type')
-
-    if type_attr:
-        # Element has a type reference
-        if ':' in type_attr:
-            # Remove namespace prefix if present
-            type_name = type_attr.split(':')[1]
-        else:
-            type_name = type_attr
-
-        # Check if it's a built-in type
-        if is_builtin_type(type_name):
-            # Generate content for simple type
-            content = generate_fake_data(type_name)
-            if content is not None:
-                parent.text = str(content)
-        else:
-            # Look for complex type definition
-            complex_type = schema_doc.xpath(f'//xs:complexType[@name="{type_name}"]',
-                                            namespaces={'xs': 'http://www.w3.org/2001/XMLSchema'})
-            if complex_type:
-                process_complex_type(parent, complex_type[0], schema_doc, namespace, max_occurs_limit)
-    else:
-        # Element has inline type definition
-        complex_type = element_def.find('.//{http://www.w3.org/2001/XMLSchema}complexType')
-        simple_type = element_def.find('.//{http://www.w3.org/2001/XMLSchema}simpleType')
-
-        if complex_type is not None:
-            process_complex_type(parent, complex_type, schema_doc, namespace, max_occurs_limit)
-        elif simple_type is not None:
-            # Process simple type
-            restriction = simple_type.find('.//{http://www.w3.org/2001/XMLSchema}restriction')
-            if restriction is not None:
-                base_type = restriction.get('base', 'string').split(':')[-1]
-                content = generate_fake_data(base_type)
-                if content is not None:
-                    parent.text = str(content)
-
-
-def process_complex_type(parent, complex_type, schema_doc, namespace, max_occurs_limit):
-    """Process a complex type definition."""
-
-    # Process sequences
-    sequences = complex_type.findall('.//{http://www.w3.org/2001/XMLSchema}sequence')
-    for sequence in sequences:
-        process_sequence(parent, sequence, schema_doc, namespace, max_occurs_limit)
-
-    # Process choices
-    choices = complex_type.findall('.//{http://www.w3.org/2001/XMLSchema}choice')
-    for choice in choices:
-        process_choice(parent, choice, schema_doc, namespace, max_occurs_limit)
-
-    # Process attributes
-    attributes = complex_type.findall('.//{http://www.w3.org/2001/XMLSchema}attribute')
-    for attr in attributes:
-        process_attribute(parent, attr, schema_doc)
-
-
-def process_sequence(parent, sequence, schema_doc, namespace, max_occurs_limit):
-    """Process a sequence of elements."""
-
-    elements = sequence.findall('.//{http://www.w3.org/2001/XMLSchema}element')
-
-    for elem in elements:
-        name = elem.get('name')
-        ref = elem.get('ref')
-
-        if ref:
-            # Element reference
-            ref_name = ref.split(':')[-1]
-            # Find the referenced element
-            ref_elem = schema_doc.xpath(f'//xs:element[@name="{ref_name}"]',
-                                        namespaces={'xs': 'http://www.w3.org/2001/XMLSchema'})
-            if ref_elem:
-                elem = ref_elem[0]
-                name = ref_name
-
-        if name:
-            # Determine how many times to generate this element
-            min_occurs = int(elem.get('minOccurs', '1'))
-            max_occurs = elem.get('maxOccurs', '1')
-
-            if max_occurs == 'unbounded':
-                max_occurs = max_occurs_limit
-            else:
-                max_occurs = int(max_occurs)
-
-            # Generate between minOccurs and maxOccurs instances
-            count = random.randint(min_occurs, max_occurs)
-
-            for _ in range(count):
-                # Create the element
-                if namespace:
-                    child = etree.SubElement(parent, f"{{{namespace}}}{name}")
-                else:
-                    child = etree.SubElement(parent, name)
-
-                # Process the element content
-                process_element(child, elem, schema_doc, namespace, max_occurs_limit)
-
-
-def process_choice(parent, choice, schema_doc, namespace, max_occurs_limit):
-    """Process a choice - select one of the options."""
-
-    elements = choice.findall('.//{http://www.w3.org/2001/XMLSchema}element')
-
-    if elements:
-        # Choose one element randomly
-        chosen = random.choice(elements)
-
-        name = chosen.get('name')
-        ref = chosen.get('ref')
-
-        if ref:
-            ref_name = ref.split(':')[-1]
-            ref_elem = schema_doc.xpath(f'//xs:element[@name="{ref_name}"]',
-                                        namespaces={'xs': 'http://www.w3.org/2001/XMLSchema'})
-            if ref_elem:
-                chosen = ref_elem[0]
-                name = ref_name
-
-        if name:
-            if namespace:
-                child = etree.SubElement(parent, f"{{{namespace}}}{name}")
-            else:
-                child = etree.SubElement(parent, name)
-
-            process_element(child, chosen, schema_doc, namespace, max_occurs_limit)
-
-
-def process_attribute(parent, attr_def, schema_doc):
-    """Process an attribute definition."""
-
-    name = attr_def.get('name')
-    type_attr = attr_def.get('type', 'string')
-    use = attr_def.get('use', 'optional')
-
-    # Only add required attributes or randomly add optional ones
-    if use == 'required' or (use == 'optional' and random.choice([True, False])):
-        type_name = type_attr.split(':')[-1]
-        value = generate_fake_data(type_name)
-        if value is not None:
-            parent.set(name, str(value))
-
-
-def is_builtin_type(type_name):
-    """Check if a type is a built-in XSD type."""
-    builtin_types = {
-        'string', 'boolean', 'decimal', 'float', 'double',
-        'duration', 'dateTime', 'time', 'date', 'gYearMonth',
-        'gYear', 'gMonthDay', 'gDay', 'gMonth', 'hexBinary',
-        'base64Binary', 'anyURI', 'QName', 'NOTATION',
-        'normalizedString', 'token', 'language', 'NMTOKEN',
-        'NMTOKENS', 'Name', 'NCName', 'ID', 'IDREF', 'IDREFS',
-        'ENTITY', 'ENTITIES', 'integer', 'nonPositiveInteger',
-        'negativeInteger', 'long', 'int', 'short', 'byte',
-        'nonNegativeInteger', 'unsignedLong', 'unsignedInt',
-        'unsignedShort', 'unsignedByte', 'positiveInteger'
-    }
-    return type_name in builtin_types
-
-
-def generate_fake_data(xsd_type):
-    """Generate fake data based on XSD type."""
-
-    if xsd_type == 'string':
-        return fake.sentence(nb_words=3)
-    elif xsd_type == 'normalizedString' or xsd_type == 'token':
-        return fake.word()
-    elif xsd_type == 'boolean':
-        return random.choice(['true', 'false'])
-    elif xsd_type in ['decimal', 'float', 'double']:
-        return round(random.uniform(0, 1000), 2)
-    elif xsd_type in ['integer', 'int']:
-        return random.randint(-1000, 1000)
-    elif xsd_type in ['positiveInteger', 'nonNegativeInteger', 'unsignedInt']:
-        return random.randint(0, 1000)
-    elif xsd_type == 'date':
-        return fake.date()
-    elif xsd_type == 'dateTime':
-        return fake.date_time().isoformat()
-    elif xsd_type == 'time':
-        return fake.time()
-    elif xsd_type == 'anyURI':
-        return fake.url()
-    elif xsd_type == 'NCName' or xsd_type == 'Name':
-        return fake.word().replace(' ', '_')
-    elif xsd_type == 'ID':
-        return f"id_{fake.uuid4().split('-')[0]}"
-    elif xsd_type == 'language':
-        return random.choice(['en', 'es', 'fr', 'de', 'it'])
-    elif xsd_type in ['long', 'short', 'byte']:
-        return random.randint(-100, 100)
-    elif xsd_type in ['unsignedLong', 'unsignedShort', 'unsignedByte']:
-        return random.randint(0, 100)
-    else:
-        # Default to string for unknown types
-        return fake.word()
-
-
-# Example usage:
+# Example usage
 if __name__ == "__main__":
-    # Example 1: Generate XML from schema and save to file
-    xml_content = generate_xml_from_schema(
-        schema_path="example.xsd",
-        output_path="generated_test_data.xml",
-        max_occurs_limit=2
-    )
-    print("Generated XML:")
-    print(xml_content)
+    import os
+    for example in os.listdir("examples"):
+        if example.endswith(".xsd"):
+            print(example)
+            schema = os.path.join("examples", example)
+            result = generate_xml_from_schema(schema)
+            print(result)
