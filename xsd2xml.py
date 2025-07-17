@@ -4,8 +4,13 @@ from faker import Faker
 import random
 import re
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List, Set
+from typing import Dict, Any, Optional, List, Set, Tuple
 import os
+
+
+class CircularReferenceError(Exception):
+    """Raised when a circular reference is detected in the schema."""
+    pass
 
 
 class XMLGenerator:
@@ -38,6 +43,162 @@ class XMLGenerator:
         self.simple_types = {}
         self.referenced_elements = set()
         self._parse_schema()
+
+        # Check for circular references after parsing
+        self._check_circular_references()
+
+    def _check_circular_references(self):
+        """Check for circular references in the schema."""
+        # Check each global element
+        for element_name, element_def in self.elements.items():
+            visited = set()
+            path = []
+            if self._has_circular_reference(element_def, visited, path, element_name):
+                cycle_path = " -> ".join(path)
+                raise CircularReferenceError(
+                    f"Circular reference detected in schema starting from element '{element_name}': {cycle_path}"
+                )
+
+        # Check each complex type
+        for type_name, type_def in self.complex_types.items():
+            visited = set()
+            path = []
+            if self._has_circular_reference_in_type(type_def, visited, path, f"complexType:{type_name}"):
+                cycle_path = " -> ".join(path)
+                raise CircularReferenceError(
+                    f"Circular reference detected in complex type '{type_name}': {cycle_path}"
+                )
+
+    def _has_circular_reference(self, element_def, visited: Set[str], path: List[str], current_name: str) -> bool:
+        """Check if an element definition has circular references."""
+        if current_name in visited:
+            # Found a cycle - add current name to path to show the cycle
+            path.append(current_name)
+            return True
+
+        visited.add(current_name)
+        path.append(current_name)
+
+        # Get namespace info
+        root = self.schema_doc.getroot()
+        ns_map = root.nsmap
+        xsd_namespace = "http://www.w3.org/2001/XMLSchema"
+
+        xsd_prefix = None
+        for prefix, namespace in ns_map.items():
+            if namespace == xsd_namespace:
+                xsd_prefix = prefix
+                break
+
+        if xsd_prefix:
+            ns = {xsd_prefix: xsd_namespace}
+            prefix = f"{xsd_prefix}:"
+        else:
+            ns = {}
+            prefix = ""
+
+        # Check element type
+        type_attr = element_def.get('type', '')
+        if type_attr and type_attr in self.complex_types:
+            # Check the complex type
+            if self._has_circular_reference_in_type(self.complex_types[type_attr], visited, path, f"type:{type_attr}"):
+                return True
+
+        # Check inline complex type
+        ct_xpath = f'./{prefix}complexType'
+        if ns:
+            complex_types = element_def.xpath(ct_xpath, namespaces=ns)
+        else:
+            complex_types = element_def.xpath(ct_xpath)
+
+        for complex_type in complex_types:
+            if self._has_circular_reference_in_type(complex_type, visited, path,
+                                                    f"inline-complexType-in-{current_name}"):
+                return True
+
+        # Check element references
+        ref = element_def.get('ref')
+        if ref:
+            if ref in self.elements:
+                if self._has_circular_reference(self.elements[ref], visited, path, ref):
+                    return True
+
+        path.pop()
+        visited.remove(current_name)
+        return False
+
+    def _has_circular_reference_in_type(self, type_def, visited: Set[str], path: List[str], type_id: str) -> bool:
+        """Check if a type definition has circular references."""
+        if type_id in visited:
+            path.append(type_id)
+            return True
+
+        visited.add(type_id)
+        path.append(type_id)
+
+        # Get namespace info
+        root = self.schema_doc.getroot()
+        ns_map = root.nsmap
+        xsd_namespace = "http://www.w3.org/2001/XMLSchema"
+
+        xsd_prefix = None
+        for prefix, namespace in ns_map.items():
+            if namespace == xsd_namespace:
+                xsd_prefix = prefix
+                break
+
+        if xsd_prefix:
+            ns = {xsd_prefix: xsd_namespace}
+            prefix = f"{xsd_prefix}:"
+        else:
+            ns = {}
+            prefix = ""
+
+        # Check all child elements in sequences, choices, and all groups
+        element_containers = [
+            f'.//{prefix}sequence/{prefix}element',
+            f'.//{prefix}choice/{prefix}element',
+            f'.//{prefix}all/{prefix}element'
+        ]
+
+        for container_xpath in element_containers:
+            if ns:
+                elements = type_def.xpath(container_xpath, namespaces=ns)
+            else:
+                elements = type_def.xpath(container_xpath)
+
+            for elem in elements:
+                # Check element references
+                ref = elem.get('ref')
+                if ref:
+                    if ref in self.elements:
+                        if self._has_circular_reference(self.elements[ref], visited, path, ref):
+                            return True
+                else:
+                    # Check named elements with types
+                    elem_name = elem.get('name', 'unnamed')
+                    elem_type = elem.get('type', '')
+
+                    if elem_type and elem_type in self.complex_types:
+                        if self._has_circular_reference_in_type(self.complex_types[elem_type], visited, path,
+                                                                f"type:{elem_type}"):
+                            return True
+
+                    # Check inline complex types
+                    ct_xpath = f'./{prefix}complexType'
+                    if ns:
+                        inline_types = elem.xpath(ct_xpath, namespaces=ns)
+                    else:
+                        inline_types = elem.xpath(ct_xpath)
+
+                    for inline_type in inline_types:
+                        if self._has_circular_reference_in_type(inline_type, visited, path,
+                                                                f"inline-complexType-in-{elem_name}"):
+                            return True
+
+        path.pop()
+        visited.remove(type_id)
+        return False
 
     def _validate_schema(self):
         """Validate that the input file is a valid XSD schema."""
@@ -391,8 +552,9 @@ class XMLGenerator:
 
     def _generate_element(self, element_def, parent_element: ET.Element, depth: int = 0):
         """Generate XML element based on schema definition."""
-        if depth > 10:  # Prevent infinite recursion
-            return
+        # This should never be reached now due to circular reference checking
+        if depth > 10:
+            raise CircularReferenceError("Maximum recursion depth exceeded - possible undetected circular reference")
 
         # Setup namespace handling
         root = self.schema_doc.getroot()
@@ -545,8 +707,8 @@ class XMLGenerator:
 
     def _generate_complex_type(self, complex_type_def, parent_element: ET.Element, depth: int = 0):
         """Generate content for a complex type."""
-        if depth > 10:  # Prevent infinite recursion
-            return
+        if depth > 10:
+            raise CircularReferenceError("Maximum recursion depth exceeded - possible undetected circular reference")
 
         # Setup namespace handling
         root = self.schema_doc.getroot()
@@ -765,6 +927,7 @@ def generate_xml_from_schema(schema_path: str, root_element: str = None, output_
     Raises:
         FileNotFoundError: If schema file doesn't exist
         ValueError: If schema is invalid or malformed
+        CircularReferenceError: If schema contains circular references
     """
     generator = XMLGenerator(schema_path)
     return generator.generate_xml(root_element, output_path)
@@ -778,5 +941,8 @@ if __name__ == "__main__":
             print()
             print(example)
             schema = os.path.join("examples", example)
-            result = generate_xml_from_schema(schema)
-            print(result)
+            try:
+                result = generate_xml_from_schema(schema)
+                print(result)
+            except CircularReferenceError as e:
+                print(e)
