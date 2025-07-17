@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="person">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="name" type="xs:string"/>
+        <xs:element name="age" type="xs:integer"/>
+        <xs:element ref="stats"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="stats">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="height" type="xs:double"/>
+        <xs:element name="weight" type="xs:double"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
