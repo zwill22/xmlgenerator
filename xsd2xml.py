@@ -25,19 +25,19 @@ class XMLGenerator:
         ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
 
         # Extract elements
-        for elem in root.xpath('//xs:element', namespaces=ns):
+        for elem in root.xpath('//xs:element[@name]', namespaces=ns):
             name = elem.get('name')
             if name:
                 self.elements[name] = elem
 
         # Extract complex types
-        for ct in root.xpath('//xs:complexType', namespaces=ns):
+        for ct in root.xpath('//xs:complexType[@name]', namespaces=ns):
             name = ct.get('name')
             if name:
                 self.complex_types[name] = ct
 
         # Extract simple types
-        for st in root.xpath('//xs:simpleType', namespaces=ns):
+        for st in root.xpath('//xs:simpleType[@name]', namespaces=ns):
             name = st.get('name')
             if name:
                 self.simple_types[name] = st
@@ -64,6 +64,11 @@ class XMLGenerator:
             min_val = restrictions.get('minInclusive', 1)
             max_val = restrictions.get('maxInclusive', 1000)
             return str(random.randint(int(min_val), int(max_val)))
+
+        elif xsd_type in ['xs:positiveInteger', 'positiveInteger']:
+            min_val = max(1, int(restrictions.get('minInclusive', 1)))
+            max_val = restrictions.get('maxInclusive', 1000)
+            return str(random.randint(min_val, int(max_val)))
 
         elif xsd_type in ['xs:decimal', 'xs:double', 'xs:float', 'decimal', 'double', 'float']:
             return str(round(random.uniform(1.0, 1000.0), 2))
@@ -120,7 +125,25 @@ class XMLGenerator:
             return
 
         ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
+
+        # Check if this is a reference to another element
+        ref = element_def.get('ref')
+        if ref:
+            # Look up the referenced element
+            if ref in self.elements:
+                referenced_element = self.elements[ref]
+                # Generate the referenced element with its original name
+                self._generate_element(referenced_element, parent_element, depth)
+            else:
+                # If reference not found, create a simple element
+                elem = ET.SubElement(parent_element, ref)
+                elem.text = self.fake.word()
+            return
+
         name = element_def.get('name')
+        if not name:
+            return
+
         type_attr = element_def.get('type', '')
 
         # Handle minOccurs and maxOccurs
@@ -149,7 +172,8 @@ class XMLGenerator:
 
             # Handle element content
             if type_attr:
-                if type_attr.startswith('xs:'):
+                if type_attr.startswith('xs:') or type_attr in ['string', 'integer', 'double', 'float', 'boolean',
+                                                                'date', 'dateTime', 'time', 'positiveInteger']:
                     # Simple type
                     restrictions = self._extract_restrictions(element_def)
                     elem.text = self._get_fake_data_for_type(type_attr, restrictions)
@@ -178,9 +202,6 @@ class XMLGenerator:
                         elem.text = self._get_fake_data_for_type(base_type[0], restrictions)
                     else:
                         elem.text = self._get_fake_data_for_type('xs:string', restrictions)
-                else:
-                    # Default to string
-                    elem.text = self.fake.word()
 
     def _generate_complex_type(self, complex_type_def, parent_element: ET.Element, depth: int = 0):
         """Generate content for a complex type."""
@@ -206,6 +227,17 @@ class XMLGenerator:
             for child_elem in all_group.xpath('./xs:element', namespaces=ns):
                 self._generate_element(child_elem, parent_element, depth + 1)
 
+        # Handle attributes at complex type level
+        for attr in complex_type_def.xpath('./xs:attribute', namespaces=ns):
+            attr_name = attr.get('name')
+            attr_type = attr.get('type', 'xs:string')
+            attr_use = attr.get('use', 'optional')
+
+            if attr_use == 'required' or random.choice([True, False]):
+                restrictions = self._extract_restrictions(attr)
+                attr_value = self._get_fake_data_for_type(attr_type, restrictions)
+                parent_element.set(attr_name, attr_value)
+
     def generate_xml(self, root_element_name: str = None, output_path: str = None) -> str:
         """Generate XML file with fake data."""
         if root_element_name is None:
@@ -219,17 +251,6 @@ class XMLGenerator:
             raise ValueError(f"Root element '{root_element_name}' not found in schema")
 
         root_def = self.elements[root_element_name]
-        root = ET.Element(root_element_name)
-
-        # Add namespace if present
-        if self.target_namespace:
-            root.set('xmlns', self.target_namespace)
-
-        self._generate_element(root_def, ET.Element('temp'))
-
-        # Copy children from temp element to actual root
-        temp_root = ET.Element('temp')
-        self._generate_element(root_def, temp_root)
 
         # Create the actual root element
         root = ET.Element(root_element_name)
@@ -244,8 +265,21 @@ class XMLGenerator:
             # Handle inline complex type or simple content
             ns = {'xs': 'http://www.w3.org/2001/XMLSchema'}
             complex_type = root_def.xpath('./xs:complexType', namespaces=ns)
+            simple_type = root_def.xpath('./xs:simpleType', namespaces=ns)
+
             if complex_type:
                 self._generate_complex_type(complex_type[0], root)
+            elif simple_type:
+                restrictions = self._extract_restrictions(simple_type[0])
+                base_type = simple_type[0].xpath('.//xs:restriction/@base', namespaces=ns)
+                if base_type:
+                    root.text = self._get_fake_data_for_type(base_type[0], restrictions)
+                else:
+                    root.text = self._get_fake_data_for_type('xs:string', restrictions)
+            elif type_attr:
+                # Simple type root element
+                restrictions = self._extract_restrictions(root_def)
+                root.text = self._get_fake_data_for_type(type_attr, restrictions)
 
         # Create XML tree and format it
         tree = ET.ElementTree(root)
