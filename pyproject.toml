@@ -1,10 +1,10 @@
 [project]
-name = "schema2xml"
+name = "XMLGenerator"
 version = "0.1.0"
-description = "Add your description here"
-requires-python = ">=3.12"
+description = "Generate fake XML files from schema"
+requires-python = ">=3.10"
 dependencies = [
     "faker>=37.4.2",
-    "lxml>=6.0.0",
-    "requests>=2.32.4",
+    "lxml>=6.0.0"
 ]
+
