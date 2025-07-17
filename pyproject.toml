@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "XMLGenerator"
-dynamic = ["version"]
 description = "Generate fake XML files from schema"
 authors = [
     { name = "Z M Williams", email = "z.m.will@icloud.com" }
 ]
+version = "0.1.0"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
@@ -30,7 +30,57 @@ classifiers = [
 ]
 
 [dependency-groups]
-dev = ["pytest", "ruff", "coverage"]
+dev = [
+    "coverage>=7.9.2",
+    "pytest>=8.4.1",
+    "ruff>=0.12.4",
+]
+doc = [
+    "sphinx>=7.3.7",
+    "sphinx-rtd-theme>=2.0",
+    "myst-parser>=4.0",
+]
 
-[tool.hatch.version]
-path = "xmlgenerator/__init__.py"
+[tool.pytest.ini_options]
+testpaths = [
+    "tests"
+]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+fixable = ["ALL"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+docstring-code-format = false
+docstring-code-line-length = "dynamic"
+
+[tool.coverage.run]
+branch = true
+command_line = "-m pytest"
+omit = ["tests/*", "docs/*"]
+
+[tool.coverage.report]
+ignore_errors = true
+fail_under = 80
+skip_empty = true
+exclude_also = [
+    'def __repr__',
+    'if self.debug:',
+    'if settings.DEBUG',
+    'raise AssertionError',
+    'raise NotImplementedError',
+    'if 0:',
+    'if __name__ == .__main__.:',
+    'if TYPE_CHECKING:',
+    'class .*\bProtocol\):',
+    '@(abc\.)?abstractmethod',
+]
