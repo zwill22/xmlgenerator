@@ -1,0 +1,6 @@
+.idea
+.venv
+generated_test_data.xml
+uv.lock
+schema.xsd
+example.xsd
