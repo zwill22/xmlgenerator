@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="Data">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="DataRecord" maxOccurs="unbounded" type="DataRecordType"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="DataRecordType">
+        <xs:sequence>
+            <xs:element name="recordName" type="xs:string"/>
+            <xs:element ref="Data"/>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>
