@@ -4,3 +4,4 @@ generated_test_data.xml
 uv.lock
 schema.xsd
 dist
+__pycache__
