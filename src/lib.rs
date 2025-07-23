@@ -1,12 +1,43 @@
 use std::path::Path;
-use xsd_parser::{Error, Generator, Interpreter, Optimizer, Parser, DataTypes};
 use xsd_parser::config::GeneratorFlags;
-use xsd_parser::models::data::{ComplexData, ComplexDataStruct, DataTypeVariant};
 use xsd_parser::pipeline::parser::resolver::FileResolver;
+use xsd_parser::{Error, Generator, Interpreter, Optimizer, Parser, DataTypes, Ident, Name};
+use xsd_parser::models::data::{ComplexData, ComplexDataElement, ComplexDataStruct, DataTypeVariant};
+use xsd_parser::models::meta::ElementMetaVariant;
+
+fn get_type_name(ident: &Ident) -> String {
+    match &ident.name {
+        Name::Named(x) => { x.to_string() }
+        Name::Generated(x) => { x.to_string() }
+    }
+}
+
+fn get_type(element: &ComplexDataElement) -> String {
+    let type_name = &element.meta.variant;
+    match type_name {
+        ElementMetaVariant::Any(_) => {
+            unimplemented!("Any type not yet implemented");
+        }
+        ElementMetaVariant::Type(x) => {
+            let name = get_type_name(x);
+            name
+        }
+    }
+}
+
+fn get_data(element: &ComplexDataElement) {
+    let name = &element.tag_name;
+    let element_type = get_type(element);
+    if element_type == "PersonStats" {
+        println!("{}", name);
+    }
+
+    println!("\t{0}: {1},", name, element_type);
+}
 
 fn generate_data_struct(data_struct: &ComplexDataStruct, _data_types: &DataTypes) {
    if data_struct.tag_name.is_some() {
-       println!("\nStruct name:\t{}", data_struct.tag_name.as_ref().unwrap());
+       println!("\nstruct {} {{", data_struct.tag_name.as_ref().unwrap());
    }
     let _type_ident = &data_struct.type_ident;
 
@@ -17,7 +48,7 @@ fn generate_data_struct(data_struct: &ComplexDataStruct, _data_types: &DataTypes
 
     let fields = data_struct.elements().iter();
     for field in fields {
-        println!("Field name:\t\t{}", field.tag_name);
+        get_data(field);
     }
 
     let content = data_struct.content();
@@ -28,7 +59,7 @@ fn generate_data_struct(data_struct: &ComplexDataStruct, _data_types: &DataTypes
         }
     }
 
-    println!("done");
+    println!("}}");
 }
 
 fn generate_data(data: &ComplexData, data_types: &DataTypes) {
