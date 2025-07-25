@@ -1,104 +1,174 @@
 use std::path::Path;
 use xsd_parser::config::GeneratorFlags;
 use xsd_parser::pipeline::parser::resolver::FileResolver;
-use xsd_parser::{Error, Generator, Interpreter, Optimizer, Parser, DataTypes, Ident, Name};
-use xsd_parser::models::data::{ComplexData, ComplexDataElement, ComplexDataStruct, DataTypeVariant};
-use xsd_parser::models::meta::ElementMetaVariant;
+use xsd_parser::{Error, Generator, Interpreter, Optimizer, Parser, DataTypes, Renderer, TypesRenderStep};
+use std::io::Write;
+use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
+use std::process::{Command, Output, Stdio};
+use syn::{Field, File, Item, ItemStruct, Type};
+use syn::__private::ToTokens;
 
-fn get_type_name(ident: &Ident) -> String {
-    match &ident.name {
-        Name::Named(x) => { x.to_string() }
-        Name::Generated(x) => { x.to_string() }
-    }
-}
+pub fn rustfmt_pretty_print(code: String) -> Result<String, Error> {
+    let mut child = Command::new("rustfmt")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
 
-fn get_type(element: &ComplexDataElement) -> String {
-    let type_name = &element.meta.variant;
-    match type_name {
-        ElementMetaVariant::Any(_) => {
-            unimplemented!("Any type not yet implemented");
-        }
-        ElementMetaVariant::Type(x) => {
-            let name = get_type_name(x);
-            name
-        }
-    }
-}
+    let mut stdin = child.stdin.take().unwrap();
 
-fn get_data(element: &ComplexDataElement) {
-    let name = &element.tag_name;
-    let element_type = get_type(element);
-    if element_type == "PersonStats" {
-        println!("{}", name);
-    }
+    write!(stdin, "{code}")?;
+    stdin.flush()?;
+    drop(stdin);
 
-    println!("\t{0}: {1},", name, element_type);
-}
+    let Output {
+        status,
+        stdout,
+        stderr,
+    } = child.wait_with_output()?;
 
-fn generate_data_struct(data_struct: &ComplexDataStruct, _data_types: &DataTypes) {
-   if data_struct.tag_name.is_some() {
-       println!("\nstruct {} {{", data_struct.tag_name.as_ref().unwrap());
-   }
-    let _type_ident = &data_struct.type_ident;
+    let stdout = String::from_utf8_lossy(&stdout);
+    let stderr = String::from_utf8_lossy(&stderr);
 
-    let attributes = &data_struct.attributes;
-    for attr in attributes {
-        println!("Attribute:\t{}", attr.tag_name);
-    }
-
-    let fields = data_struct.elements().iter();
-    for field in fields {
-        get_data(field);
-    }
-
-    let content = data_struct.content();
-    if content.is_some() {
-        let content = data_struct.content().unwrap();
-        if content.is_simple {
-            println!("Content is simple");
-        }
-    }
-
-    println!("}}");
-}
-
-fn generate_data(data: &ComplexData, data_types: &DataTypes) {
-    match data {
-        ComplexData::Enum {
-            type_: _type_,
-            content_type: _content_type
-        } => {
-            unimplemented!("Enums are not implemented yet");
-        },
-        ComplexData::Struct {
-            type_: data_struct,
-            content_type
-        } => {
-            generate_data_struct(data_struct, &data_types);
-
-            if content_type.is_some() {
-                let val = content_type.as_deref().unwrap();
-                generate_data(val, &data_types)
+    if !status.success() {
+        let code = status.code();
+        match code {
+            Some(code) => {
+                if code != 0 {
+                    panic!("The `rustfmt` command failed with return code {code}!\n{stderr}");
+                }
+            }
+            None => {
+                panic!("The `rustfmt` command failed!\n{stderr}")
             }
         }
     }
+
+    Ok(stdout.into())
+}
+
+fn generate_value(field_type: &Type) -> String {
+    match field_type {
+        Type::Array(_) => {}
+        Type::BareFn(_) => {}
+        Type::Group(_) => {}
+        Type::ImplTrait(_) => {}
+        Type::Infer(_) => {}
+        Type::Macro(_) => {}
+        Type::Never(_) => {}
+        Type::Paren(_) => {}
+        Type::Path(_) => {}
+        Type::Ptr(_) => {}
+        Type::Reference(_) => {}
+        Type::Slice(_) => {}
+        Type::TraitObject(_) => {}
+        Type::Tuple(_) => {}
+        Type::Verbatim(_) => {}
+        _ => {}
+    }
+
+    "Value".to_string()
+}
+
+fn sort_field(field: &Field) -> XMLElement {
+    if field.ident.is_none() {
+        panic!("Unnamed fields are not supported!");
+    }
+    let ident = field.ident.as_ref().unwrap();
+    let string = ident.to_string();
+    let field_type = &field.ty;
+
+    let value = generate_value(field_type);
+
+    let mut element = XMLElement::new(&*string);
+    element.add_text(value).unwrap();
+
+    element
+}
+
+fn sort_struct(struct_type: &ItemStruct) -> XMLElement {
+    let mut element = XMLElement::new(&*struct_type.ident.to_string());
+    for attr in &struct_type.attrs {
+        println!("Struct attribute: {}", attr.into_token_stream());
+    }
+
+    let fields = struct_type.fields.iter();
+    for field in fields {
+        let field_element = sort_field(field);
+        let _ = element.add_child(field_element);
+    }
+
+    element
+}
+
+fn sort_item(item: &Item) -> Option<XMLElement> {
+    let result: Option<XMLElement> = match item {
+        Item::Const(_) => unimplemented!("Item::Const"),
+        Item::Enum(_) => unimplemented!("Item::Enum"),
+        Item::ExternCrate(_) => unimplemented!("Item::ExternCrate"),
+        Item::Fn(_) => unimplemented!("Item::Fn"),
+        Item::ForeignMod(_) => unimplemented!("Item::ForeignMod"),
+        Item::Impl(_) => unimplemented!("Item::Impl"),
+        Item::Macro(_) => unimplemented!("Item::Macro"),
+        Item::Mod(_) => unimplemented!("Item::Mod"),
+        Item::Static(_) => unimplemented!("Item::Static"),
+        Item::Struct(x) => Option::from(sort_struct(x)),
+        Item::Trait(_) => unimplemented!("Item::Trait"),
+        Item::TraitAlias(_) => unimplemented!("Item::TraitAlias"),
+        Item::Type(_) => None,
+        Item::Union(_) => unimplemented!("Item::Union"),
+        Item::Use(_) => unimplemented!("Item::Use"),
+        Item::Verbatim(_) => unimplemented!("Item::Verbatim"),
+        &_ => todo!()
+    };
+
+    result
+}
+
+fn render(data_types: &DataTypes) -> File {
+    let renderer = Renderer::new(data_types)
+        .with_step(TypesRenderStep);
+
+    let module = renderer.finish();
+
+    let code = module.code.to_string();
+
+    let output = rustfmt_pretty_print(code).unwrap().to_string();
+
+    syn::parse_file(&*output).unwrap()
 }
 
 fn generate_xml_data(data_types: &DataTypes) {
+    let data = render(data_types);
 
-    for data in &data_types.items {
-        let data_type = data.1;
+    for attr in data.attrs {
+        println!("Attr: {}", attr.into_token_stream());
+    }
 
-        match &data_type.variant {
-            DataTypeVariant::BuildIn(_) => (),
-            DataTypeVariant::Custom(_) => println!("Custom"),
-            DataTypeVariant::Union(_) => println!("Union"),
-            DataTypeVariant::Dynamic(_) => println!("Dynamic"),
-            DataTypeVariant::Reference(_) => (),
-            DataTypeVariant::Enumeration(_) => println!("Enumeration"),
-            DataTypeVariant::Complex(x) => generate_data(x, &data_types),
+    let mut xml = XMLBuilder::new()
+        .version(XMLVersion::XML1_1)
+        .encoding("UTF-8".into())
+        .build();
+
+    let mut elements: Vec<XMLElement> = Vec::new();
+    for item in data.items {
+        let result = sort_item(&item);
+        if result.is_some() {
+            elements.push(result.unwrap());
         }
     }
+
+    let mut writer: Vec<u8> = Vec::new();
+    if elements.len() == 1 {
+        xml.set_root_element(elements.pop().unwrap());
+        xml.generate(&mut writer).unwrap();
+    } else {
+        for element in elements {
+            element.render(&mut writer, false,true, true, true).unwrap()
+        }
+    }
+
+    println!("{}", String::from_utf8(writer).unwrap());
 }
 
 pub fn generate_xml(filepath: Box<Path>) -> Result<String, Error> {
