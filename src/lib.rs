@@ -1,13 +1,18 @@
+use std::cmp::PartialEq;
+use std::string::String;
+use std::io::Write;
+use std::ops::Deref;
 use std::path::Path;
+use std::process::{Command, Output, Stdio};
+use syn::__private::ToTokens;
+use fake::{Fake, Faker};
+use syn::{Field, File, Item, ItemStruct, ItemType, Type, TypePath};
+use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::config::GeneratorFlags;
 use xsd_parser::pipeline::parser::resolver::FileResolver;
-use xsd_parser::{Error, Generator, Interpreter, Optimizer, Parser, DataTypes, Renderer, TypesRenderStep};
-use std::io::Write;
-use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
-use std::process::{Command, Output, Stdio};
-use syn::{Field, File, Item, ItemStruct, Type};
-use syn::__private::ToTokens;
-
+use xsd_parser::{
+    DataTypes, Error, Generator, Interpreter, Optimizer, Parser, Renderer, TypesRenderStep,
+};
 pub fn rustfmt_pretty_print(code: String) -> Result<String, Error> {
     let mut child = Command::new("rustfmt")
         .stdin(Stdio::piped())
@@ -47,87 +52,62 @@ pub fn rustfmt_pretty_print(code: String) -> Result<String, Error> {
     Ok(stdout.into())
 }
 
-fn generate_value(field_type: &Type) -> String {
-    match field_type {
-        Type::Array(_) => {}
-        Type::BareFn(_) => {}
-        Type::Group(_) => {}
-        Type::ImplTrait(_) => {}
-        Type::Infer(_) => {}
-        Type::Macro(_) => {}
-        Type::Never(_) => {}
-        Type::Paren(_) => {}
-        Type::Path(_) => {}
-        Type::Ptr(_) => {}
-        Type::Reference(_) => {}
-        Type::Slice(_) => {}
-        Type::TraitObject(_) => {}
-        Type::Tuple(_) => {}
-        Type::Verbatim(_) => {}
-        _ => {}
+fn generate_path_value(type_path: &TypePath) -> Option<String> {
+    let mut result = None;
+    let ident = &type_path.path.get_ident();
+    if ident.is_some() {
+        result = Option::from(ident.unwrap().to_string())
     }
 
-    "Value".to_string()
-}
-
-fn sort_field(field: &Field) -> XMLElement {
-    if field.ident.is_none() {
-        panic!("Unnamed fields are not supported!");
+    let qself = type_path.qself.clone();
+    if qself.is_some() {
+        result = Option::from(qself.unwrap().ty.deref().into_token_stream().to_string())
     }
-    let ident = field.ident.as_ref().unwrap();
-    let string = ident.to_string();
-    let field_type = &field.ty;
-
-    let value = generate_value(field_type);
-
-    let mut element = XMLElement::new(&*string);
-    element.add_text(value).unwrap();
-
-    element
-}
-
-fn sort_struct(struct_type: &ItemStruct) -> XMLElement {
-    let mut element = XMLElement::new(&*struct_type.ident.to_string());
-    for attr in &struct_type.attrs {
-        println!("Struct attribute: {}", attr.into_token_stream());
-    }
-
-    let fields = struct_type.fields.iter();
-    for field in fields {
-        let field_element = sort_field(field);
-        let _ = element.add_child(field_element);
-    }
-
-    element
-}
-
-fn sort_item(item: &Item) -> Option<XMLElement> {
-    let result: Option<XMLElement> = match item {
-        Item::Const(_) => unimplemented!("Item::Const"),
-        Item::Enum(_) => unimplemented!("Item::Enum"),
-        Item::ExternCrate(_) => unimplemented!("Item::ExternCrate"),
-        Item::Fn(_) => unimplemented!("Item::Fn"),
-        Item::ForeignMod(_) => unimplemented!("Item::ForeignMod"),
-        Item::Impl(_) => unimplemented!("Item::Impl"),
-        Item::Macro(_) => unimplemented!("Item::Macro"),
-        Item::Mod(_) => unimplemented!("Item::Mod"),
-        Item::Static(_) => unimplemented!("Item::Static"),
-        Item::Struct(x) => Option::from(sort_struct(x)),
-        Item::Trait(_) => unimplemented!("Item::Trait"),
-        Item::TraitAlias(_) => unimplemented!("Item::TraitAlias"),
-        Item::Type(_) => None,
-        Item::Union(_) => unimplemented!("Item::Union"),
-        Item::Use(_) => unimplemented!("Item::Use"),
-        Item::Verbatim(_) => unimplemented!("Item::Verbatim"),
-        &_ => todo!()
-    };
 
     result
 }
 
+fn generate_value(field_type: &Type) -> Option<String> {
+    match field_type {
+        Type::Array(_) => unimplemented!("Field type: Array"),
+        Type::BareFn(_) => unimplemented!("Field type: BareFn"),
+        Type::Group(_) => unimplemented!("Field type: Group"),
+        Type::ImplTrait(_) => unimplemented!("Field type: ImplTrait"),
+        Type::Infer(_) => unimplemented!("Field type: Infer"),
+        Type::Macro(_) => unimplemented!("Field type: Macro"),
+        Type::Never(_) => unimplemented!("Field type: Never"),
+        Type::Paren(_) => unimplemented!("Field type: Paren"),
+        Type::Path(x) => generate_path_value(x),
+        Type::Ptr(_) => unimplemented!("Field type: Ptr"),
+        Type::Reference(_) => unimplemented!("Field type: Reference"),
+        Type::Slice(_) => unimplemented!("Field type: Slice"),
+        Type::TraitObject(_) => unimplemented!("Field type: TraitObject"),
+        Type::Tuple(_) => unimplemented!("Field type: Tuple"),
+        Type::Verbatim(_) => unimplemented!("Field type: Verbatim"),
+        _ => unimplemented!("Field type: Other"),
+    }
+}
+
+struct TypeInfo<'a> {
+    name: String,
+    value: &'a Type,
+    attrs: Vec<String>,
+}
+
+fn sort_type(item_type: &ItemType) -> TypeInfo {
+    let name = item_type.ident.to_string();
+    let value = item_type.ty.deref();
+
+    let mut attrs = vec![];
+    for attr in item_type.attrs.iter() {
+        attrs.push(attr.to_token_stream().to_string());
+    }
+
+    TypeInfo { name, value, attrs }
+}
+
 fn render(data_types: &DataTypes) -> File {
-    let renderer = Renderer::new(data_types)
-        .with_step(TypesRenderStep);
+    let renderer = Renderer::new(data_types).with_step(TypesRenderStep);
 
     let module = renderer.finish();
 
@@ -138,35 +118,315 @@ fn render(data_types: &DataTypes) -> File {
     syn::parse_file(&*output).unwrap()
 }
 
+fn get_type(item: &Item) -> Option<TypeInfo> {
+    match item {
+        Item::Const(_) => unimplemented!("Item::Const"),
+        Item::Enum(_) => unimplemented!("Item::Enum"),
+        Item::ExternCrate(_) => unimplemented!("Item::ExternCrate"),
+        Item::Fn(_) => unimplemented!("Item::Fn"),
+        Item::ForeignMod(_) => unimplemented!("Item::ForeignMod"),
+        Item::Impl(_) => unimplemented!("Item::Impl"),
+        Item::Macro(_) => unimplemented!("Item::Macro"),
+        Item::Mod(_) => unimplemented!("Item::Mod"),
+        Item::Static(_) => unimplemented!("Item::Static"),
+        Item::Struct(_) => None,
+        Item::Trait(_) => unimplemented!("Item::Trait"),
+        Item::TraitAlias(_) => unimplemented!("Item::TraitAlias"),
+        Item::Type(x) => Option::from(sort_type(x)),
+        Item::Union(_) => unimplemented!("Item::Union"),
+        Item::Use(_) => unimplemented!("Item::Use"),
+        Item::Verbatim(_) => unimplemented!("Item::Verbatim"),
+        &_ => unimplemented!("Item::Other"),
+    }
+}
+
+struct FieldInfo {
+    name: String,
+    type_name: String,
+    attrs: Vec<String>,
+}
+
+struct StructInfo {
+    name: String,
+    attrs: Vec<String>,
+    fields: Vec<FieldInfo>,
+}
+
+impl PartialEq for FieldInfo {
+    fn eq(&self, other: &Self) -> bool {
+        if self.name != other.name {
+            return false;
+        }
+
+        if self.type_name != other.type_name {
+            return false;
+        }
+
+        if self.attrs.len() != other.attrs.len() {
+            return false;
+        }
+
+        for i in 0..self.attrs.len() {
+            if self.attrs[i] != other.attrs[i] {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl PartialEq for StructInfo {
+    fn eq(&self, other: &Self) -> bool {
+        if self.name != other.name {
+            return false;
+        }
+
+        if self.attrs.len() != other.attrs.len() {
+            return false;
+        }
+        for i in 0..self.attrs.len() {
+            if self.attrs[i] != other.attrs[i] {
+                return false;
+            }
+        }
+
+        if self.fields.len() != other.fields.len() {
+            return false;
+        }
+
+        for i in 0..self.fields.len() {
+            if self.fields[i] != other.fields[i] {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+fn get_field(field: &Field) -> FieldInfo {
+    if field.ident.is_none() {
+        panic!("Unnamed fields are not supported!");
+    }
+    let ident = field.ident.as_ref().unwrap();
+    let name = ident.to_string();
+    let field_type = &field.ty;
+    let mut type_name = "".to_string();
+    let type_value = generate_value(field_type);
+    if type_value.is_some() {
+        type_name = type_value.unwrap();
+    }
+
+    let mut attrs = vec![];
+    for attr in field.attrs.iter() {
+        attrs.push(attr.into_token_stream().to_string());
+    }
+
+    FieldInfo {
+        name,
+        type_name,
+        attrs,
+    }
+}
+
+fn get_struct_info(struct_item: &ItemStruct) -> StructInfo {
+    let name = struct_item.ident.to_string();
+    let mut attrs = vec![];
+    for attr in &struct_item.attrs {
+        attrs.push(attr.to_token_stream().to_string());
+    }
+
+    let field_data = struct_item.fields.iter();
+    let mut fields = vec![];
+    for field in field_data {
+        let field_info = get_field(field);
+        fields.push(field_info);
+    }
+
+    StructInfo {
+        name,
+        attrs,
+        fields,
+    }
+}
+
+fn get_struct(item: &Item) -> Option<StructInfo> {
+    match item {
+        Item::Const(_) => unimplemented!("Item::Const"),
+        Item::Enum(_) => unimplemented!("Item::Enum"),
+        Item::ExternCrate(_) => unimplemented!("Item::ExternCrate"),
+        Item::Fn(_) => unimplemented!("Item::Fn"),
+        Item::ForeignMod(_) => unimplemented!("Item::ForeignMod"),
+        Item::Impl(_) => unimplemented!("Item::Impl"),
+        Item::Macro(_) => unimplemented!("Item::Macro"),
+        Item::Mod(_) => unimplemented!("Item::Mod"),
+        Item::Static(_) => unimplemented!("Item::Static"),
+        Item::Struct(x) => Option::from(get_struct_info(x)),
+        Item::Trait(_) => unimplemented!("Item::Trait"),
+        Item::TraitAlias(_) => unimplemented!("Item::TraitAlias"),
+        Item::Type(_) => None,
+        Item::Union(_) => unimplemented!("Item::Union"),
+        Item::Use(_) => unimplemented!("Item::Use"),
+        Item::Verbatim(_) => unimplemented!("Item::Verbatim"),
+        &_ => unimplemented!("Item::Other"),
+    }
+}
+
+fn get_data(data: &File) -> (Vec<TypeInfo>, Vec<StructInfo>) {
+    let mut types = vec![];
+    let mut structs = vec![];
+    for item in &data.items {
+        let type_result = get_type(&item);
+        if type_result.is_some() {
+            types.push(type_result.unwrap());
+        }
+
+        let struct_result = get_struct(&item);
+        if struct_result.is_some() {
+            structs.push(struct_result.unwrap());
+        }
+    }
+
+    (types, structs)
+}
+
+fn get_field_struct<'a>(structs: &'a Vec<StructInfo>, field: &String) -> Option<&'a StructInfo> {
+    for structure in structs.iter() {
+        if structure.name == field.deref() {
+            return Option::from(structure)
+        }
+    }
+
+    None
+}
+
+fn find_root<'a>(structs: &'a Vec<StructInfo>, types: &Vec<TypeInfo>) -> &'a StructInfo {
+    let mut all_fields: Vec<&String> = vec![];
+    for structure in structs.iter() {
+
+        for field in structure.fields.iter() {
+            if !all_fields.contains(&&field.type_name) {
+                all_fields.push(&field.type_name);
+            }
+        }
+    }
+    let mut dep_structs = vec![];
+    for field in all_fields.iter() {
+        let structure = get_field_struct(&structs, field);
+        if structure.is_some() {
+            dep_structs.push(structure.unwrap());
+        }
+    }
+
+    let mut independent_structs = vec![];
+
+    for structure in structs.iter() {
+        if !dep_structs.contains(&structure) {
+            independent_structs.push(structure.clone());
+        }
+    }
+
+    if independent_structs.is_empty() {
+        panic!("No root structs found!");
+    }
+
+    if independent_structs.len() > 1 {
+        panic!("Multiple independent structs found!");
+    }
+
+    for structure in structs.iter() {
+        if independent_structs.contains(&structure.deref()) {
+            return structure;
+        }
+    }
+
+    panic!("No root structs found!");
+}
+
+fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
+    Option::from(Faker.fake::<Output>().to_string())
+}
+
+fn get_string(type_name: &String) -> Option<String> {
+    match type_name.as_str() {
+        "i8" => make_fake::<i8>(),
+        "u8" => make_fake::<u8>(),
+        "i16" => make_fake::<i16>(),
+        "u16" => make_fake::<u16>(),
+        "i32" => make_fake::<i32>(),
+        "u32" => make_fake::<u32>(),
+        "i64" => make_fake::<i64>(),
+        "u64" => make_fake::<u64>(),
+        "i128" => make_fake::<i128>(),
+        "u128" => make_fake::<u128>(),
+        "isize" => make_fake::<isize>(),
+        "usize" => make_fake::<usize>(),
+        "f32" => make_fake::<f32>(),
+        "f64" => make_fake::<f64>(),
+        "bool" => make_fake::<bool>(),
+        "char" => make_fake::<char>(),
+        "String" => make_fake::<String>(),
+        _ => None,
+    }
+}
+
+fn get_element(field: &FieldInfo, structs: &Vec<StructInfo>, types: &Vec<TypeInfo>) -> Option<XMLElement> {
+    for structure in structs {
+        if structure.name == field.type_name {
+            let element = generate_element(structure, structs, types);
+            return Option::from(element);
+        }
+    }
+
+    None
+}
+
+fn get_child(field: &FieldInfo, structs: &Vec<StructInfo>, types: &Vec<TypeInfo>) -> Option<XMLElement> {
+    let value = get_string(&field.type_name);
+    if value.is_some() {
+        let mut child = XMLElement::new(&field.name);
+        let _ = child.add_text(value.unwrap());
+        return Option::from(child);
+    }
+
+    get_element(&field, structs, types)
+}
+
+fn generate_element(
+    root: &StructInfo,
+    structs: &Vec<StructInfo>,
+    types: &Vec<TypeInfo>,
+) -> XMLElement {
+    let name = root.name.clone();
+    let mut element = XMLElement::new(&*name);
+
+    for field in root.fields.iter() {
+        let child = get_child(&field, &structs, &types);
+        if child.is_some() {
+            let _ = element.add_child(child.unwrap());
+        }
+    }
+
+    element
+}
+
 fn generate_xml_data(data_types: &DataTypes) {
     let data = render(data_types);
-
-    for attr in data.attrs {
-        println!("Attr: {}", attr.into_token_stream());
-    }
 
     let mut xml = XMLBuilder::new()
         .version(XMLVersion::XML1_1)
         .encoding("UTF-8".into())
         .build();
 
-    let mut elements: Vec<XMLElement> = Vec::new();
-    for item in data.items {
-        let result = sort_item(&item);
-        if result.is_some() {
-            elements.push(result.unwrap());
-        }
-    }
+    let (types, structs) = get_data(&data);
+
+    let root = find_root(&structs, &types);
+    let root_element = generate_element(&root, &structs, &types);
 
     let mut writer: Vec<u8> = Vec::new();
-    if elements.len() == 1 {
-        xml.set_root_element(elements.pop().unwrap());
-        xml.generate(&mut writer).unwrap();
-    } else {
-        for element in elements {
-            element.render(&mut writer, false,true, true, true).unwrap()
-        }
-    }
+    xml.set_root_element(root_element);
+    xml.generate(&mut writer).unwrap();
 
     println!("{}", String::from_utf8(writer).unwrap());
 }
@@ -179,34 +439,32 @@ pub fn generate_xml(filepath: Box<Path>) -> Result<String, Error> {
         .finish();
 
     let meta_types = Interpreter::new(&schemas)
-            .with_buildin_types()?
-            .with_default_typedefs()?
-            .with_xs_any_type()?
-            .finish()?;
+        .with_buildin_types()?
+        .with_default_typedefs()?
+        .with_xs_any_type()?
+        .finish()?;
 
     let optimised_metatypes = Optimizer::new(meta_types)
-            .remove_empty_enum_variants()
-            .remove_empty_enums()
-            .remove_duplicate_union_variants()
-            .remove_empty_unions()
-            .use_unrestricted_base_type()
-            .convert_dynamic_to_choice()
-            .flatten_complex_types()
-            .flatten_unions()
-            .merge_enum_unions()
-            .resolve_typedefs()
-            .remove_duplicates()
-            .merge_choice_cardinalities()
-            .finish();
+        .remove_empty_enum_variants()
+        .remove_empty_enums()
+        .remove_duplicate_union_variants()
+        .remove_empty_unions()
+        .use_unrestricted_base_type()
+        .convert_dynamic_to_choice()
+        .flatten_complex_types()
+        .flatten_unions()
+        .merge_enum_unions()
+        .resolve_typedefs()
+        .remove_duplicates()
+        .merge_choice_cardinalities()
+        .finish();
 
     let data_types = Generator::new(&optimised_metatypes)
-            .flags(GeneratorFlags::all())
-            .generate_named_types()?
-            .finish();
-
+        .flags(GeneratorFlags::all())
+        .generate_named_types()?
+        .finish();
 
     generate_xml_data(&data_types);
-
 
     Ok("".to_string())
 }
