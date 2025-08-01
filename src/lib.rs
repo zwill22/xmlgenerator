@@ -1,19 +1,22 @@
+use fake::{Fake, Faker};
 use std::cmp::PartialEq;
-use std::string::String;
 use std::io::Write;
 use std::ops::Deref;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
+use std::string::String;
 use syn::__private::ToTokens;
-use fake::{Fake, Faker};
-use syn::{Field, File, Item, ItemStruct, ItemType, Type, TypePath};
+use syn::{
+    AngleBracketedGenericArguments, Field, File, GenericArgument, Item, ItemStruct,
+    ItemType, PathArguments, PathSegment, Type, TypePath,
+};
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::config::GeneratorFlags;
 use xsd_parser::pipeline::parser::resolver::FileResolver;
 use xsd_parser::{
     DataTypes, Error, Generator, Interpreter, Optimizer, Parser, Renderer, TypesRenderStep,
 };
-pub fn rustfmt_pretty_print(code: String) -> Result<String, Error> {
+pub fn format_code_string(code: String) -> Result<String, Error> {
     let mut child = Command::new("rustfmt")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -52,22 +55,115 @@ pub fn rustfmt_pretty_print(code: String) -> Result<String, Error> {
     Ok(stdout.into())
 }
 
-fn generate_path_value(type_path: &TypePath) -> Option<String> {
-    let mut result = None;
+struct FieldType {
+    name: String,
+    min_occurrences: Option<u64>,
+    max_occurrences: Option<u64>,
+}
+
+impl PartialEq for FieldType {
+    fn eq(&self, other: &Self) -> bool {
+        if self.name != other.name {
+            return false;
+        }
+
+        if self.min_occurrences != other.min_occurrences {
+            return false;
+        }
+
+        if self.max_occurrences != other.max_occurrences {
+            return false;
+        }
+
+        true
+    }
+}
+
+fn sort_args(args: &AngleBracketedGenericArguments) -> FieldType {
+    let mut output = None;
+
+    for arg in args.args.iter() {
+        let result = match arg {
+            GenericArgument::Lifetime(_) => unimplemented!("Lifetime argument"),
+            GenericArgument::Type(x) => get_field_type(x),
+            GenericArgument::Const(_) => unimplemented!("Constant argument"),
+            GenericArgument::AssocType(_) => unimplemented!("Associative argument"),
+            GenericArgument::AssocConst(_) => unimplemented!("Associative argument"),
+            GenericArgument::Constraint(_) => unimplemented!("Constraint argument"),
+            _ => unimplemented!("Unknown argument"),
+        };
+
+        if result.is_some() {
+            if output.is_some() {
+                unimplemented!("Multiple arguments are not supported yet");
+            }
+
+            output = result;
+        }
+    }
+
+    if output.is_none() {
+        panic!("No arguments found");
+    }
+
+    output.unwrap()
+}
+
+fn get_arguments(segment: &PathSegment) -> FieldType {
+    match &segment.arguments {
+        PathArguments::None => unimplemented!("No path arguments"),
+        PathArguments::AngleBracketed(x) => sort_args(x),
+        PathArguments::Parenthesized(_) => unimplemented!("Parenthesized path arguments"),
+    }
+}
+
+fn generate_field_type(type_path: &TypePath) -> FieldType {
+    let stream = &type_path.path.segments;
+    for segment in stream.iter() {
+        let seg_type = segment.ident.to_string();
+        let mut field_type = get_arguments(segment);
+
+        if seg_type == "Option" {
+            field_type.min_occurrences = Some(0);
+            field_type.max_occurrences = Some(1);
+        } else if seg_type == "Vec" {
+            field_type.min_occurrences = Some(0);
+            field_type.max_occurrences = None;
+        } else {
+            unimplemented!("Unknown type: {}", seg_type);
+        }
+
+        return field_type;
+    }
+
+    panic!("No type found");
+}
+
+fn find_field_type(type_path: &TypePath) -> FieldType {
+    let mut name = None;
+
     let ident = &type_path.path.get_ident();
     if ident.is_some() {
-        result = Option::from(ident.unwrap().to_string())
+        name = Some(ident.unwrap().to_string());
     }
 
     let qself = type_path.qself.clone();
     if qself.is_some() {
-        result = Option::from(qself.unwrap().ty.deref().into_token_stream().to_string())
+        name = Some(qself.unwrap().ty.deref().into_token_stream().to_string());
     }
 
-    result
+    if name.is_some() {
+        return FieldType {
+            name: name.unwrap(),
+            min_occurrences: None,
+            max_occurrences: None,
+        };
+    }
+
+    generate_field_type(type_path)
 }
 
-fn generate_value(field_type: &Type) -> Option<String> {
+fn get_field_type(field_type: &Type) -> Option<FieldType> {
     match field_type {
         Type::Array(_) => unimplemented!("Field type: Array"),
         Type::BareFn(_) => unimplemented!("Field type: BareFn"),
@@ -77,7 +173,7 @@ fn generate_value(field_type: &Type) -> Option<String> {
         Type::Macro(_) => unimplemented!("Field type: Macro"),
         Type::Never(_) => unimplemented!("Field type: Never"),
         Type::Paren(_) => unimplemented!("Field type: Paren"),
-        Type::Path(x) => generate_path_value(x),
+        Type::Path(x) => Option::from(find_field_type(x)),
         Type::Ptr(_) => unimplemented!("Field type: Ptr"),
         Type::Reference(_) => unimplemented!("Field type: Reference"),
         Type::Slice(_) => unimplemented!("Field type: Slice"),
@@ -88,22 +184,27 @@ fn generate_value(field_type: &Type) -> Option<String> {
     }
 }
 
-struct TypeInfo<'a> {
+struct TypeAlias<'a> {
     name: String,
     value: &'a Type,
     attrs: Vec<String>,
 }
 
-fn sort_type(item_type: &ItemType) -> TypeInfo {
+fn type_alias(item_type: &ItemType) -> TypeAlias {
+    println!(
+        "Alias name: {}",
+        item_type.ident.to_token_stream().to_string()
+    );
     let name = item_type.ident.to_string();
     let value = item_type.ty.deref();
+    println!("Alias type: {}", value.to_token_stream().to_string());
 
     let mut attrs = vec![];
     for attr in item_type.attrs.iter() {
         attrs.push(attr.to_token_stream().to_string());
     }
 
-    TypeInfo { name, value, attrs }
+    TypeAlias { name, value, attrs }
 }
 
 fn render(data_types: &DataTypes) -> File {
@@ -113,12 +214,12 @@ fn render(data_types: &DataTypes) -> File {
 
     let code = module.code.to_string();
 
-    let output = rustfmt_pretty_print(code).unwrap().to_string();
+    let output = format_code_string(code).unwrap().to_string();
 
     syn::parse_file(&*output).unwrap()
 }
 
-fn get_type(item: &Item) -> Option<TypeInfo> {
+fn get_type_alias(item: &Item) -> Option<TypeAlias> {
     match item {
         Item::Const(_) => unimplemented!("Item::Const"),
         Item::Enum(_) => unimplemented!("Item::Enum"),
@@ -132,7 +233,7 @@ fn get_type(item: &Item) -> Option<TypeInfo> {
         Item::Struct(_) => None,
         Item::Trait(_) => unimplemented!("Item::Trait"),
         Item::TraitAlias(_) => unimplemented!("Item::TraitAlias"),
-        Item::Type(x) => Option::from(sort_type(x)),
+        Item::Type(x) => Option::from(type_alias(x)),
         Item::Union(_) => unimplemented!("Item::Union"),
         Item::Use(_) => unimplemented!("Item::Use"),
         Item::Verbatim(_) => unimplemented!("Item::Verbatim"),
@@ -142,8 +243,8 @@ fn get_type(item: &Item) -> Option<TypeInfo> {
 
 struct FieldInfo {
     name: String,
-    type_name: String,
-    attrs: Vec<String>,
+    field_type: FieldType,
+    attributes: Vec<String>,
 }
 
 struct StructInfo {
@@ -158,16 +259,16 @@ impl PartialEq for FieldInfo {
             return false;
         }
 
-        if self.type_name != other.type_name {
+        if self.field_type != other.field_type {
             return false;
         }
 
-        if self.attrs.len() != other.attrs.len() {
+        if self.attributes.len() != other.attributes.len() {
             return false;
         }
 
-        for i in 0..self.attrs.len() {
-            if self.attrs[i] != other.attrs[i] {
+        for i in 0..self.attributes.len() {
+            if self.attributes[i] != other.attributes[i] {
                 return false;
             }
         }
@@ -210,13 +311,9 @@ fn get_field(field: &Field) -> FieldInfo {
         panic!("Unnamed fields are not supported!");
     }
     let ident = field.ident.as_ref().unwrap();
-    let name = ident.to_string();
-    let field_type = &field.ty;
-    let mut type_name = "".to_string();
-    let type_value = generate_value(field_type);
-    if type_value.is_some() {
-        type_name = type_value.unwrap();
-    }
+    let field_name = ident.to_string();
+    println!("Field name: {}", field_name);
+    let field_type = get_field_type(&field.ty);
 
     let mut attrs = vec![];
     for attr in field.attrs.iter() {
@@ -224,16 +321,26 @@ fn get_field(field: &Field) -> FieldInfo {
     }
 
     FieldInfo {
-        name,
-        type_name,
-        attrs,
+        name: field_name,
+        field_type: field_type.unwrap(),
+        attributes: attrs,
     }
 }
 
 fn get_struct_info(struct_item: &ItemStruct) -> StructInfo {
-    let name = struct_item.ident.to_string();
+    let struct_token = struct_item.struct_token;
+    println!("struct: {}", struct_token.to_token_stream().to_string());
+
+    println!(
+        "Visibility: {}",
+        struct_item.vis.to_token_stream().to_string()
+    );
+
+    let name = struct_item.ident.to_token_stream().to_string();
+    println!("Struct name: {}", name);
     let mut attrs = vec![];
     for attr in &struct_item.attrs {
+        println!("Attr: {}", attr.to_token_stream().to_string());
         attrs.push(attr.to_token_stream().to_string());
     }
 
@@ -273,13 +380,13 @@ fn get_struct(item: &Item) -> Option<StructInfo> {
     }
 }
 
-fn get_data(data: &File) -> (Vec<TypeInfo>, Vec<StructInfo>) {
-    let mut types = vec![];
+fn get_data(data: &File) -> (Vec<TypeAlias>, Vec<StructInfo>) {
+    let mut type_aliases = vec![];
     let mut structs = vec![];
     for item in &data.items {
-        let type_result = get_type(&item);
+        let type_result = get_type_alias(&item);
         if type_result.is_some() {
-            types.push(type_result.unwrap());
+            type_aliases.push(type_result.unwrap());
         }
 
         let struct_result = get_struct(&item);
@@ -288,26 +395,25 @@ fn get_data(data: &File) -> (Vec<TypeInfo>, Vec<StructInfo>) {
         }
     }
 
-    (types, structs)
+    (type_aliases, structs)
 }
 
 fn get_field_struct<'a>(structs: &'a Vec<StructInfo>, field: &String) -> Option<&'a StructInfo> {
     for structure in structs.iter() {
         if structure.name == field.deref() {
-            return Option::from(structure)
+            return Option::from(structure);
         }
     }
 
     None
 }
 
-fn find_root<'a>(structs: &'a Vec<StructInfo>, types: &Vec<TypeInfo>) -> &'a StructInfo {
+fn find_root<'a>(structs: &'a Vec<StructInfo>) -> &'a StructInfo {
     let mut all_fields: Vec<&String> = vec![];
     for structure in structs.iter() {
-
         for field in structure.fields.iter() {
-            if !all_fields.contains(&&field.type_name) {
-                all_fields.push(&field.type_name);
+            if !all_fields.contains(&&field.field_type.name) {
+                all_fields.push(&field.field_type.name);
             }
         }
     }
@@ -323,7 +429,7 @@ fn find_root<'a>(structs: &'a Vec<StructInfo>, types: &Vec<TypeInfo>) -> &'a Str
 
     for structure in structs.iter() {
         if !dep_structs.contains(&structure) {
-            independent_structs.push(structure.clone());
+            independent_structs.push(structure);
         }
     }
 
@@ -332,11 +438,11 @@ fn find_root<'a>(structs: &'a Vec<StructInfo>, types: &Vec<TypeInfo>) -> &'a Str
     }
 
     if independent_structs.len() > 1 {
-        panic!("Multiple independent structs found!");
+        println!("Multiple independent structs found!");
     }
 
     for structure in structs.iter() {
-        if independent_structs.contains(&structure.deref()) {
+        if independent_structs.contains(&structure) {
             return structure;
         }
     }
@@ -371,9 +477,13 @@ fn get_string(type_name: &String) -> Option<String> {
     }
 }
 
-fn get_element(field: &FieldInfo, structs: &Vec<StructInfo>, types: &Vec<TypeInfo>) -> Option<XMLElement> {
+fn get_element(
+    field: &FieldInfo,
+    structs: &Vec<StructInfo>,
+    types: &Vec<TypeAlias>,
+) -> Option<XMLElement> {
     for structure in structs {
-        if structure.name == field.type_name {
+        if structure.name == field.field_type.name {
             let element = generate_element(structure, structs, types);
             return Option::from(element);
         }
@@ -382,8 +492,12 @@ fn get_element(field: &FieldInfo, structs: &Vec<StructInfo>, types: &Vec<TypeInf
     None
 }
 
-fn get_child(field: &FieldInfo, structs: &Vec<StructInfo>, types: &Vec<TypeInfo>) -> Option<XMLElement> {
-    let value = get_string(&field.type_name);
+fn get_child(
+    field: &FieldInfo,
+    structs: &Vec<StructInfo>,
+    types: &Vec<TypeAlias>,
+) -> Option<XMLElement> {
+    let value = get_string(&field.field_type.name);
     if value.is_some() {
         let mut child = XMLElement::new(&field.name);
         let _ = child.add_text(value.unwrap());
@@ -396,7 +510,7 @@ fn get_child(field: &FieldInfo, structs: &Vec<StructInfo>, types: &Vec<TypeInfo>
 fn generate_element(
     root: &StructInfo,
     structs: &Vec<StructInfo>,
-    types: &Vec<TypeInfo>,
+    types: &Vec<TypeAlias>,
 ) -> XMLElement {
     let name = root.name.clone();
     let mut element = XMLElement::new(&*name);
@@ -419,10 +533,10 @@ fn generate_xml_data(data_types: &DataTypes) {
         .encoding("UTF-8".into())
         .build();
 
-    let (types, structs) = get_data(&data);
+    let (type_aliases, structs) = get_data(&data);
 
-    let root = find_root(&structs, &types);
-    let root_element = generate_element(&root, &structs, &types);
+    let root = find_root(&structs);
+    let root_element = generate_element(&root, &structs, &type_aliases);
 
     let mut writer: Vec<u8> = Vec::new();
     xml.set_root_element(root_element);
