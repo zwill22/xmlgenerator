@@ -28,14 +28,10 @@ mod tests {
 
         assert!(xml.is_err());
         match xml.unwrap_err() {
-            XMLGeneratorError::FilepathError => panic!("Filepath error"),
-            XMLGeneratorError::ParseError(error) => panic!("Parse error: {}", error),
-            XMLGeneratorError::InvalidInputError(error) => check_error(&error, &expected),
-            XMLGeneratorError::XMLGenerationError(error) => {
+            XMLGeneratorError::XSDParserError(error) => panic!("Parse error: {}", error),
+            XMLGeneratorError::DataTypesFormatError(error) => check_error(&error, &expected),
+            XMLGeneratorError::XMLBuilderError(error) => {
                 panic!("XML generation error: {}", error)
-            }
-            XMLGeneratorError::StringConversionError(error) => {
-                panic!("String conversion error: {}", error)
             }
         }
     }
@@ -86,11 +82,9 @@ mod tests {
         let xml = generate_xml(&empty_xml_string);
         assert!(xml.is_err());
         match xml.unwrap_err() {
-            XMLGeneratorError::FilepathError => panic!("Filepath error"),
-            XMLGeneratorError::ParseError(err) => check_error(&err, &expected_error),
-            XMLGeneratorError::InvalidInputError(_) => panic!("Invalid input error"),
-            XMLGeneratorError::XMLGenerationError(_) => panic!("XML generation error"),
-            XMLGeneratorError::StringConversionError(_) => panic!("String conversion error"),
+            XMLGeneratorError::XSDParserError(err) => check_error(&err, &expected_error),
+            XMLGeneratorError::DataTypesFormatError(_) => panic!("Invalid data error"),
+            XMLGeneratorError::XMLBuilderError(_) => panic!("XML generation error"),
         }
     }
 }

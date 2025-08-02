@@ -1,15 +1,13 @@
-use crate::XMLGeneratorError::{
-    InvalidInputError, ParseError, StringConversionError, XMLGenerationError,
-};
+use crate::XMLGeneratorError::{DataTypesFormatError, XMLBuilderError, XSDParserError};
 use fake::{Fake, Faker};
 use std::cmp::PartialEq;
 use std::ops::Deref;
 use std::string::String;
+use syn::__private::ToTokens;
 use syn::{
     AngleBracketedGenericArguments, Field, File, GenericArgument, Item, ItemStruct, ItemType,
     PathArguments, PathSegment, Type, TypePath,
 };
-use syn::__private::ToTokens;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::config::GeneratorFlags;
 use xsd_parser::pipeline::parser::resolver::FileResolver;
@@ -18,13 +16,17 @@ use xsd_parser::{
     TypesRenderStep,
 };
 
+/// XML generator error
+///
+/// Struct which manages errors in the XMLGenerator crate
 #[derive(Debug)]
 pub enum XMLGeneratorError {
-    FilepathError,
-    ParseError(String),
-    InvalidInputError(String),
-    XMLGenerationError(String),
-    StringConversionError(String),
+    /// Error parsing the input XSD file contents
+    XSDParserError(String),
+    /// Datatypes are in an invalid format
+    DataTypesFormatError(String),
+    /// Error generating the output XML structure
+    XMLBuilderError(String),
 }
 
 struct FieldType {
@@ -74,11 +76,7 @@ fn sort_args(args: &AngleBracketedGenericArguments) -> FieldType {
         }
     }
 
-    if output.is_none() {
-        panic!("No arguments found");
-    }
-
-    output.unwrap()
+    output.expect("No arguments found")
 }
 
 fn get_arguments(segment: &PathSegment) -> FieldType {
@@ -264,10 +262,10 @@ impl PartialEq for StructInfo {
 }
 
 fn get_field(field: &Field) -> FieldInfo {
-    if field.ident.is_none() {
-        panic!("Unnamed fields are not supported!");
-    }
-    let ident = field.ident.as_ref().unwrap();
+    let ident = field
+        .ident
+        .as_ref()
+        .expect("Unnamed fields are not supported!");
     let field_name = ident.to_string();
     let field_type = get_field_type(&field.ty);
 
@@ -380,11 +378,15 @@ fn find_root(structs: &Vec<StructInfo>) -> Result<&StructInfo, XMLGeneratorError
     }
 
     if independent_structs.is_empty() {
-        return Err(InvalidInputError("No independent structs found".to_string()));
+        return Err(DataTypesFormatError(
+            "No independent structs found".to_string(),
+        ));
     }
 
     if independent_structs.len() > 1 {
-        return Err(InvalidInputError("Multiple independent structs found!".to_string()));
+        return Err(DataTypesFormatError(
+            "Multiple independent structs found!".to_string(),
+        ));
     }
 
     for structure in structs.iter() {
@@ -488,14 +490,12 @@ fn generate_xml_data(data_types: &DataTypes) -> Result<String, XMLGeneratorError
     xml.set_root_element(root_element);
     let result = xml.generate(&mut writer);
     if result.is_err() {
-        return Err(XMLGenerationError(result.err().unwrap().to_string()));
+        return Err(XMLBuilderError(result.err().unwrap().to_string()));
     }
 
-    let result = String::from_utf8(writer);
-    match result {
-        Ok(x) => Ok(x),
-        Err(err) => Err(StringConversionError(err.to_string())),
-    }
+    let output = String::from_utf8(writer).expect("Unable to convert XML output to string");
+
+    Ok(output)
 }
 
 fn generate_schema(string: &String) -> Result<Schemas, XMLGeneratorError> {
@@ -505,7 +505,7 @@ fn generate_schema(string: &String) -> Result<Schemas, XMLGeneratorError> {
         .add_schema_from_str(string);
 
     if let Err(err) = schemas {
-        return Err(ParseError(err.to_string()));
+        return Err(XSDParserError(err.to_string()));
     }
 
     Ok(schemas.unwrap().finish())
@@ -531,23 +531,23 @@ fn optimise_meta_types(meta_types: MetaTypes) -> MetaTypes {
 fn generate_meta_types(schemas: &Schemas, optimise: bool) -> Result<MetaTypes, XMLGeneratorError> {
     let meta_types = Interpreter::new(&schemas).with_buildin_types();
     if let Err(err) = meta_types {
-        return Err(ParseError(err.to_string()));
+        return Err(XSDParserError(err.to_string()));
     }
 
     let meta_types = meta_types.unwrap().with_default_typedefs();
     if let Err(err) = meta_types {
-        return Err(ParseError(err.to_string()));
+        return Err(XSDParserError(err.to_string()));
     }
 
     let meta_types = meta_types.unwrap().with_xs_any_type();
     if let Err(err) = meta_types {
-        return Err(ParseError(err.to_string()));
+        return Err(XSDParserError(err.to_string()));
     }
 
     let meta_types = meta_types.unwrap().finish();
 
     if let Err(err) = meta_types {
-        return Err(ParseError(err.to_string()));
+        return Err(XSDParserError(err.to_string()));
     }
 
     if optimise {
@@ -563,12 +563,30 @@ fn generate_data_types(meta_types: &MetaTypes) -> Result<DataTypes, XMLGenerator
         .generate_named_types();
 
     if let Err(err) = data_types {
-        return Err(ParseError(err.to_string()));
+        return Err(XSDParserError(err.to_string()));
     }
 
     Ok(data_types.unwrap().finish())
 }
 
+/// Generate an XML string containing fake data
+///
+/// Using an XSD file contents as a string, generate an XML file string of the
+/// same format with fake data.
+///
+/// The function uses the `xsd_parser` crate to parse the input. If this library returns
+/// en error, then the function returns an `XMLGeneratorError::XMLParserError`.
+/// This crate generates a `data_types` object which the XMLGenerator uses th
+/// generate the output xml.
+///
+/// If the `data_types` contains data which is not in the required format, then an
+/// `XMLGeneratorError::DataTypeFormatError` is returned. This includes cases
+/// such as multiple root nodes or circular dependencies.
+///
+/// The function sorts the data into a dependency tree and uses this to generate an
+/// `XMLBuilder` object using the `xml_builder` crate. If the `XMLBuilder` returns
+/// an error when generating the output xml, then an `XMLGeneratorError::XMLBuilderError`
+/// is returned.
 pub fn generate_xml(xsd_string: &String) -> Result<String, XMLGeneratorError> {
     let schema = generate_schema(xsd_string)?;
     let meta_types = generate_meta_types(&schema, true)?;
