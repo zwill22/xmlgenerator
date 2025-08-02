@@ -1,58 +1,30 @@
+use crate::XMLGeneratorError::{
+    FilepathError, ParseError, StringConversionError, XMLGenerationError,
+};
 use fake::{Fake, Faker};
 use std::cmp::PartialEq;
-use std::io::Write;
 use std::ops::Deref;
 use std::path::Path;
-use std::process::{Command, Output, Stdio};
 use std::string::String;
 use syn::__private::ToTokens;
 use syn::{
-    AngleBracketedGenericArguments, Field, File, GenericArgument, Item, ItemStruct,
-    ItemType, PathArguments, PathSegment, Type, TypePath,
+    AngleBracketedGenericArguments, Field, File, GenericArgument, Item, ItemStruct, ItemType,
+    PathArguments, PathSegment, Type, TypePath,
 };
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::config::GeneratorFlags;
 use xsd_parser::pipeline::parser::resolver::FileResolver;
 use xsd_parser::{
-    DataTypes, Error, Generator, Interpreter, Optimizer, Parser, Renderer, TypesRenderStep,
+    DataTypes, Generator, Interpreter, MetaTypes, Optimizer, Parser, Renderer, Schemas,
+    TypesRenderStep,
 };
-pub fn format_code_string(code: String) -> Result<String, Error> {
-    let mut child = Command::new("rustfmt")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
 
-    let mut stdin = child.stdin.take().unwrap();
-
-    write!(stdin, "{code}")?;
-    stdin.flush()?;
-    drop(stdin);
-
-    let Output {
-        status,
-        stdout,
-        stderr,
-    } = child.wait_with_output()?;
-
-    let stdout = String::from_utf8_lossy(&stdout);
-    let stderr = String::from_utf8_lossy(&stderr);
-
-    if !status.success() {
-        let code = status.code();
-        match code {
-            Some(code) => {
-                if code != 0 {
-                    panic!("The `rustfmt` command failed with return code {code}!\n{stderr}");
-                }
-            }
-            None => {
-                panic!("The `rustfmt` command failed!\n{stderr}")
-            }
-        }
-    }
-
-    Ok(stdout.into())
+#[derive(Debug)]
+pub enum XMLGeneratorError {
+    FilepathError,
+    ParseError(String),
+    XMLGenerationError(String),
+    StringConversionError(String),
 }
 
 struct FieldType {
@@ -191,13 +163,8 @@ struct TypeAlias<'a> {
 }
 
 fn type_alias(item_type: &ItemType) -> TypeAlias {
-    println!(
-        "Alias name: {}",
-        item_type.ident.to_token_stream().to_string()
-    );
     let name = item_type.ident.to_string();
     let value = item_type.ty.deref();
-    println!("Alias type: {}", value.to_token_stream().to_string());
 
     let mut attrs = vec![];
     for attr in item_type.attrs.iter() {
@@ -214,9 +181,7 @@ fn render(data_types: &DataTypes) -> File {
 
     let code = module.code.to_string();
 
-    let output = format_code_string(code).unwrap().to_string();
-
-    syn::parse_file(&*output).unwrap()
+    syn::parse_file(&*code).unwrap()
 }
 
 fn get_type_alias(item: &Item) -> Option<TypeAlias> {
@@ -408,7 +373,7 @@ fn get_field_struct<'a>(structs: &'a Vec<StructInfo>, field: &String) -> Option<
     None
 }
 
-fn find_root<'a>(structs: &'a Vec<StructInfo>) -> &'a StructInfo {
+fn find_root(structs: &Vec<StructInfo>) -> &StructInfo {
     let mut all_fields: Vec<&String> = vec![];
     for structure in structs.iter() {
         for field in structure.fields.iter() {
@@ -500,7 +465,7 @@ fn get_child(
     let value = get_string(&field.field_type.name);
     if value.is_some() {
         let mut child = XMLElement::new(&field.name);
-        let _ = child.add_text(value.unwrap());
+        child.add_text(value.unwrap()).unwrap();
         return Option::from(child);
     }
 
@@ -518,14 +483,14 @@ fn generate_element(
     for field in root.fields.iter() {
         let child = get_child(&field, &structs, &types);
         if child.is_some() {
-            let _ = element.add_child(child.unwrap());
+            element.add_child(child.unwrap()).unwrap();
         }
     }
 
     element
 }
 
-fn generate_xml_data(data_types: &DataTypes) {
+fn generate_xml_data(data_types: &DataTypes) -> Result<String, XMLGeneratorError> {
     let data = render(data_types);
 
     let mut xml = XMLBuilder::new()
@@ -540,25 +505,38 @@ fn generate_xml_data(data_types: &DataTypes) {
 
     let mut writer: Vec<u8> = Vec::new();
     xml.set_root_element(root_element);
-    xml.generate(&mut writer).unwrap();
+    let result = xml.generate(&mut writer);
+    if result.is_err() {
+        return Err(XMLGenerationError(result.err().unwrap().to_string()));
+    }
 
-    println!("{}", String::from_utf8(writer).unwrap());
+    let result = String::from_utf8(writer);
+    match result {
+        Ok(x) => Ok(x),
+        Err(err) => Err(StringConversionError(err.to_string())),
+    }
 }
 
-pub fn generate_xml(filepath: Box<Path>) -> Result<String, Error> {
+fn generate_schema(filepath: Box<Path>) -> Result<Schemas, XMLGeneratorError> {
+    let path = filepath.canonicalize();
+    if let Err(_err) = path {
+        return Err(FilepathError);
+    }
+
     let schemas = Parser::new()
         .with_resolver(FileResolver::new())
         .with_default_namespaces()
-        .add_schema_from_file(filepath.canonicalize()?)?
-        .finish();
+        .add_schema_from_file(path.unwrap());
 
-    let meta_types = Interpreter::new(&schemas)
-        .with_buildin_types()?
-        .with_default_typedefs()?
-        .with_xs_any_type()?
-        .finish()?;
+    if let Err(err) = schemas {
+        return Err(ParseError(err.to_string()));
+    }
 
-    let optimised_metatypes = Optimizer::new(meta_types)
+    Ok(schemas.unwrap().finish())
+}
+
+fn optimise_meta_types(meta_types: MetaTypes) -> MetaTypes {
+    Optimizer::new(meta_types)
         .remove_empty_enum_variants()
         .remove_empty_enums()
         .remove_duplicate_union_variants()
@@ -571,14 +549,56 @@ pub fn generate_xml(filepath: Box<Path>) -> Result<String, Error> {
         .resolve_typedefs()
         .remove_duplicates()
         .merge_choice_cardinalities()
-        .finish();
+        .finish()
+}
 
-    let data_types = Generator::new(&optimised_metatypes)
+fn generate_meta_types(schemas: &Schemas, optimise: bool) -> Result<MetaTypes, XMLGeneratorError> {
+    let meta_types = Interpreter::new(&schemas).with_buildin_types();
+    if let Err(err) = meta_types {
+        return Err(ParseError(err.to_string()));
+    }
+
+    let meta_types = meta_types.unwrap().with_default_typedefs();
+    if let Err(err) = meta_types {
+        return Err(ParseError(err.to_string()));
+    }
+
+    let meta_types = meta_types.unwrap().with_xs_any_type();
+    if let Err(err) = meta_types {
+        return Err(ParseError(err.to_string()));
+    }
+
+    let meta_types = meta_types.unwrap().finish();
+
+    if let Err(err) = meta_types {
+        return Err(ParseError(err.to_string()));
+    }
+
+    if optimise {
+        Ok(optimise_meta_types(meta_types.unwrap()))
+    } else {
+        Ok(meta_types.unwrap())
+    }
+}
+
+fn generate_data_types(meta_types: &MetaTypes) -> Result<DataTypes, XMLGeneratorError> {
+    let data_types = Generator::new(meta_types)
         .flags(GeneratorFlags::all())
-        .generate_named_types()?
-        .finish();
+        .generate_named_types();
 
-    generate_xml_data(&data_types);
+    if let Err(err) = data_types {
+        return Err(ParseError(err.to_string()));
+    }
 
-    Ok("".to_string())
+    Ok(data_types.unwrap().finish())
+}
+
+pub fn generate_xml(filepath: Box<Path>) -> Result<String, XMLGeneratorError> {
+    let schemas = generate_schema(filepath)?;
+
+    let meta_types = generate_meta_types(&schemas, true)?;
+
+    let data_types = generate_data_types(&meta_types)?;
+
+    generate_xml_data(&data_types)
 }
