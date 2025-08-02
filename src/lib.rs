@@ -6,11 +6,11 @@ use std::cmp::PartialEq;
 use std::ops::Deref;
 use std::path::Path;
 use std::string::String;
-use syn::__private::ToTokens;
 use syn::{
     AngleBracketedGenericArguments, Field, File, GenericArgument, Item, ItemStruct, ItemType,
     PathArguments, PathSegment, Type, TypePath,
 };
+use syn::__private::ToTokens;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::config::GeneratorFlags;
 use xsd_parser::pipeline::parser::resolver::FileResolver;
@@ -121,7 +121,7 @@ fn find_field_type(type_path: &TypePath) -> FieldType {
 
     let qself = type_path.qself.clone();
     if qself.is_some() {
-        name = Some(qself.unwrap().ty.deref().into_token_stream().to_string());
+        name = Some(qself.unwrap().ty.into_token_stream().to_string());
     }
 
     if name.is_some() {
@@ -156,14 +156,7 @@ fn get_field_type(field_type: &Type) -> Option<FieldType> {
     }
 }
 
-struct TypeAlias<'a> {
-    name: String,
-    value: &'a Type,
-    attrs: Vec<String>,
-}
-
-fn type_alias(item_type: &ItemType) -> TypeAlias {
-    let name = item_type.ident.to_string();
+fn type_alias(item_type: &ItemType) -> String {
     let value = item_type.ty.deref();
 
     let mut attrs = vec![];
@@ -171,7 +164,11 @@ fn type_alias(item_type: &ItemType) -> TypeAlias {
         attrs.push(attr.to_token_stream().to_string());
     }
 
-    TypeAlias { name, value, attrs }
+    if attrs.len() > 0 {
+        panic!("Not implemented yet");
+    }
+
+    value.into_token_stream().to_string()
 }
 
 fn render(data_types: &DataTypes) -> File {
@@ -184,7 +181,7 @@ fn render(data_types: &DataTypes) -> File {
     syn::parse_file(&*code).unwrap()
 }
 
-fn get_type_alias(item: &Item) -> Option<TypeAlias> {
+fn get_type_alias(item: &Item) -> Option<String> {
     match item {
         Item::Const(_) => unimplemented!("Item::Const"),
         Item::Enum(_) => unimplemented!("Item::Enum"),
@@ -277,7 +274,6 @@ fn get_field(field: &Field) -> FieldInfo {
     }
     let ident = field.ident.as_ref().unwrap();
     let field_name = ident.to_string();
-    println!("Field name: {}", field_name);
     let field_type = get_field_type(&field.ty);
 
     let mut attrs = vec![];
@@ -293,19 +289,9 @@ fn get_field(field: &Field) -> FieldInfo {
 }
 
 fn get_struct_info(struct_item: &ItemStruct) -> StructInfo {
-    let struct_token = struct_item.struct_token;
-    println!("struct: {}", struct_token.to_token_stream().to_string());
-
-    println!(
-        "Visibility: {}",
-        struct_item.vis.to_token_stream().to_string()
-    );
-
     let name = struct_item.ident.to_token_stream().to_string();
-    println!("Struct name: {}", name);
     let mut attrs = vec![];
     for attr in &struct_item.attrs {
-        println!("Attr: {}", attr.to_token_stream().to_string());
         attrs.push(attr.to_token_stream().to_string());
     }
 
@@ -345,7 +331,7 @@ fn get_struct(item: &Item) -> Option<StructInfo> {
     }
 }
 
-fn get_data(data: &File) -> (Vec<TypeAlias>, Vec<StructInfo>) {
+fn get_data(data: &File) -> (Vec<String>, Vec<StructInfo>) {
     let mut type_aliases = vec![];
     let mut structs = vec![];
     for item in &data.items {
@@ -403,7 +389,7 @@ fn find_root(structs: &Vec<StructInfo>) -> &StructInfo {
     }
 
     if independent_structs.len() > 1 {
-        println!("Multiple independent structs found!");
+        panic!("Multiple independent structs found!");
     }
 
     for structure in structs.iter() {
@@ -445,7 +431,7 @@ fn get_string(type_name: &String) -> Option<String> {
 fn get_element(
     field: &FieldInfo,
     structs: &Vec<StructInfo>,
-    types: &Vec<TypeAlias>,
+    types: &Vec<String>,
 ) -> Option<XMLElement> {
     for structure in structs {
         if structure.name == field.field_type.name {
@@ -460,7 +446,7 @@ fn get_element(
 fn get_child(
     field: &FieldInfo,
     structs: &Vec<StructInfo>,
-    types: &Vec<TypeAlias>,
+    types: &Vec<String>
 ) -> Option<XMLElement> {
     let value = get_string(&field.field_type.name);
     if value.is_some() {
@@ -475,13 +461,13 @@ fn get_child(
 fn generate_element(
     root: &StructInfo,
     structs: &Vec<StructInfo>,
-    types: &Vec<TypeAlias>,
+    types: &Vec<String>
 ) -> XMLElement {
     let name = root.name.clone();
     let mut element = XMLElement::new(&*name);
 
     for field in root.fields.iter() {
-        let child = get_child(&field, &structs, &types);
+        let child = get_child(field, structs, types);
         if child.is_some() {
             element.add_child(child.unwrap()).unwrap();
         }
