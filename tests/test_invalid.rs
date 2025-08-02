@@ -6,7 +6,7 @@ mod tests {
     use xmlgenerator::{generate_xml, XMLGeneratorError};
 
     fn fetch_test_files() -> ReadDir {
-        let example_dir = path::absolute("../invalid").unwrap();
+        let example_dir = path::absolute("./invalid").unwrap();
         let paths = fs::read_dir(example_dir).unwrap();
 
         paths
