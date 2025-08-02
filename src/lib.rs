@@ -160,13 +160,8 @@ fn get_field_type(field_type: &Type) -> Option<FieldType> {
 fn type_alias(item_type: &ItemType) -> String {
     let value = item_type.ty.deref();
 
-    let mut attrs = vec![];
-    for attr in item_type.attrs.iter() {
-        attrs.push(attr.to_token_stream().to_string());
-    }
-
-    if attrs.len() > 0 {
-        panic!("Not implemented yet");
+    if item_type.attrs.len() > 0 {
+        unimplemented!("Type attributes are not supported yet");
     }
 
     value.into_token_stream().to_string()
@@ -399,7 +394,7 @@ fn find_root(structs: &Vec<StructInfo>) -> Result<&StructInfo, XMLGeneratorError
         }
     }
 
-    Err(InvalidInputError("No root structs found!".to_string()))
+    unreachable!();
 }
 
 fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {

@@ -22,7 +22,7 @@ mod tests {
         assert!(xml.is_err());
         match xml.unwrap_err() {
             XMLGeneratorError::FilepathError => panic!("Filepath error"),
-            XMLGeneratorError::ParseError(error) => panic!("Parse error: {}", error),
+            XMLGeneratorError::ParseError(error) => check_error(&error, &expected),
             XMLGeneratorError::InvalidInputError(error) => check_error(&error, &expected),
             XMLGeneratorError::XMLGenerationError(error) => panic!("XML generation error: {}", error),
             XMLGeneratorError::StringConversionError(error) => panic!("String conversion error: {}", error),
@@ -42,6 +42,7 @@ mod tests {
 
     #[test]
     fn test_invalid_file() {
+        test_error("empty.xsd", "XML Error: Unexpected event: Eof!; position=39");
         test_error("recursive.xsd", "No independent structs found");
         test_error("two_roots.xsd", "Multiple independent structs found!");
     }
