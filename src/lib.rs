@@ -1,5 +1,5 @@
 use crate::XMLGeneratorError::{
-    FilepathError, ParseError, StringConversionError, XMLGenerationError,
+    FilepathError, InvalidInputError, ParseError, StringConversionError, XMLGenerationError,
 };
 use fake::{Fake, Faker};
 use std::cmp::PartialEq;
@@ -23,6 +23,7 @@ use xsd_parser::{
 pub enum XMLGeneratorError {
     FilepathError,
     ParseError(String),
+    InvalidInputError(String),
     XMLGenerationError(String),
     StringConversionError(String),
 }
@@ -121,7 +122,7 @@ fn find_field_type(type_path: &TypePath) -> FieldType {
 
     let qself = type_path.qself.clone();
     if qself.is_some() {
-        name = Some(qself.unwrap().ty.into_token_stream().to_string());
+        name = Some(qself.unwrap().ty.to_token_stream().to_string());
     }
 
     if name.is_some() {
@@ -359,7 +360,7 @@ fn get_field_struct<'a>(structs: &'a Vec<StructInfo>, field: &String) -> Option<
     None
 }
 
-fn find_root(structs: &Vec<StructInfo>) -> &StructInfo {
+fn find_root(structs: &Vec<StructInfo>) -> Result<&StructInfo, XMLGeneratorError> {
     let mut all_fields: Vec<&String> = vec![];
     for structure in structs.iter() {
         for field in structure.fields.iter() {
@@ -385,20 +386,20 @@ fn find_root(structs: &Vec<StructInfo>) -> &StructInfo {
     }
 
     if independent_structs.is_empty() {
-        panic!("No root structs found!");
+        return Err(InvalidInputError("No independent structs found".to_string()));
     }
 
     if independent_structs.len() > 1 {
-        panic!("Multiple independent structs found!");
+        return Err(InvalidInputError("Multiple independent structs found!".to_string()));
     }
 
     for structure in structs.iter() {
         if independent_structs.contains(&structure) {
-            return structure;
+            return Ok(structure);
         }
     }
 
-    panic!("No root structs found!");
+    Err(InvalidInputError("No root structs found!".to_string()))
 }
 
 fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
@@ -446,7 +447,7 @@ fn get_element(
 fn get_child(
     field: &FieldInfo,
     structs: &Vec<StructInfo>,
-    types: &Vec<String>
+    types: &Vec<String>,
 ) -> Option<XMLElement> {
     let value = get_string(&field.field_type.name);
     if value.is_some() {
@@ -461,7 +462,7 @@ fn get_child(
 fn generate_element(
     root: &StructInfo,
     structs: &Vec<StructInfo>,
-    types: &Vec<String>
+    types: &Vec<String>,
 ) -> XMLElement {
     let name = root.name.clone();
     let mut element = XMLElement::new(&*name);
@@ -486,7 +487,7 @@ fn generate_xml_data(data_types: &DataTypes) -> Result<String, XMLGeneratorError
 
     let (type_aliases, structs) = get_data(&data);
 
-    let root = find_root(&structs);
+    let root = find_root(&structs)?;
     let root_element = generate_element(&root, &structs, &type_aliases);
 
     let mut writer: Vec<u8> = Vec::new();

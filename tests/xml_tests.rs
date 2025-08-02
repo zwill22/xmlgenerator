@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use std::{fs, path};
     use std::fs::ReadDir;
+    use std::{fs, path};
     use xmlgenerator::generate_xml;
 
     fn fetch_test_files() -> ReadDir {
