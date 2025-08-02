@@ -8,4 +8,14 @@
       </xs:sequence>
     </xs:complexType>
   </xs:element>
+
+
+  <xs:element name="house">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="address" type="xs:string"/>
+        <xs:element name="occupants" type="xs:positiveInteger"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
 </xs:schema>
