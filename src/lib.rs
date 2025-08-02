@@ -517,6 +517,19 @@ fn generate_schema(filepath: Box<Path>) -> Result<Schemas, XMLGeneratorError> {
     Ok(schemas.unwrap().finish())
 }
 
+fn generate_schema_from_string(string: &String) -> Result<Schemas, XMLGeneratorError> {
+    let schemas = Parser::new()
+        .with_resolver(FileResolver::new())
+        .with_default_namespaces()
+        .add_schema_from_str(string);
+
+    if let Err(err) = schemas {
+        return Err(ParseError(err.to_string()));
+    }
+
+    Ok(schemas.unwrap().finish())
+}
+
 fn optimise_meta_types(meta_types: MetaTypes) -> MetaTypes {
     Optimizer::new(meta_types)
         .remove_empty_enum_variants()
@@ -582,5 +595,12 @@ pub fn generate_xml(filepath: Box<Path>) -> Result<String, XMLGeneratorError> {
 
     let data_types = generate_data_types(&meta_types)?;
 
+    generate_xml_data(&data_types)
+}
+
+pub fn generate_xml_from_string(xsd_string: &String) -> Result<String, XMLGeneratorError> {
+    let schema = generate_schema_from_string(xsd_string)?;
+    let meta_types = generate_meta_types(&schema, true)?;
+    let data_types = generate_data_types(&meta_types)?;
     generate_xml_data(&data_types)
 }
