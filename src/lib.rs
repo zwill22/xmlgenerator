@@ -1,10 +1,9 @@
 use crate::XMLGeneratorError::{
-    FilepathError, InvalidInputError, ParseError, StringConversionError, XMLGenerationError,
+    InvalidInputError, ParseError, StringConversionError, XMLGenerationError,
 };
 use fake::{Fake, Faker};
 use std::cmp::PartialEq;
 use std::ops::Deref;
-use std::path::Path;
 use std::string::String;
 use syn::{
     AngleBracketedGenericArguments, Field, File, GenericArgument, Item, ItemStruct, ItemType,
@@ -499,25 +498,7 @@ fn generate_xml_data(data_types: &DataTypes) -> Result<String, XMLGeneratorError
     }
 }
 
-fn generate_schema(filepath: Box<Path>) -> Result<Schemas, XMLGeneratorError> {
-    let path = filepath.canonicalize();
-    if let Err(_err) = path {
-        return Err(FilepathError);
-    }
-
-    let schemas = Parser::new()
-        .with_resolver(FileResolver::new())
-        .with_default_namespaces()
-        .add_schema_from_file(path.unwrap());
-
-    if let Err(err) = schemas {
-        return Err(ParseError(err.to_string()));
-    }
-
-    Ok(schemas.unwrap().finish())
-}
-
-fn generate_schema_from_string(string: &String) -> Result<Schemas, XMLGeneratorError> {
+fn generate_schema(string: &String) -> Result<Schemas, XMLGeneratorError> {
     let schemas = Parser::new()
         .with_resolver(FileResolver::new())
         .with_default_namespaces()
@@ -588,18 +569,8 @@ fn generate_data_types(meta_types: &MetaTypes) -> Result<DataTypes, XMLGenerator
     Ok(data_types.unwrap().finish())
 }
 
-pub fn generate_xml(filepath: Box<Path>) -> Result<String, XMLGeneratorError> {
-    let schemas = generate_schema(filepath)?;
-
-    let meta_types = generate_meta_types(&schemas, true)?;
-
-    let data_types = generate_data_types(&meta_types)?;
-
-    generate_xml_data(&data_types)
-}
-
-pub fn generate_xml_from_string(xsd_string: &String) -> Result<String, XMLGeneratorError> {
-    let schema = generate_schema_from_string(xsd_string)?;
+pub fn generate_xml(xsd_string: &String) -> Result<String, XMLGeneratorError> {
+    let schema = generate_schema(xsd_string)?;
     let meta_types = generate_meta_types(&schema, true)?;
     let data_types = generate_data_types(&meta_types)?;
     generate_xml_data(&data_types)

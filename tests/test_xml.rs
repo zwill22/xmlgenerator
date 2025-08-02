@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
     use std::fs::ReadDir;
-    use std::{fs, path};
     use std::path::PathBuf;
-    use xmlgenerator::{generate_xml, generate_xml_from_string, XMLGeneratorError};
+    use std::{fs, path};
+    use xmlgenerator::{XMLGeneratorError, generate_xml};
 
-    fn fetch_test_files() -> ReadDir {
-        let example_dir = path::absolute("./invalid").unwrap();
+    fn fetch_test_files(directory: &str) -> ReadDir {
+        let example_dir = path::absolute(directory).unwrap();
         let paths = fs::read_dir(example_dir).unwrap();
 
         paths
@@ -16,26 +16,58 @@ mod tests {
         assert_eq!(error_string, expected_error);
     }
 
+    fn read_file(path: &PathBuf) -> String {
+        let path_str = path.to_str().unwrap();
+        let message = format!("Could not read file: {}", path_str);
+        fs::read_to_string(path).expect(&message)
+    }
+
     fn test_xml(filepath: &PathBuf, expected: String) {
-        let xml = generate_xml(filepath.clone().into_boxed_path());
+        let contents = read_file(filepath);
+        let xml = generate_xml(&contents);
 
         assert!(xml.is_err());
         match xml.unwrap_err() {
             XMLGeneratorError::FilepathError => panic!("Filepath error"),
             XMLGeneratorError::ParseError(error) => panic!("Parse error: {}", error),
             XMLGeneratorError::InvalidInputError(error) => check_error(&error, &expected),
-            XMLGeneratorError::XMLGenerationError(error) => panic!("XML generation error: {}", error),
-            XMLGeneratorError::StringConversionError(error) => panic!("String conversion error: {}", error),
+            XMLGeneratorError::XMLGenerationError(error) => {
+                panic!("XML generation error: {}", error)
+            }
+            XMLGeneratorError::StringConversionError(error) => {
+                panic!("String conversion error: {}", error)
+            }
         }
     }
 
     fn test_error(filename: &str, error: &str) {
-        let files = fetch_test_files();
+        let files = fetch_test_files("./invalid");
 
         for file in files {
             let filepath = file.unwrap().path();
             if filepath.ends_with(filename) {
                 test_xml(&filepath, error.to_string());
+            }
+        }
+    }
+
+    fn check_result(result: String) {
+        println!("{}", result);
+    }
+
+    #[test]
+    fn test_examples() {
+        let files = fetch_test_files("./examples");
+
+        for file in files {
+            let filepath = file.unwrap().path();
+            let contents = read_file(&filepath);
+            println!("{}", filepath.display());
+            let xml = generate_xml(&contents);
+
+            match xml {
+                Ok(result) => check_result(result),
+                Err(err) => panic!("{:?}", err),
             }
         }
     }
@@ -51,7 +83,7 @@ mod tests {
         let empty_xml_string = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>".to_string();
         let expected_error: String = "XML Error: Unexpected event: Eof!; position=0".to_string();
 
-        let xml = generate_xml_from_string(&empty_xml_string);
+        let xml = generate_xml(&empty_xml_string);
         assert!(xml.is_err());
         match xml.unwrap_err() {
             XMLGeneratorError::FilepathError => panic!("Filepath error"),
