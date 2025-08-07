@@ -21,11 +21,10 @@ classifiers = [
 ]
 dynamic = ["version"]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest>=8.3.5",
-    "coverage>=7.8.0",
-    "ruff>=0.11.8",
+    "pytest>=8.4.1",
+    "ruff>=0.12.7",
 ]
 
 [tool.pytest.ini_options]
