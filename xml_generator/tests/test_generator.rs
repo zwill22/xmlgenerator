@@ -4,9 +4,14 @@ mod tests {
     use std::path::PathBuf;
     use std::{fs, path};
     use xmlgenerator::{XMLGeneratorError, generate_xml};
+    use workspace_root::get_workspace_root;
 
     fn fetch_test_files(directory: &str) -> ReadDir {
-        let example_dir = path::absolute(directory).unwrap();
+        let root: PathBuf = get_workspace_root();
+
+        let mut example_dir = path::PathBuf::from(root);
+        example_dir.push("examples");
+        example_dir.push(directory);
         let paths = fs::read_dir(example_dir).unwrap();
 
         paths
@@ -37,7 +42,7 @@ mod tests {
     }
 
     fn test_error(filename: &str, error: &str) {
-        let files = fetch_test_files("./invalid");
+        let files = fetch_test_files("invalid");
 
         for file in files {
             let filepath = file.unwrap().path();
@@ -53,7 +58,7 @@ mod tests {
 
     #[test]
     fn test_examples() {
-        let files = fetch_test_files("./examples");
+        let files = fetch_test_files("working");
 
         for file in files {
             let filepath = file.unwrap().path();

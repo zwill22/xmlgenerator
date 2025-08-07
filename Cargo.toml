@@ -1,10 +1,12 @@
 [workspace]
-resolver = "2"
+resolver = "3"
 members = [
-    "xmlgenerator"
+    "xml_generator",
+    "py_xml_generator"
 ]
 default-members = [
-    "xmlgenerator"
+    "xml_generator",
+    "py_xml_generator"
 ]
 
 [workspace.package]
@@ -15,4 +17,5 @@ license = "MIT"
 repository = "https://github.com/zwill22/xmlgenerator"
 
 [workspace.dependencies]
-xmlgenerator = { version = "0.1.0", path = "xmlgenerator" }
+xmlgenerator = { version = "0.1.0", path = "xml_generator" }
+pyxmlgenerator = { version = "0.1.0", path = "py_xml_generator" }

@@ -1,0 +1,12 @@
+[package]
+name = "pyxmlgenerator"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "pyxmlgenerator"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.25.0"
+xmlgenerator = { workspace = true }
