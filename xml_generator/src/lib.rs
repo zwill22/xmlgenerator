@@ -557,7 +557,7 @@ fn generate_meta_types(schemas: &Schemas, optimise: bool) -> Result<MetaTypes, X
     }
 }
 
-fn generate_data_types(meta_types: &MetaTypes) -> Result<DataTypes, XMLGeneratorError> {
+fn generate_data_types(meta_types: &'_ MetaTypes) -> Result<DataTypes<'_>, XMLGeneratorError> {
     let data_types = Generator::new(meta_types)
         .flags(GeneratorFlags::all())
         .generate_named_types();
