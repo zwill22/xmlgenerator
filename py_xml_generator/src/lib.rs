@@ -1,34 +1,27 @@
-use std::fmt;
 use pyo3::prelude::*;
-use pyo3::exceptions::PyOSError;
+use pyo3::exceptions::PyRuntimeError;
 use xmlgenerator::{generate_xml, XMLGeneratorError};
+use xmlgenerator::XMLGeneratorError::XMLBuilderError;
 
-#[derive(Debug)]
-struct PyXMLGeneratorError;
+fn generate_parser_error(err_string: String) -> PyErr {
+    PyRuntimeError::new_err("XSD Parser encountered an error.\n".to_owned() + err_string.as_str())
+}
 
-impl std::error::Error for PyXMLGeneratorError {}
+fn generate_data_type_error(err_string: String) -> PyErr {
+    PyRuntimeError::new_err("Input not in valid format:".to_owned() + err_string.as_str())
+}
 
-impl fmt::Display for PyXMLGeneratorError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Oh no!")
+fn generate_xml_builder_error(err_string: String) -> PyErr {
+    PyRuntimeError::new_err("XMLBuilder encountered an error\n".to_owned() + err_string.as_str())
+}
+fn get_error(error: XMLGeneratorError) -> PyErr {
+    match error {
+        XMLGeneratorError::XSDParserError(x) => generate_parser_error(x),
+        XMLGeneratorError::DataTypesFormatError(x) => generate_data_type_error(x),
+        XMLBuilderError(x) => generate_xml_builder_error(x),
     }
 }
 
-impl From<XMLGeneratorError> for PyXMLGeneratorError {
-    fn from(err: XMLGeneratorError) -> Self {
-        match err {
-            XMLGeneratorError::XSDParserError(_) => PyXMLGeneratorError,
-            XMLGeneratorError::DataTypesFormatError(_) => PyXMLGeneratorError,
-            XMLGeneratorError::XMLBuilderError(_) => PyXMLGeneratorError,
-        }
-    }
-}
-
-impl std::convert::From<PyXMLGeneratorError> for PyErr {
-    fn from(err: PyXMLGeneratorError) -> PyErr {
-        PyOSError::new_err(err.to_string())
-    }
-}
 
 /// Formats the sum of two numbers as string.
 #[pyfunction]
@@ -37,8 +30,8 @@ fn generate(xsd_string: String) -> PyResult<String> {
     match result {
         Ok(xml_string) => Ok(xml_string),
         Err(e) => {
-            let error: PyXMLGeneratorError = From::from(e);
-            Err(PyOSError::new_err(error.to_string()))
+            let py_error = get_error(e);
+            Err(py_error)
         }
     }
 }
