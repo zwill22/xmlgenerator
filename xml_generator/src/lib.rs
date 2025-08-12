@@ -497,6 +497,19 @@ fn generate_element(
 
 fn generate_xml_data(data_types: &DataTypes) -> Result<String, XMLGeneratorError> {
     let data = render(data_types);
+    for token in &data.items {
+        for item in token.to_token_stream() {
+            let value = item.to_token_stream().to_string();
+            match value.as_str() {
+                "#" => print!("\n{}", value),
+                ";" => println!("{}", value),
+                "{" => println!("{}", value),
+                "}" => println!("{}", value),
+                "pub" => print!("\n{} ", value),
+                _ => print!("<{}> ", value),
+            }
+        }
+    }
 
     let mut xml = XMLBuilder::new()
         .version(XMLVersion::XML1_1)
@@ -612,6 +625,12 @@ fn generate_data_types(meta_types: &'_ MetaTypes) -> Result<DataTypes<'_>, XMLGe
 pub fn generate_xml(xsd_string: &String) -> Result<String, XMLGeneratorError> {
     let schema = generate_schema(xsd_string)?;
     let meta_types = generate_meta_types(&schema, true)?;
+    for (ident, metatype) in &meta_types.items {
+        println!("{}", ident);
+        if metatype.display_name.is_some() {
+            println!("{}", metatype.clone().display_name.unwrap().deref());
+        }
+    }
     let data_types = generate_data_types(&meta_types)?;
     generate_xml_data(&data_types)
 }
