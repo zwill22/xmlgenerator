@@ -52,8 +52,12 @@ mod tests {
         }
     }
 
+    // More comprehensive validation tests performed in Python
     fn check_result(result: String) {
-        println!("{}", result);
+        assert!(result.contains("<?xml version="));
+        assert!(result.contains("encoding="));
+        assert!(result.contains("?>"));
+        assert!(result.len() > 0);
     }
 
     #[test]
@@ -63,7 +67,7 @@ mod tests {
         for file in files {
             let filepath = file.unwrap().path();
             let contents = read_file(&filepath);
-            println!("{}", filepath.display());
+
             let xml = generate_xml(&contents);
 
             match xml {

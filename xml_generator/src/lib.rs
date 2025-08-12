@@ -1,6 +1,7 @@
 use crate::XMLGeneratorError::{DataTypesFormatError, XMLBuilderError, XSDParserError};
 use fake::{Fake, Faker};
 use std::cmp::PartialEq;
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::string::String;
 use syn::__private::ToTokens;
@@ -114,12 +115,12 @@ fn find_field_type(type_path: &TypePath) -> FieldType {
 
     let ident = &type_path.path.get_ident();
     if ident.is_some() {
-        name = Some(ident.unwrap().to_string());
+        name = Some(ident.unwrap().to_string().to_lowercase());
     }
 
     let qself = type_path.qself.clone();
     if qself.is_some() {
-        name = Some(qself.unwrap().ty.to_token_stream().to_string());
+        name = Some(qself.unwrap().ty.to_token_stream().to_string().to_lowercase());
     }
 
     if name.is_some() {
@@ -154,14 +155,16 @@ fn get_field_type(field_type: &Type) -> Option<FieldType> {
     }
 }
 
-fn type_alias(item_type: &ItemType) -> String {
+fn type_alias(item_type: &ItemType) -> (String, String) {
     let value = item_type.ty.deref();
+    let ident = item_type.ident.to_string().replace("ElementType", "").to_lowercase();
+    let type_name = value.to_token_stream().to_string().to_lowercase();
 
     if item_type.attrs.len() > 0 {
         unimplemented!("Type attributes are not supported yet");
     }
 
-    value.into_token_stream().to_string()
+    (type_name, ident)
 }
 
 fn render(data_types: &DataTypes) -> File {
@@ -174,7 +177,7 @@ fn render(data_types: &DataTypes) -> File {
     syn::parse_file(&*code).unwrap()
 }
 
-fn get_type_alias(item: &Item) -> Option<String> {
+fn get_type_alias(item: &Item) -> Option<(String, String)> {
     match item {
         Item::Const(_) => unimplemented!("Item::Const"),
         Item::Enum(_) => unimplemented!("Item::Enum"),
@@ -282,10 +285,10 @@ fn get_field(field: &Field) -> FieldInfo {
 }
 
 fn get_struct_info(struct_item: &ItemStruct) -> StructInfo {
-    let name = struct_item.ident.to_token_stream().to_string();
+    let name = struct_item.ident.to_token_stream().to_string().to_lowercase();
     let mut attrs = vec![];
     for attr in &struct_item.attrs {
-        attrs.push(attr.to_token_stream().to_string());
+        attrs.push(attr.to_token_stream().to_string().to_lowercase());
     }
 
     let field_data = struct_item.fields.iter();
@@ -324,13 +327,14 @@ fn get_struct(item: &Item) -> Option<StructInfo> {
     }
 }
 
-fn get_data(data: &File) -> (Vec<String>, Vec<StructInfo>) {
-    let mut type_aliases = vec![];
+fn get_data(data: &File) -> (HashMap<String, String>, Vec<StructInfo>) {
+    let mut type_aliases= HashMap::new();
     let mut structs = vec![];
     for item in &data.items {
         let type_result = get_type_alias(&item);
         if type_result.is_some() {
-            type_aliases.push(type_result.unwrap());
+            let (a, b) = type_result.unwrap();
+            type_aliases.insert(a, b);
         }
 
         let struct_result = get_struct(&item);
@@ -420,7 +424,7 @@ fn get_string(type_name: &String) -> Option<String> {
         "f64" => make_fake::<f64>(),
         "bool" => make_fake::<bool>(),
         "char" => make_fake::<char>(),
-        "String" => make_fake::<String>(),
+        "string" => make_fake::<String>(),
         _ => None,
     }
 }
@@ -428,11 +432,12 @@ fn get_string(type_name: &String) -> Option<String> {
 fn get_element(
     field: &FieldInfo,
     structs: &Vec<StructInfo>,
-    types: &Vec<String>,
+    types: &HashMap<String, String>,
 ) -> Option<XMLElement> {
     for structure in structs {
         if structure.name == field.field_type.name {
-            let element = generate_element(structure, structs, types);
+            let name = field.name.clone();
+            let element = generate_element(structure, structs, types, Option::from(name));
             return Option::from(element);
         }
     }
@@ -443,7 +448,7 @@ fn get_element(
 fn get_child(
     field: &FieldInfo,
     structs: &Vec<StructInfo>,
-    types: &Vec<String>,
+    types: &HashMap<String, String>,
 ) -> Option<XMLElement> {
     let value = get_string(&field.field_type.name);
     if value.is_some() {
@@ -455,13 +460,30 @@ fn get_child(
     get_element(&field, structs, types)
 }
 
+fn get_element_name(structure: &StructInfo, types: &HashMap<String, String>, name: Option<String>) -> String {
+    if name.is_some() {
+        return name.unwrap();
+    }
+    let mut element_name = structure.name.clone();
+    if types.contains_key(&element_name) {
+        element_name = types[&element_name].clone();
+        return element_name;
+    }
+
+    element_name
+}
+
 fn generate_element(
     root: &StructInfo,
     structs: &Vec<StructInfo>,
-    types: &Vec<String>,
+    types: &HashMap<String, String>,
+    name: Option<String>,
 ) -> XMLElement {
-    let name = root.name.clone();
-    let mut element = XMLElement::new(&*name);
+
+    let element_name = get_element_name(root, types, name);
+
+
+    let mut element = XMLElement::new(&*element_name);
 
     for field in root.fields.iter() {
         let child = get_child(field, structs, types);
@@ -484,7 +506,7 @@ fn generate_xml_data(data_types: &DataTypes) -> Result<String, XMLGeneratorError
     let (type_aliases, structs) = get_data(&data);
 
     let root = find_root(&structs)?;
-    let root_element = generate_element(&root, &structs, &type_aliases);
+    let root_element = generate_element(&root, &structs, &type_aliases, None);
 
     let mut writer: Vec<u8> = Vec::new();
     xml.set_root_element(root_element);
