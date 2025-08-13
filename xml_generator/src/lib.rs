@@ -1,21 +1,14 @@
-use crate::XMLGeneratorError::{DataTypesFormatError, XMLBuilderError, XSDParserError};
-use fake::{Fake, Faker};
-use std::cmp::PartialEq;
-use std::collections::HashMap;
-use std::ops::Deref;
+use crate::XMLGeneratorError::XSDParserError;
 use std::string::String;
-use syn::__private::ToTokens;
-use syn::{
-    AngleBracketedGenericArguments, Field, File, GenericArgument, Item, ItemStruct, ItemType,
-    PathArguments, PathSegment, Type, TypePath,
+
+use xsd_parser::models::schema::QName;
+use xsd_parser::models::schema::xs::{
+    AttributeType, AttributeUseType, ComplexBaseType, ComplexBaseTypeContent, ElementType,
+    ElementTypeContent, Facet, FacetType, GroupType, GroupTypeContent, QNameList, Restriction,
+    RestrictionContent, SchemaContent, SimpleBaseType, SimpleBaseTypeContent,
 };
-use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
-use xsd_parser::config::GeneratorFlags;
 use xsd_parser::pipeline::parser::resolver::FileResolver;
-use xsd_parser::{
-    DataTypes, Generator, Interpreter, MetaTypes, Optimizer, Parser, Renderer, Schemas,
-    TypesRenderStep,
-};
+use xsd_parser::{Parser, Schemas};
 
 /// XML generator error
 ///
@@ -30,507 +23,359 @@ pub enum XMLGeneratorError {
     XMLBuilderError(String),
 }
 
-struct FieldType {
-    name: String,
-    min_occurrences: Option<u64>,
-    max_occurrences: Option<u64>,
-}
-
-impl PartialEq for FieldType {
-    fn eq(&self, other: &Self) -> bool {
-        if self.name != other.name {
-            return false;
-        }
-
-        if self.min_occurrences != other.min_occurrences {
-            return false;
-        }
-
-        if self.max_occurrences != other.max_occurrences {
-            return false;
-        }
-
-        true
+fn get_group_content(content: &GroupTypeContent, depth: usize) {
+    match content {
+        GroupTypeContent::Annotation(_) => unimplemented!("Annotation"),
+        GroupTypeContent::Element(x) => get_element_type(x, depth),
+        GroupTypeContent::Group(x) => get_group(x, depth),
+        GroupTypeContent::All(x) => get_group(x, depth),
+        GroupTypeContent::Choice(x) => get_group(x, depth),
+        GroupTypeContent::Sequence(x) => get_group(x, depth),
+        GroupTypeContent::Any(_) => unimplemented!("Any"),
     }
 }
 
-fn sort_args(args: &AngleBracketedGenericArguments) -> FieldType {
-    let mut output = None;
-
-    for arg in args.args.iter() {
-        let result = match arg {
-            GenericArgument::Lifetime(_) => unimplemented!("Lifetime argument"),
-            GenericArgument::Type(x) => get_field_type(x),
-            GenericArgument::Const(_) => unimplemented!("Constant argument"),
-            GenericArgument::AssocType(_) => unimplemented!("Associative argument"),
-            GenericArgument::AssocConst(_) => unimplemented!("Associative argument"),
-            GenericArgument::Constraint(_) => unimplemented!("Constraint argument"),
-            _ => unimplemented!("Unknown argument"),
-        };
-
-        if result.is_some() {
-            if output.is_some() {
-                unimplemented!("Multiple arguments are not supported yet");
-            }
-
-            output = result;
-        }
-    }
-
-    output.expect("No arguments found")
+fn print_title(title: &str, depth: usize) {
+    let indent = std::iter::repeat('\t').take(depth).collect::<String>();
+    println!("{}{}", indent, title);
+    let l = title.len();
+    let banner = std::iter::repeat('-').take(l).collect::<String>();
+    println!("{}{}", indent, banner);
 }
 
-fn get_arguments(segment: &PathSegment) -> FieldType {
-    match &segment.arguments {
-        PathArguments::None => unimplemented!("No path arguments"),
-        PathArguments::AngleBracketed(x) => sort_args(x),
-        PathArguments::Parenthesized(_) => unimplemented!("Parenthesized path arguments"),
+fn print_val<T: ToString + std::fmt::Display>(name: &str, val: &T, depth: usize) {
+    if val.to_string().is_empty() {
+        return;
     }
+
+    let n = 32 - name.len();
+    let indent = std::iter::repeat('\t').take(depth).collect::<String>();
+    let space = std::iter::repeat(" ").take(n).collect::<String>();
+
+    println!("{}{}:{}{}", indent, name, space, val);
 }
 
-fn generate_field_type(type_path: &TypePath) -> FieldType {
-    let stream = &type_path.path.segments;
-    for segment in stream.iter() {
-        let seg_type = segment.ident.to_string();
-        let mut field_type = get_arguments(segment);
+fn get_qname(title: &str, qname: QName, depth: usize) {
+    print_title(title, depth);
 
-        if seg_type == "Option" {
-            field_type.min_occurrences = Some(0);
-            field_type.max_occurrences = Some(1);
-        } else if seg_type == "Vec" {
-            field_type.min_occurrences = Some(0);
-            field_type.max_occurrences = None;
-        } else {
-            unimplemented!("Unknown type: {}", seg_type);
-        }
+    let name = std::string::String::from_utf8(qname.local_name().to_vec()).unwrap();
+    print_val("Name", &name, depth);
 
-        return field_type;
-    }
-
-    panic!("No type found");
-}
-
-fn find_field_type(type_path: &TypePath) -> FieldType {
-    let mut name = None;
-
-    let ident = &type_path.path.get_ident();
-    if ident.is_some() {
-        name = Some(ident.unwrap().to_string().to_lowercase());
-    }
-
-    let qself = type_path.qself.clone();
-    if qself.is_some() {
-        name = Some(qself.unwrap().ty.to_token_stream().to_string().to_lowercase());
-    }
-
-    if name.is_some() {
-        return FieldType {
-            name: name.unwrap(),
-            min_occurrences: None,
-            max_occurrences: None,
-        };
-    }
-
-    generate_field_type(type_path)
-}
-
-fn get_field_type(field_type: &Type) -> Option<FieldType> {
-    match field_type {
-        Type::Array(_) => unimplemented!("Field type: Array"),
-        Type::BareFn(_) => unimplemented!("Field type: BareFn"),
-        Type::Group(_) => unimplemented!("Field type: Group"),
-        Type::ImplTrait(_) => unimplemented!("Field type: ImplTrait"),
-        Type::Infer(_) => unimplemented!("Field type: Infer"),
-        Type::Macro(_) => unimplemented!("Field type: Macro"),
-        Type::Never(_) => unimplemented!("Field type: Never"),
-        Type::Paren(_) => unimplemented!("Field type: Paren"),
-        Type::Path(x) => Option::from(find_field_type(x)),
-        Type::Ptr(_) => unimplemented!("Field type: Ptr"),
-        Type::Reference(_) => unimplemented!("Field type: Reference"),
-        Type::Slice(_) => unimplemented!("Field type: Slice"),
-        Type::TraitObject(_) => unimplemented!("Field type: TraitObject"),
-        Type::Tuple(_) => unimplemented!("Field type: Tuple"),
-        Type::Verbatim(_) => unimplemented!("Field type: Verbatim"),
-        _ => unimplemented!("Field type: Other"),
+    let ns = qname.namespace();
+    if ns.is_some() {
+        print_val("Namespace", &ns.unwrap(), depth);
     }
 }
 
-fn type_alias(item_type: &ItemType) -> (String, String) {
-    let value = item_type.ty.deref();
-    let ident = item_type.ident.to_string().replace("ElementType", "").to_lowercase();
-    let type_name = value.to_token_stream().to_string().to_lowercase();
+fn get_group(group: &GroupType, depth: usize) {
+    print_title("Group", depth);
 
-    if item_type.attrs.len() > 0 {
-        unimplemented!("Type attributes are not supported yet");
+    let id = group.id.clone().unwrap_or("".to_string());
+    print_val("ID", &id, depth);
+
+    let name = group.name.clone().unwrap_or("".to_string());
+    print_val("Name", &name, depth);
+
+    if group.ref_.is_some() {
+        let group_ref = group.ref_.clone().unwrap();
+        get_qname("Reference", group_ref, depth + 1);
     }
+    let min_occurs = group.min_occurs;
+    print_val("Min Occurs", &min_occurs, depth);
+    let max_occurs = group.max_occurs.is_bounded();
+    print_val("Max Occurs", &max_occurs, depth);
 
-    (type_name, ident)
-}
-
-fn render(data_types: &DataTypes) -> File {
-    let renderer = Renderer::new(data_types).with_step(TypesRenderStep);
-
-    let module = renderer.finish();
-
-    let code = module.code.to_string();
-
-    syn::parse_file(&*code).unwrap()
-}
-
-fn get_type_alias(item: &Item) -> Option<(String, String)> {
-    match item {
-        Item::Const(_) => unimplemented!("Item::Const"),
-        Item::Enum(_) => unimplemented!("Item::Enum"),
-        Item::ExternCrate(_) => unimplemented!("Item::ExternCrate"),
-        Item::Fn(_) => unimplemented!("Item::Fn"),
-        Item::ForeignMod(_) => unimplemented!("Item::ForeignMod"),
-        Item::Impl(_) => unimplemented!("Item::Impl"),
-        Item::Macro(_) => unimplemented!("Item::Macro"),
-        Item::Mod(_) => unimplemented!("Item::Mod"),
-        Item::Static(_) => unimplemented!("Item::Static"),
-        Item::Struct(_) => None,
-        Item::Trait(_) => unimplemented!("Item::Trait"),
-        Item::TraitAlias(_) => unimplemented!("Item::TraitAlias"),
-        Item::Type(x) => Option::from(type_alias(x)),
-        Item::Union(_) => unimplemented!("Item::Union"),
-        Item::Use(_) => unimplemented!("Item::Use"),
-        Item::Verbatim(_) => unimplemented!("Item::Verbatim"),
-        &_ => unimplemented!("Item::Other"),
+    for content in &group.content {
+        get_group_content(content, depth + 1);
     }
 }
 
-struct FieldInfo {
-    name: String,
-    field_type: FieldType,
-    attributes: Vec<String>,
-}
+fn get_attribute(attribute: &AttributeType, depth: usize) {
+    print_title("Attribute", depth);
+    let id = attribute.id.clone().unwrap_or("".to_string());
+    print_val("ID", &id, depth);
 
-struct StructInfo {
-    name: String,
-    attrs: Vec<String>,
-    fields: Vec<FieldInfo>,
-}
+    let name = attribute.name.clone().unwrap_or("".to_string());
+    print_val("Name", &name, depth);
 
-impl PartialEq for FieldInfo {
-    fn eq(&self, other: &Self) -> bool {
-        if self.name != other.name {
-            return false;
-        }
+    if attribute.ref_.is_some() {
+        let attribute_ref = attribute.ref_.clone().unwrap();
+        get_qname("Reference", attribute_ref, depth + 1);
+    }
 
-        if self.field_type != other.field_type {
-            return false;
-        }
+    if attribute.type_.is_some() {
+        let attribute_type = attribute.type_.clone().unwrap();
+        get_qname("Type", attribute_type, depth + 1);
+    }
 
-        if self.attributes.len() != other.attributes.len() {
-            return false;
-        }
+    match attribute.use_ {
+        AttributeUseType::Prohibited => print_val("AttributeUseType", &"Prohibited", depth),
+        AttributeUseType::Optional => print_val("AttributeUseType", &"Optional", depth),
+        AttributeUseType::Required => print_val("AttributeUseType", &"Required", depth),
+    }
 
-        for i in 0..self.attributes.len() {
-            if self.attributes[i] != other.attributes[i] {
-                return false;
-            }
-        }
+    let default = attribute.default.clone().unwrap_or("".to_string());
+    print_val("Default", &default, depth);
 
-        true
+    let fixed = attribute.fixed.clone().unwrap_or("".to_string());
+    print_val("Fixed", &fixed, depth);
+
+    if attribute.form.is_some() {
+        print_val("Form", &"FormChoiceType", depth);
+    }
+
+    let namespace = attribute.target_namespace.clone().unwrap_or("".to_string());
+    print_val("TargetNamespace", &namespace, depth);
+
+    if attribute.inheritable.is_some() {
+        print_val("Inheritable", &attribute.inheritable.unwrap(), depth);
+    }
+
+    if attribute.annotation.is_some() {
+        unimplemented!("Annotation");
+    }
+
+    if attribute.simple_type.is_some() {
+        get_simple_type(&attribute.clone().simple_type.unwrap(), depth + 1);
     }
 }
 
-impl PartialEq for StructInfo {
-    fn eq(&self, other: &Self) -> bool {
-        if self.name != other.name {
-            return false;
-        }
-
-        if self.attrs.len() != other.attrs.len() {
-            return false;
-        }
-        for i in 0..self.attrs.len() {
-            if self.attrs[i] != other.attrs[i] {
-                return false;
-            }
-        }
-
-        if self.fields.len() != other.fields.len() {
-            return false;
-        }
-
-        for i in 0..self.fields.len() {
-            if self.fields[i] != other.fields[i] {
-                return false;
-            }
-        }
-
-        true
+fn get_complex_content(content: &ComplexBaseTypeContent, depth: usize) {
+    match content {
+        ComplexBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
+        ComplexBaseTypeContent::SimpleContent(_) => unimplemented!("SimpleContent"),
+        ComplexBaseTypeContent::ComplexContent(_) => unimplemented!("ComplexContent"),
+        ComplexBaseTypeContent::OpenContent(_) => unimplemented!("OpenContent"),
+        ComplexBaseTypeContent::Group(x) => get_group(x, depth),
+        ComplexBaseTypeContent::All(x) => get_group(x, depth),
+        ComplexBaseTypeContent::Choice(x) => get_group(x, depth),
+        ComplexBaseTypeContent::Sequence(x) => get_group(x, depth),
+        ComplexBaseTypeContent::Attribute(x) => get_attribute(x, depth),
+        ComplexBaseTypeContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
+        ComplexBaseTypeContent::AnyAttribute(_) => unimplemented!("AnyAttribute"),
+        ComplexBaseTypeContent::Assert(_) => unimplemented!("Assert"),
     }
 }
 
-fn get_field(field: &Field) -> FieldInfo {
-    let ident = field
-        .ident
-        .as_ref()
-        .expect("Unnamed fields are not supported!");
-    let field_name = ident.to_string();
-    let field_type = get_field_type(&field.ty);
+fn get_complex_type(complex: &ComplexBaseType, depth: usize) -> String {
+    print_title("Complex Type", depth);
+    let id = complex.id.clone().unwrap_or("".to_string());
+    print_val("ID", &id, depth);
 
-    let mut attrs = vec![];
-    for attr in field.attrs.iter() {
-        attrs.push(attr.into_token_stream().to_string());
+    let name = complex.name.clone().unwrap_or("".to_string());
+    print_val("Name", &name, depth);
+
+    if complex.mixed.is_some() {
+        let mixed = complex.mixed.clone().unwrap();
+        print_val("Mixed", &mixed, depth);
     }
 
-    FieldInfo {
-        name: field_name,
-        field_type: field_type.unwrap(),
-        attributes: attrs,
+    let abstr = complex.abstract_;
+    print_val("Abstract", &abstr, depth);
+
+    if complex.final_.is_some() {
+        print_val("Final", &"DerivationSetType", depth);
+    }
+
+    if complex.block.is_some() {
+        print_val("Block", &"BlockSetType", depth);
+    }
+
+    let default_attributes_apply = complex.default_attributes_apply;
+    print_val("DefaultAttributesApply", &default_attributes_apply, depth);
+
+    for content in &complex.content {
+        get_complex_content(content, depth + 1);
+    }
+
+    name
+}
+
+fn get_facet_type(facet_type: &FacetType, depth: usize) {
+    print_title("Facet", depth);
+    let id = facet_type.id.clone().unwrap_or("".to_string());
+    print_val("\tID", &id, depth);
+
+    let value = facet_type.value.clone();
+    print_val("\tValue", &value, depth);
+
+    let fixed = facet_type.fixed.clone();
+    print_val("\tFixed", &fixed, depth);
+
+    if facet_type.annotation.is_some() {
+        unimplemented!("Annotation");
     }
 }
 
-fn get_struct_info(struct_item: &ItemStruct) -> StructInfo {
-    let name = struct_item.ident.to_token_stream().to_string().to_lowercase();
-    let mut attrs = vec![];
-    for attr in &struct_item.attrs {
-        attrs.push(attr.to_token_stream().to_string().to_lowercase());
-    }
-
-    let field_data = struct_item.fields.iter();
-    let mut fields = vec![];
-    for field in field_data {
-        let field_info = get_field(field);
-        fields.push(field_info);
-    }
-
-    StructInfo {
-        name,
-        attrs,
-        fields,
+fn get_facet(facet: &Facet, depth: usize) {
+    match facet {
+        Facet::MinExclusive(x) => get_facet_type(x, depth),
+        Facet::MinInclusive(x) => get_facet_type(x, depth),
+        Facet::MaxExclusive(x) => get_facet_type(x, depth),
+        Facet::MaxInclusive(x) => get_facet_type(x, depth),
+        Facet::TotalDigits(x) => get_facet_type(x, depth),
+        Facet::FractionDigits(x) => get_facet_type(x, depth),
+        Facet::Length(x) => get_facet_type(x, depth),
+        Facet::MinLength(x) => get_facet_type(x, depth),
+        Facet::MaxLength(x) => get_facet_type(x, depth),
+        Facet::Enumeration(x) => get_facet_type(x, depth),
+        Facet::WhiteSpace(x) => get_facet_type(x, depth),
+        Facet::Pattern(x) => get_facet_type(x, depth),
+        Facet::Assertion(_) => unimplemented!("Assertion"),
+        Facet::ExplicitTimezone(x) => get_facet_type(x, depth),
     }
 }
 
-fn get_struct(item: &Item) -> Option<StructInfo> {
-    match item {
-        Item::Const(_) => unimplemented!("Item::Const"),
-        Item::Enum(_) => unimplemented!("Item::Enum"),
-        Item::ExternCrate(_) => unimplemented!("Item::ExternCrate"),
-        Item::Fn(_) => unimplemented!("Item::Fn"),
-        Item::ForeignMod(_) => unimplemented!("Item::ForeignMod"),
-        Item::Impl(_) => unimplemented!("Item::Impl"),
-        Item::Macro(_) => unimplemented!("Item::Macro"),
-        Item::Mod(_) => unimplemented!("Item::Mod"),
-        Item::Static(_) => unimplemented!("Item::Static"),
-        Item::Struct(x) => Option::from(get_struct_info(x)),
-        Item::Trait(_) => unimplemented!("Item::Trait"),
-        Item::TraitAlias(_) => unimplemented!("Item::TraitAlias"),
-        Item::Type(_) => None,
-        Item::Union(_) => unimplemented!("Item::Union"),
-        Item::Use(_) => unimplemented!("Item::Use"),
-        Item::Verbatim(_) => unimplemented!("Item::Verbatim"),
-        &_ => unimplemented!("Item::Other"),
+fn get_restriction_content(content: &RestrictionContent, depth: usize) {
+    match content {
+        RestrictionContent::Annotation(_) => unimplemented!("Annotation"),
+        RestrictionContent::SimpleType(x) => {get_simple_type(x, depth);},
+        RestrictionContent::Facet(x) => get_facet(x, depth),
     }
 }
 
-fn get_data(data: &File) -> (HashMap<String, String>, Vec<StructInfo>) {
-    let mut type_aliases= HashMap::new();
-    let mut structs = vec![];
-    for item in &data.items {
-        let type_result = get_type_alias(&item);
-        if type_result.is_some() {
-            let (a, b) = type_result.unwrap();
-            type_aliases.insert(a, b);
-        }
+fn get_restriction(restriction: &Restriction, depth: usize) {
+    print_title("Restriction", depth);
+    let id = restriction.id.clone().unwrap_or("".to_string());
+    print_val("\tID", &id, depth);
 
-        let struct_result = get_struct(&item);
-        if struct_result.is_some() {
-            structs.push(struct_result.unwrap());
-        }
+    if restriction.base.is_some() {
+        let base = restriction.base.clone().unwrap();
+        get_qname("Base", base, depth + 1);
     }
 
-    (type_aliases, structs)
-}
-
-fn get_field_struct<'a>(structs: &'a Vec<StructInfo>, field: &String) -> Option<&'a StructInfo> {
-    for structure in structs.iter() {
-        if structure.name == field.deref() {
-            return Option::from(structure);
-        }
-    }
-
-    None
-}
-
-fn find_root(structs: &Vec<StructInfo>) -> Result<&StructInfo, XMLGeneratorError> {
-    let mut all_fields: Vec<&String> = vec![];
-    for structure in structs.iter() {
-        for field in structure.fields.iter() {
-            if !all_fields.contains(&&field.field_type.name) {
-                all_fields.push(&field.field_type.name);
-            }
-        }
-    }
-    let mut dep_structs = vec![];
-    for field in all_fields.iter() {
-        let structure = get_field_struct(&structs, field);
-        if structure.is_some() {
-            dep_structs.push(structure.unwrap());
-        }
-    }
-
-    let mut independent_structs = vec![];
-
-    for structure in structs.iter() {
-        if !dep_structs.contains(&structure) {
-            independent_structs.push(structure);
-        }
-    }
-
-    if independent_structs.is_empty() {
-        return Err(DataTypesFormatError(
-            "No independent structs found".to_string(),
-        ));
-    }
-
-    if independent_structs.len() > 1 {
-        return Err(DataTypesFormatError(
-            "Multiple independent structs found!".to_string(),
-        ));
-    }
-
-    for structure in structs.iter() {
-        if independent_structs.contains(&structure) {
-            return Ok(structure);
-        }
-    }
-
-    unreachable!();
-}
-
-fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
-    Option::from(Faker.fake::<Output>().to_string())
-}
-
-fn get_string(type_name: &String) -> Option<String> {
-    match type_name.as_str() {
-        "i8" => make_fake::<i8>(),
-        "u8" => make_fake::<u8>(),
-        "i16" => make_fake::<i16>(),
-        "u16" => make_fake::<u16>(),
-        "i32" => make_fake::<i32>(),
-        "u32" => make_fake::<u32>(),
-        "i64" => make_fake::<i64>(),
-        "u64" => make_fake::<u64>(),
-        "i128" => make_fake::<i128>(),
-        "u128" => make_fake::<u128>(),
-        "isize" => make_fake::<isize>(),
-        "usize" => make_fake::<usize>(),
-        "f32" => make_fake::<f32>(),
-        "f64" => make_fake::<f64>(),
-        "bool" => make_fake::<bool>(),
-        "char" => make_fake::<char>(),
-        "string" => make_fake::<String>(),
-        _ => None,
+    for content in &restriction.content {
+        get_restriction_content(content, depth + 1);
     }
 }
 
-fn get_element(
-    field: &FieldInfo,
-    structs: &Vec<StructInfo>,
-    types: &HashMap<String, String>,
-) -> Option<XMLElement> {
-    for structure in structs {
-        if structure.name == field.field_type.name {
-            let name = field.name.clone();
-            let element = generate_element(structure, structs, types, Option::from(name));
-            return Option::from(element);
-        }
+fn get_simple_content(content: &SimpleBaseTypeContent, depth: usize) {
+    match content {
+        SimpleBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
+        SimpleBaseTypeContent::Restriction(x) => get_restriction(x, depth),
+        SimpleBaseTypeContent::List(_) => unimplemented!("List"),
+        SimpleBaseTypeContent::Union(_) => unimplemented!("Union"),
     }
-
-    None
 }
 
-fn get_child(
-    field: &FieldInfo,
-    structs: &Vec<StructInfo>,
-    types: &HashMap<String, String>,
-) -> Option<XMLElement> {
-    let value = get_string(&field.field_type.name);
-    if value.is_some() {
-        let mut child = XMLElement::new(&field.name);
-        child.add_text(value.unwrap()).unwrap();
-        return Option::from(child);
+fn get_simple_type(simple: &SimpleBaseType, depth: usize) -> String {
+    print_title("Simple Type", depth);
+    let id = simple.id.clone().unwrap_or("".to_string());
+    print_val("\tID", &id, depth);
+
+    if simple.final_.is_some() {
+        print_val("\tFinal", &"SimpleDerivationSetType", depth);
     }
 
-    get_element(&field, structs, types)
+    let name = simple.name.clone().unwrap_or("".to_string());
+    print_val("\tName", &name, depth);
+
+    for content in &simple.content {
+        get_simple_content(content, depth + 1);
+    }
+
+    name
 }
 
-fn get_element_name(structure: &StructInfo, types: &HashMap<String, String>, name: Option<String>) -> String {
-    if name.is_some() {
-        return name.unwrap();
+fn get_element_content(content: &ElementTypeContent, depth: usize) -> String {
+    match content {
+        ElementTypeContent::Annotation(_) => unimplemented!("Annotation"),
+        ElementTypeContent::SimpleType(x) => get_simple_type(x, depth),
+        ElementTypeContent::ComplexType(x) => get_complex_type(x, depth),
+        ElementTypeContent::Alternative(_) => unimplemented!("Alternative"),
+        ElementTypeContent::Unique(_) => unimplemented!("Unique"),
+        ElementTypeContent::Key(_) => unimplemented!("Key"),
+        ElementTypeContent::Keyref(_) => unimplemented!("Keyref"),
     }
-    let mut element_name = structure.name.clone();
-    if types.contains_key(&element_name) {
-        element_name = types[&element_name].clone();
-        return element_name;
-    }
-
-    element_name
 }
 
-fn generate_element(
-    root: &StructInfo,
-    structs: &Vec<StructInfo>,
-    types: &HashMap<String, String>,
-    name: Option<String>,
-) -> XMLElement {
-
-    let element_name = get_element_name(root, types, name);
-
-
-    let mut element = XMLElement::new(&*element_name);
-
-    for field in root.fields.iter() {
-        let child = get_child(field, structs, types);
-        if child.is_some() {
-            element.add_child(child.unwrap()).unwrap();
-        }
+fn get_qname_list(qname_list: QNameList, depth: usize) {
+    let mut i = 0;
+    for qname in qname_list.0 {
+        i = i + 1;
+        get_qname("Substitution group {}", qname, depth);
     }
-
-    element
 }
 
-fn generate_xml_data(data_types: &DataTypes) -> Result<String, XMLGeneratorError> {
-    let data = render(data_types);
-    for token in &data.items {
-        for item in token.to_token_stream() {
-            let value = item.to_token_stream().to_string();
-            match value.as_str() {
-                "#" => print!("\n{}", value),
-                ";" => println!("{}", value),
-                "{" => println!("{}", value),
-                "}" => println!("{}", value),
-                "pub" => print!("\n{} ", value),
-                _ => print!("<{}> ", value),
-            }
-        }
+fn get_element_type(element: &ElementType, depth: usize) {
+    print_title("Element", depth);
+
+    let id = element.id.clone().unwrap_or("".to_string());
+    print_val("ID", &id, depth);
+
+    let name = element.name.clone().unwrap_or("".to_string());
+    print_val("Name", &name, depth);
+
+    if element.ref_.is_some() {
+        let element_ref = element.ref_.clone().unwrap();
+        get_qname("Reference", element_ref, depth + 1);
     }
 
-    let mut xml = XMLBuilder::new()
-        .version(XMLVersion::XML1_1)
-        .encoding("UTF-8".into())
-        .build();
-
-    let (type_aliases, structs) = get_data(&data);
-
-    let root = find_root(&structs)?;
-    let root_element = generate_element(&root, &structs, &type_aliases, None);
-
-    let mut writer: Vec<u8> = Vec::new();
-    xml.set_root_element(root_element);
-    let result = xml.generate(&mut writer);
-    if result.is_err() {
-        return Err(XMLBuilderError(result.err().unwrap().to_string()));
+    if element.type_.is_some() {
+        let element_type = element.type_.clone().unwrap();
+        get_qname("Type", element_type, depth + 1);
     }
 
-    let output = String::from_utf8(writer).expect("Unable to convert XML output to string");
+    if element.substitution_group.is_some() {
+        let element_substitution_group = element.substitution_group.clone().unwrap();
+        get_qname_list(element_substitution_group, depth + 1);
+    }
 
-    Ok(output)
+    let min_occurs = element.min_occurs;
+    print_val("Min Occurs", &min_occurs, depth);
+
+    let max_occurs = element.max_occurs.is_bounded();
+    print_val("Max Occurs", &max_occurs, depth);
+
+    let default = element.default.clone().unwrap_or("".to_string());
+    print_val("Default", &default, depth);
+
+    let fixed = element.fixed.clone().unwrap_or("".to_string());
+    print_val("Fixed", &fixed, depth);
+
+    let nillable = element.nillable.unwrap_or(false);
+    print_val("Nillable", &nillable, depth);
+
+    let abstr = element.abstract_;
+    print_val("Abstract", &abstr, depth);
+
+    if element.final_.is_some() {
+        print_val("Final", &"DerivationSetType", depth);
+    }
+
+    if element.block.is_some() {
+        print_val("Block", &"BlockSetType", depth);
+    }
+
+    if element.form.is_some() {
+        print_val("Form", &"FormType", depth);
+    }
+
+    let namespace = element.target_namespace.clone().unwrap_or("".to_string());
+    print_val("TargetNamespace", &namespace, depth);
+
+    for content in &element.content {
+        get_element_content(content, depth + 1);
+    }
+}
+
+fn fetch_content(content: &SchemaContent) {
+    let depth: usize = 0;
+    match content {
+        SchemaContent::Include(_) => unimplemented!("Include"),
+        SchemaContent::Import(_) => unimplemented!("Import"),
+        SchemaContent::Redefine(_) => unimplemented!("Redefine"),
+        SchemaContent::Override(_) => unimplemented!("Override"),
+        SchemaContent::Annotation(_) => unimplemented!("Annotation"),
+        SchemaContent::DefaultOpenContent(_) => unimplemented!("DefaultOpenContent"),
+        SchemaContent::SimpleType(x) => {get_simple_type(x, depth);},
+        SchemaContent::ComplexType(x) => {get_complex_type(x, depth);},
+        SchemaContent::Group(x) => get_group(x, depth),
+        SchemaContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
+        SchemaContent::Element(element_type) => get_element_type(element_type, depth),
+        SchemaContent::Attribute(_) => unimplemented!("Attribute"),
+        SchemaContent::Notation(_) => unimplemented!("Notation"),
+    }
 }
 
 fn generate_schema(string: &String) -> Result<Schemas, XMLGeneratorError> {
@@ -546,62 +391,37 @@ fn generate_schema(string: &String) -> Result<Schemas, XMLGeneratorError> {
     Ok(schemas.unwrap().finish())
 }
 
-fn optimise_meta_types(meta_types: MetaTypes) -> MetaTypes {
-    Optimizer::new(meta_types)
-        .remove_empty_enum_variants()
-        .remove_empty_enums()
-        .remove_duplicate_union_variants()
-        .remove_empty_unions()
-        .use_unrestricted_base_type()
-        .convert_dynamic_to_choice()
-        .flatten_complex_types()
-        .flatten_unions()
-        .merge_enum_unions()
-        .resolve_typedefs()
-        .remove_duplicates()
-        .merge_choice_cardinalities()
-        .finish()
-}
-
-fn generate_meta_types(schemas: &Schemas, optimise: bool) -> Result<MetaTypes, XMLGeneratorError> {
-    let meta_types = Interpreter::new(&schemas).with_buildin_types();
-    if let Err(err) = meta_types {
-        return Err(XSDParserError(err.to_string()));
-    }
-
-    let meta_types = meta_types.unwrap().with_default_typedefs();
-    if let Err(err) = meta_types {
-        return Err(XSDParserError(err.to_string()));
-    }
-
-    let meta_types = meta_types.unwrap().with_xs_any_type();
-    if let Err(err) = meta_types {
-        return Err(XSDParserError(err.to_string()));
-    }
-
-    let meta_types = meta_types.unwrap().finish();
-
-    if let Err(err) = meta_types {
-        return Err(XSDParserError(err.to_string()));
-    }
-
-    if optimise {
-        Ok(optimise_meta_types(meta_types.unwrap()))
-    } else {
-        Ok(meta_types.unwrap())
+fn fetch_type(content: &SchemaContent) -> Option<String> {
+    let depth: usize = 0;
+    match content {
+        SchemaContent::Include(_) => unimplemented!("Include"),
+        SchemaContent::Import(_) => unimplemented!("Import"),
+        SchemaContent::Redefine(_) => unimplemented!("Redefine"),
+        SchemaContent::Override(_) => unimplemented!("Override"),
+        SchemaContent::Annotation(_) => unimplemented!("Annotation"),
+        SchemaContent::DefaultOpenContent(_) => unimplemented!("DefaultOpenContent"),
+        SchemaContent::SimpleType(x) => Option::from(get_simple_type(x, depth)),
+        SchemaContent::ComplexType(x) => Option::from(get_complex_type(x, depth)),
+        SchemaContent::Group(_) => unimplemented!("Top-level group not supported"),
+        SchemaContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
+        SchemaContent::Element(_) => None,
+        SchemaContent::Attribute(_) => unimplemented!("Attribute"),
+        SchemaContent::Notation(_) => unimplemented!("Notation"),
     }
 }
 
-fn generate_data_types(meta_types: &'_ MetaTypes) -> Result<DataTypes<'_>, XMLGeneratorError> {
-    let data_types = Generator::new(meta_types)
-        .flags(GeneratorFlags::all())
-        .generate_named_types();
-
-    if let Err(err) = data_types {
-        return Err(XSDParserError(err.to_string()));
+fn fetch_types(schemas: &Schemas) -> Result<Vec<String>, XMLGeneratorError> {
+    let mut types = vec![];
+    for (_schema_id, schema) in schemas.schemas() {
+        for content in &schema.content {
+            let data_type = fetch_type(content);
+            if data_type.is_some() {
+                types.push(data_type.unwrap());
+            }
+        }
     }
 
-    Ok(data_types.unwrap().finish())
+    Ok(types)
 }
 
 /// Generate an XML string containing fake data
@@ -623,14 +443,10 @@ fn generate_data_types(meta_types: &'_ MetaTypes) -> Result<DataTypes<'_>, XMLGe
 /// an error when generating the output xml, then an `XMLGeneratorError::XMLBuilderError`
 /// is returned.
 pub fn generate_xml(xsd_string: &String) -> Result<String, XMLGeneratorError> {
-    let schema = generate_schema(xsd_string)?;
-    let meta_types = generate_meta_types(&schema, true)?;
-    for (ident, metatype) in &meta_types.items {
-        println!("{}", ident);
-        if metatype.display_name.is_some() {
-            println!("{}", metatype.clone().display_name.unwrap().deref());
-        }
-    }
-    let data_types = generate_data_types(&meta_types)?;
-    generate_xml_data(&data_types)
+    println!("\n===============================================================================\n");
+    let schemas = generate_schema(xsd_string)?;
+
+    let data_types = fetch_types(&schemas);
+
+    Ok("".to_string())
 }
