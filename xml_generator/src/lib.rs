@@ -1,4 +1,5 @@
 use fake::{Fake, Faker};
+use std::ops::Deref;
 use std::string::String;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::models::schema::xs::{
@@ -21,6 +22,106 @@ pub enum XMLGeneratorError {
     DataTypesFormatError(String),
     /// Error generating the output XML structure
     XMLBuilderError(String),
+}
+
+fn get_field_struct<'a>(
+    generators: &'a Vec<ElementGenerator>,
+    field: &String,
+) -> Option<&'a ElementGenerator> {
+    for generator in generators.iter() {
+        if let Some(name) = &generator.name {
+            if name.eq(field) {
+                return Option::from(generator);
+            }
+        }
+    }
+
+    None
+}
+
+fn get_content_list(generator: &TypeGenerator) -> Result<Vec<&String>, XMLGeneratorError> {
+    let mut output = vec![];
+    for element in generator.elements.iter() {
+        let name = element.get_name()?;
+        output.push(name);
+    }
+
+    for group in generator.groups.iter() {
+        for element in group.elements.iter() {
+            let name = element.get_name()?;
+            output.push(name);
+        }
+    }
+
+    Ok(output)
+}
+
+fn find_root(generators: &Vec<ElementGenerator>) -> Result<&ElementGenerator, XMLGeneratorError> {
+    let mut all_fields: Vec<&String> = vec![];
+    let mut all_types: Vec<&String> = vec![];
+    for generator in generators.iter() {
+        if generator.reference.is_some() {
+            let reference = generator.reference.as_ref().unwrap();
+            all_fields.push(reference);
+        }
+        if generator.type_info.is_some() {
+            let type_info = generator.type_info.as_ref().unwrap();
+            if type_info.len() > 0 {
+                all_types.push(type_info);
+            }
+        }
+
+        for content in generator.contents.iter() {
+            let content_list = get_content_list(content)?;
+            for item in content_list {
+                all_fields.push(&item);
+            }
+        }
+    }
+
+    println!("{:?}", all_fields);
+    println!("{:?}", all_types);
+
+    let mut dependent_elements = vec![];
+    for field in all_fields {
+        let structure = get_field_struct(&generators, field);
+        if structure.is_some() {
+            dependent_elements.push(structure.unwrap());
+        }
+    }
+
+    let mut independent_elements = vec![];
+    for generator in generators.iter() {
+        if !dependent_elements.contains(&generator) {
+            independent_elements.push(generator);
+        }
+    }
+
+    if independent_elements.is_empty() {
+        return Err(XMLGeneratorError::DataTypesFormatError(
+            "No independent elements found".to_string(),
+        ));
+    }
+
+    if independent_elements.len() > 1 {
+        for item in dependent_elements.iter() {
+            println!("Dependent element: {:?}", item.name);
+        }
+        for item in independent_elements.iter() {
+            println!("Independent element: {:?}", item.name);
+        }
+        return Err(XMLGeneratorError::DataTypesFormatError(
+            "Multiple independent (root) elements found!".to_string(),
+        ));
+    }
+
+    for generator in generators.iter() {
+        if independent_elements.contains(&generator) {
+            return Ok(generator);
+        }
+    }
+
+    unreachable!();
 }
 
 fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
@@ -81,12 +182,10 @@ impl TypeGenerator {
         data_types: &Vec<TypeGenerator>,
         elements: &Vec<ElementGenerator>,
     ) -> Result<(), XMLGeneratorError> {
-        println!("Generating type {}", self.name);
-        print!("Info:\t");
         for type_information in &self.type_info {
             print!("{}\t", type_information);
         }
-        print!("\n");
+
         for element in self.elements.iter() {
             let child = element.generate(data_types, elements)?;
 
@@ -131,19 +230,88 @@ impl TypeGenerator {
     }
 }
 
+impl PartialEq for TypeGenerator {
+    fn eq(&self, other: &Self) -> bool {
+        if !self.name.eq(&other.name) {
+            return false;
+        }
+
+        if !self.type_info.eq(&other.type_info) {
+            return false;
+        }
+
+        if !self.elements.eq(&other.elements) {
+            return false;
+        }
+
+        if !self.groups.deref().into_iter().eq(&other.groups) {
+            return false;
+        }
+
+        true
+    }
+}
+
 struct ElementGenerator {
-    name: String,
+    name: Option<String>,
     contents: Vec<TypeGenerator>,
     type_info: Option<String>,
+    reference: Option<String>,
+}
+
+fn get_ref(
+    reference: &String,
+    data_types: &Vec<TypeGenerator>,
+    elements: &Vec<ElementGenerator>,
+) -> Result<XMLElement, XMLGeneratorError> {
+    for element in elements.iter() {
+        let name = element.get_name()?;
+        if name.eq(reference) {
+            return element.generate(data_types, elements);
+        }
+    }
+
+    Err(XMLGeneratorError::XMLBuilderError(
+        "Reference not found".to_string(),
+    ))
+}
+
+fn generate_reference(
+    xml_element: &mut XMLElement,
+    reference: &String,
+    data_types: &Vec<TypeGenerator>,
+    elements: &Vec<ElementGenerator>,
+) -> Result<(), XMLGeneratorError> {
+    let child = get_ref(reference, data_types, elements)?;
+
+    match xml_element.add_child(child) {
+        Ok(_) => Ok(()),
+        Err(err) => Err(XMLGeneratorError::XMLBuilderError(err.to_string())),
+    }
 }
 
 impl ElementGenerator {
     fn new() -> Self {
         ElementGenerator {
-            name: String::new(),
+            name: None,
             contents: vec![],
             type_info: None,
+            reference: None,
         }
+    }
+
+    fn get_name(&self) -> Result<&String, XMLGeneratorError> {
+        if let Some(name) = &self.name {
+            return Ok(name);
+        }
+
+        if let Some(reference) = &self.reference {
+            return Ok(reference);
+        }
+
+        Err(XMLGeneratorError::DataTypesFormatError(
+            "Element does not have a name or a reference".to_string(),
+        ))
     }
 
     fn generate(
@@ -151,7 +319,22 @@ impl ElementGenerator {
         data_types: &Vec<TypeGenerator>,
         elements: &Vec<ElementGenerator>,
     ) -> Result<XMLElement, XMLGeneratorError> {
-        let mut root_element = XMLElement::new(self.name.as_str());
+        let name = self.get_name()?;
+        let mut root_element = XMLElement::new(name);
+        if let Some(reference) = &self.reference {
+            if self.type_info.is_some() {
+                return Err(XMLGeneratorError::DataTypesFormatError(
+                    "Element is a reference and a type".to_string(),
+                ));
+            }
+            if !self.contents.is_empty() {
+                return Err(XMLGeneratorError::DataTypesFormatError(
+                    "Element references another element an contains content".to_string(),
+                ));
+            }
+
+            generate_reference(&mut root_element, reference, data_types, elements)?;
+        }
         if self.type_info.is_some() {
             if !self.contents.is_empty() {
                 return Err(XMLGeneratorError::DataTypesFormatError(
@@ -169,6 +352,33 @@ impl ElementGenerator {
         }
 
         Ok(root_element)
+    }
+}
+
+impl PartialEq for ElementGenerator {
+    fn eq(&self, other: &Self) -> bool {
+        if !self.name.eq(&other.name) {
+            return false;
+        }
+        if !self.type_info.eq(&other.type_info) {
+            return false;
+        }
+
+        if self.contents.len() != other.contents.len() {
+            return false;
+        }
+
+        if !self.contents.eq(&other.contents) {
+            return false;
+        }
+
+        for i in 0..self.contents.len() {
+            if !self.contents[i].eq(&other.contents[i]) {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
@@ -322,6 +532,16 @@ fn get_attribute(attribute: &AttributeType) -> AttributeInfo {
 
 struct GroupInfo {
     elements: Vec<ElementGenerator>,
+}
+
+impl PartialEq for GroupInfo {
+    fn eq(&self, other: &Self) -> bool {
+        if !self.elements.eq(&other.elements) {
+            return false;
+        }
+
+        true
+    }
 }
 
 fn get_complex_group(content: &ComplexBaseTypeContent) -> Option<GroupInfo> {
@@ -493,12 +713,18 @@ fn get_qname_list(qname_list: QNameList) -> Vec<Name> {
 
 fn get_element_type(element: &ElementType) -> ElementGenerator {
     let mut generator = ElementGenerator::new();
-    generator.name = element.name.clone().unwrap_or("".to_string());
 
-    let mut reference = None;
+    generator.name = element.name.clone();
+
     if element.ref_.is_some() {
+        if generator.name.is_some() {
+            panic!("Name already defined.");
+        }
         let element_ref = element.ref_.clone().unwrap();
-        reference = Option::from(get_qname(element_ref));
+        let reference = Option::from(get_qname(element_ref));
+        if let Some(name) = reference {
+            generator.reference = Some(name.name);
+        }
     }
 
     if element.type_.is_some() {
@@ -699,7 +925,7 @@ pub fn generate_xml(xsd_string: &String) -> Result<String, XMLGeneratorError> {
         println!("Multiple elements found");
     }
 
-    let root_element = elements.first().unwrap();
+    let root_element = find_root(&elements)?;
 
     generate_output(root_element, &data_types, &elements)
 }
