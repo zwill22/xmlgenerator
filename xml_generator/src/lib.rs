@@ -5,7 +5,7 @@ use crate::find_root::find_root_element;
 use crate::generate_output::generate_output;
 use crate::generate_schema::generate_schema;
 
-mod attribute;
+mod attribute_generator;
 mod element_generator;
 pub mod error;
 mod fetch_elements;
@@ -14,8 +14,8 @@ mod find_root;
 mod generate;
 mod generate_output;
 mod generate_schema;
-mod group;
-mod restriction;
+mod group_generator;
+mod restriction_generator;
 mod type_generator;
 
 /// Generate an XML string containing fake data

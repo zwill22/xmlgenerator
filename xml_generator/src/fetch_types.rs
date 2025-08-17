@@ -1,7 +1,7 @@
-use crate::attribute::AttributeInfo;
+use crate::attribute_generator::AttributeGenerator;
 use crate::element_generator::ElementGenerator;
-use crate::group::GroupInfo;
-use crate::restriction::RestrictionInfo;
+use crate::group_generator::GroupGenerator;
+use crate::restriction_generator::RestrictionGenerator;
 use crate::type_generator::TypeGenerator;
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::{
@@ -54,8 +54,8 @@ fn get_restriction_content(content: &RestrictionContent) -> String {
     }
 }
 
-fn get_restriction(restriction: &Restriction) -> RestrictionInfo {
-    let mut info = RestrictionInfo::new();
+fn get_restriction(restriction: &Restriction) -> RestrictionGenerator {
+    let mut info = RestrictionGenerator::new();
     if restriction.base.is_some() {
         info.name = get_qname(restriction.base.clone().unwrap());
     }
@@ -68,7 +68,7 @@ fn get_restriction(restriction: &Restriction) -> RestrictionInfo {
     info
 }
 
-fn get_content_restriction(content: &SimpleBaseTypeContent) -> RestrictionInfo {
+fn get_content_restriction(content: &SimpleBaseTypeContent) -> RestrictionGenerator {
     match content {
         SimpleBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
         SimpleBaseTypeContent::Restriction(x) => get_restriction(x),
@@ -225,8 +225,8 @@ fn get_group_content(content: &GroupTypeContent) -> ElementGenerator {
     }
 }
 
-fn get_group(group: &GroupType) -> GroupInfo {
-    let mut group_info = GroupInfo::new();
+fn get_group(group: &GroupType) -> GroupGenerator {
+    let mut group_info = GroupGenerator::new();
 
     if group.name.is_some() {
         unimplemented!("Named groups");
@@ -251,7 +251,7 @@ fn get_group(group: &GroupType) -> GroupInfo {
     group_info
 }
 
-fn get_complex_group(content: &ComplexBaseTypeContent) -> Option<GroupInfo> {
+fn get_complex_group(content: &ComplexBaseTypeContent) -> Option<GroupGenerator> {
     match content {
         ComplexBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
         ComplexBaseTypeContent::SimpleContent(_) => unimplemented!("SimpleContent"),
@@ -268,8 +268,8 @@ fn get_complex_group(content: &ComplexBaseTypeContent) -> Option<GroupInfo> {
     }
 }
 
-fn get_attribute(attribute: &AttributeType) -> AttributeInfo {
-    let mut attribute_info = AttributeInfo::new();
+fn get_attribute(attribute: &AttributeType) -> AttributeGenerator {
+    let mut attribute_info = AttributeGenerator::new();
     attribute_info.name = attribute.name.clone().unwrap_or("".to_string());
 
     if attribute.ref_.is_some() {
@@ -315,7 +315,7 @@ fn get_attribute(attribute: &AttributeType) -> AttributeInfo {
     attribute_info
 }
 
-fn get_complex_attributes(content: &ComplexBaseTypeContent) -> Option<AttributeInfo> {
+fn get_complex_attributes(content: &ComplexBaseTypeContent) -> Option<AttributeGenerator> {
     match content {
         ComplexBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
         ComplexBaseTypeContent::SimpleContent(_) => unimplemented!("SimpleContent"),

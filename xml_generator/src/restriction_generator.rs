@@ -1,11 +1,11 @@
-pub struct RestrictionInfo {
+pub struct RestrictionGenerator {
     pub(crate) name: String,
     pub(crate) facets: Vec<String>,
 }
 
-impl RestrictionInfo {
-    pub(crate) fn new() -> RestrictionInfo {
-        RestrictionInfo {
+impl RestrictionGenerator {
+    pub(crate) fn new() -> RestrictionGenerator {
+        RestrictionGenerator {
             name: String::new(),
             facets: Vec::new(),
         }

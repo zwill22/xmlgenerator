@@ -1,14 +1,14 @@
 use crate::element_generator::ElementGenerator;
 
-pub struct GroupInfo {
+pub struct GroupGenerator {
     pub(crate) elements: Vec<ElementGenerator>,
     pub(crate) min: usize,
     pub(crate) max: Option<usize>,
 }
 
-impl GroupInfo {
-    pub fn new() -> GroupInfo {
-        GroupInfo {
+impl GroupGenerator {
+    pub fn new() -> GroupGenerator {
+        GroupGenerator {
             elements: vec![],
             min: 0,
             max: None,
@@ -16,7 +16,7 @@ impl GroupInfo {
     }
 }
 
-impl PartialEq for GroupInfo {
+impl PartialEq for GroupGenerator {
     fn eq(&self, other: &Self) -> bool {
         if !self.elements.eq(&other.elements) {
             return false;

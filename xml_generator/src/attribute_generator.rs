@@ -1,17 +1,17 @@
 use crate::type_generator::TypeGenerator;
 use xsd_parser::models::schema::xs::AttributeUseType;
 
-pub struct AttributeInfo {
+pub struct AttributeGenerator {
     pub(crate) name: String,
     pub(crate) attribute_type: AttributeUseType,
-    type_generator: Option<TypeGenerator>,
+    pub(crate) type_generator: Option<TypeGenerator>,
     pub(crate) ref_name: Option<String>,
     pub(crate) type_name: Option<String>,
 }
 
-impl AttributeInfo {
+impl AttributeGenerator {
     pub(crate) fn new() -> Self {
-        AttributeInfo {
+        AttributeGenerator {
             name: String::new(),
             attribute_type: AttributeUseType::Required,
             type_generator: None,
@@ -21,7 +21,7 @@ impl AttributeInfo {
     }
 }
 
-impl PartialEq for AttributeInfo {
+impl PartialEq for AttributeGenerator {
     fn eq(&self, other: &Self) -> bool {
         if self.name != other.name {
             return false;

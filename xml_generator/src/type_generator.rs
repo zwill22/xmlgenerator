@@ -1,8 +1,8 @@
-use crate::attribute::AttributeInfo;
+use crate::attribute_generator::AttributeGenerator;
 use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
 use crate::generate::generate;
-use crate::group::GroupInfo;
+use crate::group_generator::GroupGenerator;
 use std::ops::Deref;
 use xml_builder::XMLElement;
 
@@ -10,8 +10,8 @@ pub(crate) struct TypeGenerator {
     pub(crate) name: String,
     pub(crate) type_info: Vec<String>,
     pub(crate) elements: Vec<ElementGenerator>,
-    pub(crate) groups: Vec<GroupInfo>,
-    pub(crate) attributes: Vec<AttributeInfo>,
+    pub(crate) groups: Vec<GroupGenerator>,
+    pub(crate) attributes: Vec<AttributeGenerator>,
     pub(crate) min: u32,
     pub(crate) max: Option<u32>,
 }
