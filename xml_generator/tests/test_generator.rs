@@ -3,8 +3,9 @@ mod tests {
     use std::fs::ReadDir;
     use std::path::PathBuf;
     use std::{fs, path};
-    use xmlgenerator::{XMLGeneratorError, generate_xml};
+    use xmlgenerator::generate_xml;
     use workspace_root::get_workspace_root;
+    use xmlgenerator::error::XMLGeneratorError;
 
     fn fetch_test_files(directory: &str) -> ReadDir {
         let root: PathBuf = get_workspace_root();
@@ -33,6 +34,9 @@ mod tests {
 
         assert!(xml.is_err());
         match xml.unwrap_err() {
+            XMLGeneratorError::DataTypeError(error) => {
+                panic!("Data type error: {}", error)
+            }
             XMLGeneratorError::XSDParserError(error) => panic!("Parse error: {}", error),
             XMLGeneratorError::DataTypesFormatError(error) => check_error(&error, &expected),
             XMLGeneratorError::XMLBuilderError(error) => {
@@ -54,6 +58,7 @@ mod tests {
 
     // More comprehensive validation tests performed in Python
     fn check_result(result: String) {
+        println!("{}", result);
     }
 
     #[test]
@@ -62,6 +67,7 @@ mod tests {
 
         for file in files {
             let filepath = file.unwrap().path();
+            println!("{}", filepath.display());
             let contents = read_file(&filepath);
 
             let xml = generate_xml(&contents);
@@ -87,6 +93,7 @@ mod tests {
         let xml = generate_xml(&empty_xml_string);
         assert!(xml.is_err());
         match xml.unwrap_err() {
+            XMLGeneratorError::DataTypeError(_) => panic!("Invalid data type"),
             XMLGeneratorError::XSDParserError(err) => check_error(&err, &expected_error),
             XMLGeneratorError::DataTypesFormatError(_) => panic!("Invalid data error"),
             XMLGeneratorError::XMLBuilderError(_) => panic!("XML generation error"),

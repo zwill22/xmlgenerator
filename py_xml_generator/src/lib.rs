@@ -1,14 +1,19 @@
 use pyo3::prelude::*;
 use pyo3::exceptions::PyRuntimeError;
-use xmlgenerator::{generate_xml, XMLGeneratorError};
-use xmlgenerator::XMLGeneratorError::XMLBuilderError;
+use xmlgenerator::generate_xml;
+use xmlgenerator::error::XMLGeneratorError;
+use xmlgenerator::error::XMLGeneratorError::XMLBuilderError;
 
 fn generate_parser_error(err_string: String) -> PyErr {
     PyRuntimeError::new_err("XSD Parser encountered an error.\n".to_owned() + err_string.as_str())
 }
 
-fn generate_data_type_error(err_string: String) -> PyErr {
+fn generate_data_format_error(err_string: String) -> PyErr {
     PyRuntimeError::new_err("Input not in valid format:".to_owned() + err_string.as_str())
+}
+
+fn generate_data_type_error(err_string: String) -> PyErr {
+    PyRuntimeError::new_err("Input contains invalid type:".to_owned() + err_string.as_str())
 }
 
 fn generate_xml_builder_error(err_string: String) -> PyErr {
@@ -16,9 +21,10 @@ fn generate_xml_builder_error(err_string: String) -> PyErr {
 }
 fn get_error(error: XMLGeneratorError) -> PyErr {
     match error {
-        XMLGeneratorError::XSDParserError(x) => generate_parser_error(x),
-        XMLGeneratorError::DataTypesFormatError(x) => generate_data_type_error(x),
-        XMLBuilderError(x) => generate_xml_builder_error(x),
+        XMLGeneratorError::XSDParserError(e) => generate_parser_error(e),
+        XMLGeneratorError::DataTypesFormatError(e) => generate_data_format_error(e),
+        XMLGeneratorError::DataTypeError(e) => generate_data_type_error(e),
+        XMLBuilderError(e) => generate_xml_builder_error(e),
     }
 }
 
