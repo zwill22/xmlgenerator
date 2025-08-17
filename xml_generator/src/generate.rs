@@ -28,7 +28,7 @@ fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
 pub(crate) fn generate(type_name: &String) -> Option<String> {
     match type_name.as_str() {
         "boolean" => make_fake::<bool>(),
-        "float" => make_fake::<f32>(),
+        "decimal" => make_fake::<f32>(),
         "double" => make_fake::<f64>(),
         "integer" => make_fake::<i32>(),
         "positiveInteger" => make_fake::<u32>(),

@@ -11,7 +11,7 @@ use xsd_parser::models::schema::xs::{
 };
 use xsd_parser::models::schema::{MaxOccurs, QName};
 
-fn get_qname(qname: QName) -> String {
+fn get_qname(qname: &QName) -> String {
     String::from_utf8(qname.local_name().to_vec()).unwrap()
 }
 
@@ -55,17 +55,17 @@ fn get_restriction_content(content: &RestrictionContent) -> String {
 }
 
 fn get_restriction(restriction: &Restriction) -> RestrictionGenerator {
-    let mut info = RestrictionGenerator::new();
-    if restriction.base.is_some() {
-        info.name = get_qname(restriction.base.clone().unwrap());
+    let mut generator = RestrictionGenerator::new();
+    if let Some(base) = &restriction.base {
+        generator.name = get_qname(base);
     }
 
     for content in &restriction.content {
         let facet = get_restriction_content(content);
-        info.facets.push(facet);
+        generator.facets.push(facet);
     }
 
-    info
+    generator
 }
 
 fn get_content_restriction(content: &SimpleBaseTypeContent) -> RestrictionGenerator {
@@ -78,9 +78,9 @@ fn get_content_restriction(content: &SimpleBaseTypeContent) -> RestrictionGenera
 }
 
 fn get_simple_type(simple: &SimpleBaseType) -> TypeGenerator {
-    let mut type_generator = TypeGenerator::new();
-    type_generator.name = simple.name.clone().unwrap_or("".to_string());
-    if type_generator.name.is_empty() {
+    let mut generator = TypeGenerator::new();
+    generator.name = simple.name.clone().unwrap_or("".to_string());
+    if generator.name.is_empty() {
         unimplemented!("Empty type");
     }
 
@@ -95,19 +95,19 @@ fn get_simple_type(simple: &SimpleBaseType) -> TypeGenerator {
     }
 
     if restrictions.is_empty() {
-        type_generator.type_info.push("string".to_string());
+        generator.type_info.push("string".to_string());
 
-        return type_generator;
+        return generator;
     }
 
     for restriction in &restrictions {
-        type_generator.type_info.push(restriction.name.clone());
+        generator.type_info.push(restriction.name.clone());
         for facet in &restriction.facets {
-            type_generator.type_info.push(facet.clone());
+            generator.type_info.push(facet.clone());
         }
     }
 
-    type_generator
+    generator
 }
 
 fn fetch_type(content: &SchemaContent) -> Option<TypeGenerator> {
@@ -145,19 +145,15 @@ pub(crate) fn get_element_type(element: &ElementType) -> ElementGenerator {
 
     generator.name = element.name.clone();
 
-    if element.ref_.is_some() {
+    if let Some(element_ref) = &element.ref_ {
         if generator.name.is_some() {
             panic!("Name already defined.");
         }
-        let element_ref = element.ref_.clone().unwrap();
-        let reference = Some(get_qname(element_ref));
-        if let Some(name) = reference {
-            generator.reference = Some(name);
-        }
+        let reference = get_qname(element_ref);
+        generator.reference = Some(reference);
     }
 
-    if element.type_.is_some() {
-        let element_type = element.type_.clone().unwrap();
+    if let Some(element_type) = &element.type_ {
         let type_info = get_qname(element_type);
         generator.type_info = Some(type_info);
     }
@@ -226,7 +222,7 @@ fn get_group_content(content: &GroupTypeContent) -> ElementGenerator {
 }
 
 fn get_group(group: &GroupType) -> GroupGenerator {
-    let mut group_info = GroupGenerator::new();
+    let mut generator = GroupGenerator::new();
 
     if group.name.is_some() {
         unimplemented!("Named groups");
@@ -236,19 +232,19 @@ fn get_group(group: &GroupType) -> GroupGenerator {
         unimplemented!("Group references");
     }
 
-    group_info.min = group.min_occurs;
+    generator.min = group.min_occurs;
 
-    group_info.max = match group.max_occurs {
+    generator.max = match group.max_occurs {
         MaxOccurs::Unbounded => None,
         MaxOccurs::Bounded(x) => Some(x),
     };
 
     for content in &group.content {
         let element = get_group_content(content);
-        group_info.elements.push(element);
+        generator.elements.push(element);
     }
 
-    group_info
+    generator
 }
 
 fn get_complex_group(content: &ComplexBaseTypeContent) -> Option<GroupGenerator> {
@@ -269,20 +265,18 @@ fn get_complex_group(content: &ComplexBaseTypeContent) -> Option<GroupGenerator>
 }
 
 fn get_attribute(attribute: &AttributeType) -> AttributeGenerator {
-    let mut attribute_info = AttributeGenerator::new();
-    attribute_info.name = attribute.name.clone().unwrap_or("".to_string());
+    let mut generator = AttributeGenerator::new();
+    generator.name = attribute.name.clone().unwrap_or("".to_string());
+
+    if let Some(attribute_type) = &attribute.type_ {
+        generator.type_name = get_qname(attribute_type);
+    }
+
+    generator.attribute_type = attribute.use_.clone();
 
     if attribute.ref_.is_some() {
-        let attribute_ref = attribute.ref_.clone().unwrap();
-        attribute_info.ref_name = Some(get_qname(attribute_ref));
+        unimplemented!("Attribute references");
     }
-
-    if attribute.type_.is_some() {
-        let attribute_type = attribute.type_.clone().unwrap();
-        attribute_info.type_name = Some(get_qname(attribute_type));
-    }
-
-    attribute_info.attribute_type = attribute.use_.clone();
 
     if attribute.default.is_some() {
         unimplemented!("Default attribute");
@@ -312,7 +306,7 @@ fn get_attribute(attribute: &AttributeType) -> AttributeGenerator {
         unimplemented!("Simple type attribute");
     }
 
-    attribute_info
+    generator
 }
 
 fn get_complex_attributes(content: &ComplexBaseTypeContent) -> Option<AttributeGenerator> {
@@ -333,8 +327,8 @@ fn get_complex_attributes(content: &ComplexBaseTypeContent) -> Option<AttributeG
 }
 
 fn get_complex_type(complex: &ComplexBaseType) -> TypeGenerator {
-    let mut type_generator = TypeGenerator::new();
-    type_generator.name = complex.name.clone().unwrap_or("".to_string());
+    let mut generator = TypeGenerator::new();
+    generator.name = complex.name.clone().unwrap_or("".to_string());
 
     if complex.mixed.is_some() {
         unimplemented!("Mixed types");
@@ -360,15 +354,15 @@ fn get_complex_type(complex: &ComplexBaseType) -> TypeGenerator {
     for content in &complex.content {
         let group = get_complex_group(content);
         if group.is_some() {
-            type_generator.groups.push(group.unwrap());
+            generator.groups.push(group.unwrap());
         }
         let attribute = get_complex_attributes(content);
         if attribute.is_some() {
-            type_generator.attributes.push(attribute.unwrap());
+            generator.attributes.push(attribute.unwrap());
         }
     }
 
-    type_generator
+    generator
 }
 
 pub(crate) fn fetch_types(schemas: &Schemas) -> Vec<TypeGenerator> {

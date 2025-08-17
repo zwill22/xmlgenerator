@@ -23,7 +23,8 @@ impl TypeGenerator {
         data_types: &Vec<TypeGenerator>,
         elements: &Vec<ElementGenerator>,
     ) -> Result<(), XMLGeneratorError> {
-        for type_information in &self.type_info {
+        if self.type_info.len() == 1 {
+            let type_information = self.type_info.first().unwrap();
             if !self.elements.is_empty() {
                 return Err(XMLGeneratorError::DataTypesFormatError(
                     "Type includes type information and elements".to_string(),
@@ -37,12 +38,22 @@ impl TypeGenerator {
             }
 
             let output = generate(type_information);
-            if output.is_some() {
-                let result = xml_element.add_text(output.unwrap());
-                if let Err(err) = result {
-                    return Err(XMLGeneratorError::XMLBuilderError(err.to_string()));
+            match output {
+                None => {
+                    return Err(XMLGeneratorError::DataTypeError(format!(
+                        "Data type not found: {}",
+                        type_information
+                    )));
+                }
+                Some(value) => {
+                    let result = xml_element.add_text(value);
+                    if let Err(err) = result {
+                        return Err(XMLGeneratorError::XMLBuilderError(err.to_string()));
+                    }
                 }
             }
+        } else if self.type_info.len() > 1 {
+            unimplemented!("Complex types");
         }
 
         for element in self.elements.iter() {
@@ -70,7 +81,7 @@ impl TypeGenerator {
         }
 
         for attribute in self.attributes.iter() {
-            println!("Attribute: {}", attribute.name);
+            attribute.generate(xml_element, data_types)?;
         }
 
         Ok(())
