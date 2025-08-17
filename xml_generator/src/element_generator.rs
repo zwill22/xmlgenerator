@@ -43,8 +43,6 @@ impl ElementGenerator {
         data_types: &Vec<TypeGenerator>,
         elements: &Vec<ElementGenerator>,
     ) -> Result<XMLElement, XMLGeneratorError> {
-        let name = self.get_name()?;
-        let mut root_element = XMLElement::new(name);
         if let Some(reference) = &self.reference {
             if self.type_info.is_some() {
                 return Err(XMLGeneratorError::DataTypesFormatError(
@@ -57,8 +55,12 @@ impl ElementGenerator {
                 ));
             }
 
-            generate::generate_reference(&mut root_element, reference, data_types, elements)?;
+            return generate::generate_reference(reference, data_types, elements);
         }
+
+        let name = self.get_name()?;
+        let mut root_element = XMLElement::new(name);
+
         if self.type_info.is_some() {
             if !self.contents.is_empty() {
                 return Err(XMLGeneratorError::DataTypesFormatError(

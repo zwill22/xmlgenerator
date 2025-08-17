@@ -1,10 +1,10 @@
-use fake::{Fake, Faker};
-use xml_builder::XMLElement;
 use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
 use crate::type_generator::TypeGenerator;
+use fake::{Fake, Faker};
+use xml_builder::XMLElement;
 
-fn get_ref(
+pub(crate) fn generate_reference(
     reference: &String,
     data_types: &Vec<TypeGenerator>,
     elements: &Vec<ElementGenerator>,
@@ -19,20 +19,6 @@ fn get_ref(
     Err(XMLGeneratorError::XMLBuilderError(
         "Reference not found".to_string(),
     ))
-}
-
-pub fn generate_reference(
-    xml_element: &mut XMLElement,
-    reference: &String,
-    data_types: &Vec<TypeGenerator>,
-    elements: &Vec<ElementGenerator>,
-) -> Result<(), XMLGeneratorError> {
-    let child = get_ref(reference, data_types, elements)?;
-
-    match xml_element.add_child(child) {
-        Ok(_) => Ok(()),
-        Err(err) => Err(XMLGeneratorError::XMLBuilderError(err.to_string())),
-    }
 }
 
 fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
