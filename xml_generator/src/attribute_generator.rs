@@ -7,6 +7,7 @@ use xsd_parser::models::schema::xs::AttributeUseType;
 fn generate_attribute_from_type(
     xml_element: &mut XMLElement,
     generator: &TypeGenerator,
+    name: &String
 ) -> Result<(), XMLGeneratorError> {
     if !generator.elements.is_empty() {
         return Err(XMLGeneratorError::DataTypesFormatError(
@@ -32,11 +33,10 @@ fn generate_attribute_from_type(
         ));
     }
 
-    let type_info = generator.type_info.first().unwrap();
-    let output = generate(type_info);
+    let output = generate(&generator.type_info);
     match output {
         Some(value) => {
-            xml_element.add_attribute(generator.name.as_str(), value.as_str());
+            xml_element.add_attribute(name.as_str(), value.as_str());
             Ok(())
         }
         None => Err(XMLGeneratorError::DataTypeError(
@@ -82,7 +82,7 @@ impl AttributeGenerator {
         }
 
         let name = &self.name;
-        let type_name = &self.type_name;
+        let type_name = &vec![self.type_name.clone()];
         let value = generate(type_name);
         if let Some(val) = value {
             xml_element.add_attribute(name.as_str(), val.as_str());
@@ -91,8 +91,8 @@ impl AttributeGenerator {
         }
 
         for type_generator in data_types {
-            if type_generator.name.eq(type_name) {
-                generate_attribute_from_type(xml_element, type_generator)?;
+            if type_generator.name.eq(&self.type_name) {
+                generate_attribute_from_type(xml_element, type_generator, name)?;
             }
         }
 
