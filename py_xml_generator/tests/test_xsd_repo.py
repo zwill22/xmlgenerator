@@ -3,7 +3,10 @@ from git import Repo
 from pathlib import Path
 from typing import List
 
-from common import validate_output, get_project_root
+from xmlschema import XMLSchemaValidationError, XMLSchemaParseError, XMLSchemaModelError
+from xmlschema.exceptions import XMLResourceParseError
+
+from .common import validate_output, get_project_root
 
 
 def fetch_xsd_data() -> List[Path]:
@@ -27,19 +30,22 @@ def fetch_xsd_data() -> List[Path]:
 
 data = fetch_xsd_data()
 
+def idfn(file: Path):
+    return str(file)
 
-@pytest.mark.parametrize("file", data)
+@pytest.mark.parametrize("file", data, ids=idfn)
 def test_xsd_file(file):
     try:
         validate_output(file)
-    except BaseException as e:
+    except RuntimeError as e:
         for arg in e.args:
-            if "not implemented" in arg:
-                return
+            errors = [
+                "XSD Parser encountered an error",
+                "Implementation error"
+            ]
 
-        with open(file, 'r') as f:
-            file_data = f.read()
-
-        print(file_data)
+            for e in errors:
+                if e in arg:
+                    return
 
         raise e

@@ -1,7 +1,7 @@
 import pytest
 
 from pathlib import Path
-from common import validate_output, get_project_root
+from .common import validate_output, get_project_root
 
 
 def get_files() -> list[Path]:
