@@ -2,7 +2,6 @@ use pyo3::prelude::*;
 use pyo3::exceptions::PyRuntimeError;
 use xmlgenerator::generate_xml;
 use xmlgenerator::error::XMLGeneratorError;
-use xmlgenerator::error::XMLGeneratorError::XMLBuilderError;
 
 fn generate_parser_error(err_string: String) -> PyErr {
     PyRuntimeError::new_err("XSD Parser encountered an error.\n".to_owned() + err_string.as_str())
@@ -24,7 +23,7 @@ fn get_error(error: XMLGeneratorError) -> PyErr {
         XMLGeneratorError::XSDParserError(e) => generate_parser_error(e),
         XMLGeneratorError::DataTypesFormatError(e) => generate_data_format_error(e),
         XMLGeneratorError::DataTypeError(e) => generate_data_type_error(e),
-        XMLBuilderError(e) => generate_xml_builder_error(e),
+        XMLGeneratorError::XMLBuilderError(e) => generate_xml_builder_error(e),
     }
 }
 
