@@ -4,6 +4,7 @@ use crate::fetch_types::fetch_types;
 use crate::find_root::find_root_element;
 use crate::generate_output::generate_output;
 use crate::generate_schema::generate_schema;
+use crate::schema_version::fetch_schema_version;
 
 mod attribute_generator;
 mod element_generator;
@@ -16,6 +17,7 @@ mod generate_output;
 mod generate_schema;
 mod group_generator;
 mod restriction_generator;
+mod schema_version;
 mod tracker;
 mod type_generator;
 
@@ -39,9 +41,11 @@ mod type_generator;
 /// is returned.
 pub fn generate_xml(xsd_string: &String) -> Result<String, XMLGeneratorError> {
     let schemas = generate_schema(xsd_string)?;
+
+    let version = fetch_schema_version(&schemas)?;
     let data_types = fetch_types(&schemas);
     let elements = fetch_elements(&schemas);
     let root_element = find_root_element(&elements)?;
 
-    generate_output(root_element, &data_types, &elements)
+    generate_output(root_element, &data_types, &elements, version)
 }

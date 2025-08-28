@@ -9,9 +9,10 @@ pub(crate) fn generate_output(
     generator: &ElementGenerator,
     data_types: &Vec<TypeGenerator>,
     elements: &Vec<ElementGenerator>,
+    version: XMLVersion,
 ) -> Result<String, XMLGeneratorError> {
     let mut xml = XMLBuilder::new()
-        .version(XMLVersion::XML1_1)
+        .version(version)
         .encoding("UTF-8".into())
         .build();
 
