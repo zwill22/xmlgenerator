@@ -16,6 +16,7 @@ mod generate_output;
 mod generate_schema;
 mod group_generator;
 mod restriction_generator;
+mod tracker;
 mod type_generator;
 
 /// Generate an XML string containing fake data

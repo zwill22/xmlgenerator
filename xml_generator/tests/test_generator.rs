@@ -3,9 +3,9 @@ mod tests {
     use std::fs::ReadDir;
     use std::path::PathBuf;
     use std::{fs, path};
-    use xmlgenerator::generate_xml;
     use workspace_root::get_workspace_root;
     use xmlgenerator::error::XMLGeneratorError;
+    use xmlgenerator::generate_xml;
 
     fn fetch_test_files(directory: &str) -> ReadDir {
         let root: PathBuf = get_workspace_root();
@@ -81,8 +81,11 @@ mod tests {
 
     #[test]
     fn test_invalid_file() {
-        test_error("recursive.xsd", "No independent structs found");
-        test_error("two_roots.xsd", "Multiple independent structs found!");
+        test_error("recursive.xsd", "Repeated element in hierarchy");
+        test_error(
+            "two_roots.xsd",
+            "Multiple independent (root) elements found!",
+        );
     }
 
     #[test]

@@ -146,9 +146,6 @@ pub(crate) fn get_element_type(element: &ElementType) -> ElementGenerator {
     generator.name = element.name.clone();
 
     if let Some(element_ref) = &element.ref_ {
-        if generator.name.is_some() {
-            panic!("Name already defined.");
-        }
         let reference = get_qname(element_ref);
         generator.reference = Some(reference);
     }

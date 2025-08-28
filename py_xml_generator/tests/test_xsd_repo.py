@@ -13,7 +13,8 @@ def list_from_file(xsd_list: Path, xsd_dir: Path) -> List[Path]:
     with open(xsd_list, 'r') as f:
         files = f.readlines()
 
-    return [ xsd_dir / file for file in files ]
+    return [xsd_dir / file for file in files]
+
 
 def list_from_dir(xsd_dir: Path) -> List[Path]:
     files = xsd_dir.rglob("*.xsd")
@@ -22,12 +23,14 @@ def list_from_dir(xsd_dir: Path) -> List[Path]:
         output.append(xsd_file)
     return output
 
+
 def get_file_list(root_dir: Path, xsd_dir: Path) -> List[Path]:
     xsd_list = root_dir / "xsd_list.txt"
     if xsd_list.is_file():
         return list_from_file(xsd_list, xsd_dir)
     else:
         return list_from_dir(xsd_dir)
+
 
 def output_list(output: List[Path], root_dir: Path, xsd_dir: Path):
     output_file = root_dir / "xsd_list.txt"
@@ -57,10 +60,13 @@ def fetch_xsd_data() -> List[Path]:
 
     return []
 
+
 data = fetch_xsd_data()
+
 
 def id_fn(file: Path):
     return str(file)
+
 
 @pytest.mark.parametrize("file", data, ids=id_fn)
 def test_xsd_file(file):

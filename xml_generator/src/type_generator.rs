@@ -3,6 +3,7 @@ use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
 use crate::generate::generate;
 use crate::group_generator::GroupGenerator;
+use crate::tracker::Tracker;
 use std::ops::Deref;
 use xml_builder::XMLElement;
 
@@ -20,6 +21,7 @@ impl TypeGenerator {
     pub(crate) fn generate(
         &self,
         xml_element: &mut XMLElement,
+        data_tracker: &mut Tracker,
         data_types: &Vec<TypeGenerator>,
         elements: &Vec<ElementGenerator>,
     ) -> Result<(), XMLGeneratorError> {
@@ -39,7 +41,9 @@ impl TypeGenerator {
             let output = generate(&self.type_info);
             match output {
                 None => {
-                    return Err(XMLGeneratorError::DataTypeError("No output generated".to_string()));
+                    return Err(XMLGeneratorError::DataTypeError(
+                        "No output generated".to_string(),
+                    ));
                 }
                 Some(value) => {
                     let result = xml_element.add_text(value);
@@ -51,7 +55,7 @@ impl TypeGenerator {
         }
 
         for element in self.elements.iter() {
-            let child = element.generate(data_types, elements)?;
+            let child = element.generate(data_tracker, data_types, elements)?;
 
             let result = xml_element.add_child(child);
             if result.is_err() {
@@ -63,7 +67,7 @@ impl TypeGenerator {
 
         for group in self.groups.iter() {
             for element in group.elements.iter() {
-                let child = element.generate(data_types, elements)?;
+                let child = element.generate(data_tracker, data_types, elements)?;
 
                 let result = xml_element.add_child(child);
                 if result.is_err() {

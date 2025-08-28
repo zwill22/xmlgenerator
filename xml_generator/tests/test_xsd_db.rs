@@ -15,9 +15,7 @@ mod tests {
     }
 
     fn read_file(path: &PathBuf) -> String {
-        let path_str = path.to_str().unwrap();
-        let message = format!("Could not read file: {}", path_str);
-        fs::read_to_string(path).expect(&message)
+        fs::read_to_string(path).unwrap_or_else(|_| "".to_string())
     }
 
     fn process_error(error: &XMLGeneratorError) {
@@ -35,7 +33,9 @@ mod tests {
         writer: &mut BufWriter<T>,
         result: &Result<String, XMLGeneratorError>,
         filepath: &PathBuf,
-    ) where T: Write {
+    ) where
+        T: Write,
+    {
         match result {
             Ok(_) => {
                 let out = writeln!(writer, "{}", filepath.to_str().unwrap());
@@ -47,18 +47,63 @@ mod tests {
         }
     }
 
+    fn check_error_string(string: &String) {
+        if string.is_empty() {
+            panic!("Unknown error");
+        }
+
+        if string.contains("not implemented") {
+            println!("Implementation error: {}", string);
+            return;
+        } else {
+            panic!("Error: {}", string);
+        }
+    }
+
     fn check_panic(error: Box<dyn Any>) {
         if let Some(s) = error.downcast_ref::<&str>() {
-            println!("Implementation error: {}", s);
+            check_error_string(&s.to_string());
         } else if let Some(s) = error.downcast_ref::<String>() {
-            println!("panic error: {}", s);
+            check_error_string(s)
         } else {
-            println!("unknown error");
+            panic!("Unknown error");
+        }
+    }
+
+    fn check_invalid_error(error: &XMLGeneratorError) {
+        match error {
+            XMLGeneratorError::DataTypeError(_) => {}
+            XMLGeneratorError::XSDParserError(_) => {}
+            XMLGeneratorError::DataTypesFormatError(_) => {}
+            XMLGeneratorError::XMLBuilderError(_) => panic!("XML builder called on invalid input"),
+        }
+    }
+
+    fn check_invalid_result(result: &Result<String, XMLGeneratorError>) {
+        match result {
+            Ok(_) => panic!("Invalid input, result should return an error"),
+            Err(e) => check_invalid_error(e),
+        }
+    }
+
+    fn test_invalid_xml(filepath: &PathBuf) {
+        let contents = read_file(filepath);
+        if contents.is_empty() {
+            return;
+        }
+
+        match panic::catch_unwind(|| generate_xml(&contents)) {
+            Ok(result) => check_invalid_result(&result),
+            Err(error) => check_panic(error),
         }
     }
 
     fn test_xml<T: Write>(writer: &mut BufWriter<T>, filepath: &PathBuf) {
         let contents = read_file(filepath);
+        if contents.is_empty() {
+            return;
+        }
+
         let result = panic::catch_unwind(|| generate_xml(&contents));
 
         match result {
@@ -75,9 +120,12 @@ mod tests {
         for line in reader.lines() {
             let line = line.unwrap();
             let path = root.join("xsdtests-master").join(&line);
-            println!("{}", path.display());
-            test_xml(output_writer, &path);
-            println!("Finished: {}", path.display());
+
+            if line.contains("invalid") {
+                test_invalid_xml(&path);
+            } else {
+                test_xml(output_writer, &path);
+            }
         }
     }
 

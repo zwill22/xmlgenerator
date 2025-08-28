@@ -1,6 +1,8 @@
 use crate::error::XMLGeneratorError;
 use crate::generate;
+use crate::tracker::Tracker;
 use crate::type_generator::TypeGenerator;
+use uuid::Uuid;
 use xml_builder::XMLElement;
 
 pub(crate) struct ElementGenerator {
@@ -10,6 +12,7 @@ pub(crate) struct ElementGenerator {
     pub(crate) reference: Option<String>,
     pub(crate) min: usize,
     pub(crate) max: Option<usize>,
+    id: Uuid,
 }
 
 impl ElementGenerator {
@@ -21,6 +24,7 @@ impl ElementGenerator {
             reference: None,
             min: 1,
             max: None,
+            id: Uuid::new_v4(),
         }
     }
 
@@ -40,6 +44,7 @@ impl ElementGenerator {
 
     pub(crate) fn generate(
         &self,
+        data_tracker: &mut Tracker,
         data_types: &Vec<TypeGenerator>,
         elements: &Vec<ElementGenerator>,
     ) -> Result<XMLElement, XMLGeneratorError> {
@@ -55,10 +60,11 @@ impl ElementGenerator {
                 ));
             }
 
-            return generate::generate_reference(reference, data_types, elements);
+            return generate::generate_reference(data_tracker, reference, data_types, elements);
         }
 
         let name = self.get_name()?;
+        data_tracker.add(self)?;
         let mut root_element = XMLElement::new(name);
 
         if self.type_info.is_some() {
@@ -70,14 +76,26 @@ impl ElementGenerator {
 
             let type_info = self.type_info.as_ref().unwrap();
 
-            generate::generate_type_output(&mut root_element, type_info, data_types, elements)?;
+            generate::generate_type_output(
+                &mut root_element,
+                data_tracker,
+                type_info,
+                data_types,
+                elements,
+            )?;
         } else {
             for content in self.contents.iter() {
-                content.generate(&mut root_element, data_types, elements)?;
+                content.generate(&mut root_element, data_tracker, data_types, elements)?;
             }
         }
 
+        data_tracker.remove(self);
+
         Ok(root_element)
+    }
+
+    pub(crate) fn get_id(&self) -> String {
+        self.id.to_string()
     }
 }
 

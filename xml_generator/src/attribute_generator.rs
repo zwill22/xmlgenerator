@@ -7,7 +7,7 @@ use xsd_parser::models::schema::xs::AttributeUseType;
 fn generate_attribute_from_type(
     xml_element: &mut XMLElement,
     generator: &TypeGenerator,
-    name: &String
+    name: &String,
 ) -> Result<(), XMLGeneratorError> {
     if !generator.elements.is_empty() {
         return Err(XMLGeneratorError::DataTypesFormatError(
