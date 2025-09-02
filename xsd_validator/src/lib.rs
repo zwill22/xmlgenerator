@@ -26,7 +26,7 @@ extern "C" fn structured_error_handler(user_data: *mut c_void, error: xmlErrorPt
     let result = unsafe { CStr::from_ptr((*error).message).to_str() };
     let message = match result {
         Ok(msg) => msg.to_string(),
-        Err(_) => "".to_string(),
+        Err(_) => "Unknown Error".to_string(),
     };
 
     let context = unsafe { &mut *(user_data as *mut Vec<String>) };
