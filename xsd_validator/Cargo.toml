@@ -11,6 +11,7 @@ libxml2-rs = { git = "https://github.com/zwill22/libxml2-rs.git" }
 reqwest = "0.12.23"
 futures = "0.3.31"
 zip = "4.6.0"
+libc = "0.2.175"
 
 [dev-dependencies]
 workspace_root = "0.2.0"

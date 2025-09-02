@@ -54,9 +54,9 @@ mod tests {
 
     fn check_error(error: &XSDValidationError, path: &Path) {
         match error {
-            XSDValidationError::StringError => panic!("Error converting path to string"),
             XSDValidationError::PathError => panic!("Error resolving path: {:?}", path),
-            XSDValidationError::ReadFileError => panic!("Error reading file: {:?}", path),
+            XSDValidationError::StringError => panic!("Error converting path to string"),
+            XSDValidationError::OutputRedirectError(e) => panic!("Error redirecting stderr: {}", e),
             XSDValidationError::GenerateContextError => {
                 panic!("Error generating context for file: {:?}", path)
             }
@@ -107,7 +107,7 @@ mod tests {
 
     #[test]
     fn test_xsd() {
-        let validator = XSDValidator::new();
+        let validator = XSDValidator::new(true);
 
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");

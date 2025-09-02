@@ -1,7 +1,7 @@
+use libc::{STDERR_FILENO, c_int, close, dup, dup2, pipe};
 use libxml2_rs::{
-    xmlCleanupParser, xmlErrorPtr, xmlInitParser, xmlSchemaFree,
-    xmlSchemaNewParserCtxt, xmlSchemaParse, xmlSchemaParserCtxtPtr, xmlSchemaPtr,
-    xmlSchemaSetParserStructuredErrors,
+    xmlCleanupParser, xmlErrorPtr, xmlInitParser, xmlSchemaFree, xmlSchemaNewParserCtxt,
+    xmlSchemaParse, xmlSchemaParserCtxtPtr, xmlSchemaPtr, xmlSchemaSetParserStructuredErrors,
 };
 use std::env::{current_dir, set_current_dir};
 use std::ffi::{CStr, CString, c_char, c_void};
@@ -11,9 +11,88 @@ use std::path::Path;
 pub enum XSDValidationError {
     PathError,
     StringError,
-    ReadFileError,
+    OutputRedirectError(String),
     GenerateContextError,
     ParseError(String),
+}
+
+struct WarningHandler {
+    saved_stderr: Option<c_int>,
+    pipe_fd: Option<[c_int; 2]>,
+    pipe_read: usize,
+    pipe_write: usize,
+}
+
+impl WarningHandler {
+    fn new() -> WarningHandler {
+        WarningHandler {
+            saved_stderr: None,
+            pipe_fd: None,
+            pipe_read: 0,
+            pipe_write: 1,
+        }
+    }
+
+    fn redirect(&mut self) -> Result<(), XSDValidationError> {
+        let saved_stderr = unsafe { dup(STDERR_FILENO) };
+
+        if saved_stderr == -1 {
+            return Err(XSDValidationError::OutputRedirectError(
+                "cannot duplicate stderr".to_string(),
+            ));
+        }
+
+        self.saved_stderr = Some(saved_stderr);
+
+        let mut pipe_fd: [c_int; 2] = [-1; 2];
+
+        if unsafe { pipe(&mut pipe_fd[0]) } == -1 {
+            return Err(XSDValidationError::OutputRedirectError(
+                "cannot create pipe".to_string(),
+            ));
+        }
+
+        // redirect stderr to pipe/log_file
+        if unsafe { dup2(pipe_fd[self.pipe_write], STDERR_FILENO) } == -1 {
+            return Err(XSDValidationError::OutputRedirectError(
+                "cannot redirect stderr to pipe".to_string(),
+            ));
+        }
+
+        self.pipe_fd = Some(pipe_fd);
+
+        Ok(())
+    }
+
+    fn restore_stderr(&mut self) {
+        if let Some(val) = self.saved_stderr {
+            unsafe {
+                dup2(val, STDERR_FILENO);
+                close(val);
+            }
+        }
+    }
+
+    fn close_pipe(&mut self) {
+        if let Some(pipe) = self.pipe_fd {
+            unsafe {
+                close(pipe[self.pipe_read]);
+
+                close(pipe[self.pipe_write]);
+            }
+        }
+    }
+
+    fn restore(&mut self) {
+        self.restore_stderr();
+        self.close_pipe();
+    }
+}
+
+impl Drop for WarningHandler {
+    fn drop(&mut self) {
+        self.restore();
+    }
 }
 
 extern "C" fn structured_error_handler(user_data: *mut c_void, error: xmlErrorPtr) {
@@ -94,13 +173,15 @@ fn setup_error_handler(errors: &mut Vec<String>, parser_context: &SchemaParserCo
     };
 }
 
-pub struct XSDValidator {}
+pub struct XSDValidator {
+    print_warnings: bool,
+}
 
 impl XSDValidator {
-    pub fn new() -> XSDValidator {
+    pub fn new(print_warnings: bool) -> XSDValidator {
         unsafe { xmlInitParser() };
 
-        XSDValidator {}
+        XSDValidator { print_warnings }
     }
 
     fn validate_file(&self, path: &Path) -> Result<bool, XSDValidationError> {
@@ -110,11 +191,21 @@ impl XSDValidator {
 
         setup_error_handler(&mut errors, &parser_context);
 
+        let mut warning_handler = WarningHandler::new();
+
+        if !self.print_warnings {
+            warning_handler.redirect()?;
+        }
+
         let valid = parse_schema(&parser_context);
+
+        warning_handler.restore();
 
         for error in &errors {
             if error.to_lowercase().contains("skipping") {
-                eprintln!("{}", error);
+                if self.print_warnings {
+                    eprintln!("{}", error);
+                }
             } else {
                 return Err(XSDValidationError::ParseError(error.clone()));
             }

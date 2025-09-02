@@ -16,7 +16,7 @@ mod tests {
 
     #[test]
     fn test_xsd() {
-        let validator = XSDValidator::new();
+        let validator = XSDValidator::new(true);
 
         let files = fetch_test_files("working");
         for file in files {
