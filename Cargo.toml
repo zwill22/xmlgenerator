@@ -2,9 +2,11 @@
 resolver = "3"
 members = [
     "xml_generator",
-    "py_xml_generator"
+    "py_xml_generator",
+    "xsd_validator"
 ]
 default-members = [
+    "xsd_validator",
     "xml_generator",
     "py_xml_generator"
 ]
@@ -18,4 +20,3 @@ repository = "https://github.com/zwill22/xmlgenerator"
 
 [workspace.dependencies]
 xmlgenerator = { version = "0.1.0", path = "xml_generator" }
-pyxmlgenerator = { version = "0.1.0", path = "py_xml_generator" }

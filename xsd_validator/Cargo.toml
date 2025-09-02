@@ -1,0 +1,17 @@
+[package]
+name = "xsdvalidator"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+libxml2-rs = { git = "https://github.com/zwill22/libxml2-rs.git" }
+reqwest = "0.12.23"
+futures = "0.3.31"
+zip = "4.6.0"
+
+[dev-dependencies]
+workspace_root = "0.2.0"
+walkdir = "2.5.0"
