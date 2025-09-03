@@ -28,20 +28,11 @@ mod tests {
         fs::read_to_string(path).expect(&message)
     }
 
-    fn test_xml(filepath: &PathBuf, expected: String) {
-        let contents = read_file(filepath);
-        let xml = generate_xml(&contents);
-
-        assert!(xml.is_err());
-        match xml.unwrap_err() {
-            XMLGeneratorError::DataTypeError(error) => {
-                panic!("Data type error: {}", error)
-            }
-            XMLGeneratorError::XSDParserError(error) => panic!("Parse error: {}", error),
-            XMLGeneratorError::DataTypesFormatError(error) => check_error(&error, &expected),
-            XMLGeneratorError::XMLBuilderError(error) => {
-                panic!("XML generation error: {}", error)
-            }
+    fn test_xml(generator: &XMLGenerator, filepath: &PathBuf, expected: &String) {
+        let xml = panic::catch_unwind(|| generator.generate_xml(filepath));
+        match xml {
+            Ok(result) => check_invalid_result(result, expected),
+            Err(error) => check_invalid_panic(error, expected),
         }
     }
 
