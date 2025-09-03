@@ -1,10 +1,8 @@
-use futures::executor::block_on;
 use reqwest::get;
 use roxmltree::{Document, Node, ParsingOptions};
 use std::fs::{File, canonicalize, read_to_string};
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-use workspace_root::get_workspace_root;
 
 use encoding_rs::UTF_16LE;
 use encoding_rs_io::DecodeReaderBytesBuilder;
@@ -56,21 +54,20 @@ fn extract_repo(db_root: &PathBuf, archive: &File) -> Result<(), XSDTestDataErro
     }
 }
 
-fn get_archive_file(archive_path: &PathBuf) -> File {
+async fn get_archive_file(archive_path: &PathBuf) -> File {
     if !archive_path.exists() {
-        let future = fetch_repo(archive_path);
-        return block_on(future);
+        return fetch_repo(archive_path).await;
     }
 
     File::open(archive_path).expect("failed to open file")
 }
 
-fn check_repo(db_root: &PathBuf, archive_path: &PathBuf) {
+async fn check_repo(db_root: &PathBuf, archive_path: &PathBuf) {
     if db_root.exists() {
         return;
     }
 
-    let archive = get_archive_file(archive_path);
+    let archive = get_archive_file(archive_path).await;
 
     match extract_repo(db_root, &archive) {
         Ok(_) => {}
@@ -271,8 +268,7 @@ async fn join(output: &mut Vec<(PathBuf, bool)>, new_results: &Vec<Schema>) {
     }
 }
 
-async fn parse_test_data(filename: &String, db_root_path: &PathBuf) -> Vec<(PathBuf, bool)> {
-    let filepath = db_root_path.join(filename);
+async fn parse_test_data(filepath: &PathBuf, db_root_path: &PathBuf) -> Vec<(PathBuf, bool)> {
     let filedata = read_to_string(&filepath).expect("failed to read file");
     let document = parse(&filedata).expect("failed to parse xml");
 
@@ -290,25 +286,40 @@ async fn parse_test_data(filename: &String, db_root_path: &PathBuf) -> Vec<(Path
     output
 }
 
-pub async fn get_test_data(filename: &String) -> Vec<(PathBuf, bool)> {
-    let root = get_workspace_root();
-    let db_root = root.join("xsdtests-master");
-    let archive_path = root.join("xsd_tests.zip");
+pub async fn get_test_data(
+    db_path: &PathBuf,
+    archive_path: &PathBuf,
+    extra: bool,
+) -> Vec<(PathBuf, bool)> {
+    check_repo(&db_path, &archive_path).await;
 
-    check_repo(&db_root, &archive_path);
+    let suite = db_path.join("suite.xml");
+    let mut data = parse_test_data(&suite, &db_path).await;
 
-    parse_test_data(filename, &db_root).await
+    if !extra {
+        return data;
+    }
+
+    let extra_suite = db_path.join("extra-suite.xml");
+    let extra_data = parse_test_data(&extra_suite, &db_path).await;
+
+    data.extend(extra_data);
+
+    data
 }
 
 #[cfg(test)]
 mod tests {
     use crate::get_test_data;
     use futures::executor::block_on;
+    use workspace_root::get_workspace_root;
 
     #[test]
     fn get_suite() {
-        let filename: String = "suite.xml".to_string();
-        let data = block_on(get_test_data(&filename));
+        let db = get_workspace_root().join("xsdtests-master");
+        let archive = get_workspace_root().join("xsdtests.zip");
+        let extra = true;
+        let data = block_on(get_test_data(&db, &archive, extra));
 
         let mut valid = 0;
         let mut invalid = 0;
@@ -320,7 +331,11 @@ mod tests {
             }
         }
 
-        println!("\tXSD Test database");
+        if extra {
+            println!("\tXSD Test suite (extended)");
+        } else {
+            println!("\tXSD Test suite");
+        }
         println!("\t{:24}{:6}", "Valid schemas", valid);
         println!("\t{:24}{:6}", "Invalid schemas", invalid);
         println!("\t{:24}{:6}", "Total schemas", valid + invalid);
