@@ -1,6 +1,6 @@
 use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
-use crate::tracker::Tracker;
+use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
 use std::string::String;
 use xml_builder::{XMLBuilder, XMLVersion};
@@ -16,9 +16,9 @@ pub(crate) fn generate_output(
         .encoding("UTF-8".into())
         .build();
 
-    let mut data_tracker = Tracker::new();
+    let mut tracker = RecursionTracker::new();
 
-    let root_element = generator.generate(&mut data_tracker, data_types, elements)?;
+    let root_element = generator.generate(&mut tracker, data_types, elements)?;
 
     let mut writer: Vec<u8> = Vec::new();
     xml.set_root_element(root_element);

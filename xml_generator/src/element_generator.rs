@@ -1,6 +1,6 @@
 use crate::error::XMLGeneratorError;
 use crate::generate;
-use crate::tracker::Tracker;
+use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
 use uuid::Uuid;
 use xml_builder::XMLElement;
@@ -44,7 +44,7 @@ impl ElementGenerator {
 
     pub(crate) fn generate(
         &self,
-        data_tracker: &mut Tracker,
+        data_tracker: &mut RecursionTracker,
         data_types: &Vec<TypeGenerator>,
         elements: &Vec<ElementGenerator>,
     ) -> Result<XMLElement, XMLGeneratorError> {

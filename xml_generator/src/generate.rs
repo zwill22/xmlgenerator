@@ -1,6 +1,6 @@
 use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
-use crate::tracker::Tracker;
+use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
 use fake::{Fake, Faker};
 use rand::{Rng, SeedableRng};
@@ -10,7 +10,7 @@ use rand_xorshift::XorShiftRng;
 use xml_builder::XMLElement;
 
 pub(crate) fn generate_reference(
-    data_tracker: &mut Tracker,
+    data_tracker: &mut RecursionTracker,
     reference: &String,
     data_types: &Vec<TypeGenerator>,
     elements: &Vec<ElementGenerator>,
@@ -88,7 +88,7 @@ pub(crate) fn generate(type_name: &Vec<String>) -> Option<String> {
 
 pub fn generate_type_output(
     xml_element: &mut XMLElement,
-    data_tracker: &mut Tracker,
+    data_tracker: &mut RecursionTracker,
     type_name: &String,
     data_types: &Vec<TypeGenerator>,
     elements: &Vec<ElementGenerator>,

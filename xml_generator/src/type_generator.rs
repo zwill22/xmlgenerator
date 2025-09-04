@@ -3,7 +3,7 @@ use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
 use crate::generate::generate;
 use crate::group_generator::GroupGenerator;
-use crate::tracker::Tracker;
+use crate::recursion_tracker::RecursionTracker;
 use std::ops::Deref;
 use xml_builder::XMLElement;
 
@@ -21,7 +21,7 @@ impl TypeGenerator {
     pub(crate) fn generate(
         &self,
         xml_element: &mut XMLElement,
-        data_tracker: &mut Tracker,
+        data_tracker: &mut RecursionTracker,
         data_types: &Vec<TypeGenerator>,
         elements: &Vec<ElementGenerator>,
     ) -> Result<(), XMLGeneratorError> {
