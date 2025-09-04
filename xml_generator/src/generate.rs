@@ -5,6 +5,7 @@ use crate::type_generator::TypeGenerator;
 use fake::{Fake, Faker};
 use rand::{Rng, SeedableRng};
 use rand_regex;
+use rand_regex::Regex;
 use rand_xorshift::XorShiftRng;
 use xml_builder::XMLElement;
 
@@ -50,9 +51,18 @@ fn generate_regex(type_name: &String, pattern: &String) -> Option<String> {
     let mut rng = XorShiftRng::from_seed([0; 16]);
 
     // creates a generator for sampling strings
-    let generator = rand_regex::Regex::compile(pattern, 1).unwrap();
+    let regex_result = Regex::compile(pattern, 1);
+    let generator = match regex_result {
+        Ok(regex) => regex,
+        Err(error) => {
+            unimplemented!("Regex pattern: {}\nError: {}", pattern, error);
+        }
+    };
 
-    let samples = (&mut rng).sample_iter(&generator).take(1).collect::<Vec<String>>();
+    let samples = (&mut rng)
+        .sample_iter(&generator)
+        .take(1)
+        .collect::<Vec<String>>();
 
     if samples.is_empty() {
         return None;
