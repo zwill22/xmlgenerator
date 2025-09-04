@@ -3,9 +3,7 @@ use roxmltree::{Document, Node, ParsingOptions};
 use std::fs::{File, canonicalize, read_to_string};
 use std::io::{BufReader, Read, Write};
 use std::path::{Path, PathBuf};
-
-use encoding_rs::UTF_16LE;
-use encoding_rs_io::DecodeReaderBytesBuilder;
+use file_to_string::read_file;
 
 #[derive(Debug)]
 pub enum XSDTestDataError {
@@ -185,33 +183,10 @@ fn get_test_group(results: &mut Vec<Schema>, test_group: &Node, path: &PathBuf) 
     }
 }
 
-fn read_file_to_string(filepath: &PathBuf) -> Result<String, XSDTestDataError> {
-    match read_to_string(&filepath) {
-        Ok(s) => Ok(s),
-        Err(e) => Err(XSDTestDataError::FileReadError(e.to_string())),
-    }
-}
-
-fn read_file(file_path: &PathBuf) -> String {
-    let file = File::open(file_path).expect("failed to open file");
-    let mut reader = BufReader::new(
-        DecodeReaderBytesBuilder::new()
-            .encoding(Some(UTF_16LE))
-            .build(file),
-    );
-
-    let mut string = String::new();
-    reader
-        .read_to_string(&mut string)
-        .expect("failed to read file");
-
-    string
-}
-
 fn read_test_set_file(schemas: &mut Vec<Schema>, filepath: &PathBuf) {
-    let filedata = match read_file_to_string(&filepath) {
+    let filedata = match read_file(&filepath) {
         Ok(s) => s,
-        Err(_) => read_file(&filepath),
+        Err(e) => panic!("failed to read file: {:?}", e),
     };
 
     let document = match parse(&filedata) {

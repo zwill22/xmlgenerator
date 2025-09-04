@@ -1,5 +1,5 @@
 [package]
-name = "xsdtestdata"
+name = "file_to_string"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -7,9 +7,5 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-roxmltree = "0.20"
-reqwest = "0.12"
-futures = "0.3"
-zip = "4.6"
-workspace_root = "0.2"
-file_to_string = { workspace = true }
+encoding_rs = "0.8"
+encoding_rs_io = "0.1"
