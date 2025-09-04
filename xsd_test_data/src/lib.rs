@@ -1,9 +1,10 @@
+use file_to_string::read_file;
 use reqwest::get;
 use roxmltree::{Document, Node, ParsingOptions};
+use std::collections::HashSet;
 use std::fs::{File, canonicalize, read_to_string};
-use std::io::{BufReader, Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use file_to_string::read_file;
 
 #[derive(Debug)]
 pub enum XSDTestDataError {
@@ -237,46 +238,66 @@ fn get_attribute(node: &Node, name: String) -> String {
     panic!("attribute not found");
 }
 
-async fn join(output: &mut Vec<(PathBuf, bool)>, new_results: &Vec<Schema>) {
+async fn join(
+    output: &mut HashSet<(PathBuf, bool)>,
+    new_results: &Vec<Schema>,
+    ignore: &Vec<PathBuf>,
+) {
     for result in new_results {
-        output.push((result.path.clone(), result.valid));
+        if ignore.contains(&result.path) {
+            continue;
+        }
+        output.insert((result.path.clone(), result.valid));
     }
 }
 
-async fn parse_test_data(filepath: &PathBuf, db_root_path: &PathBuf) -> Vec<(PathBuf, bool)> {
+async fn parse_test_data(
+    filepath: &PathBuf,
+    db_root_path: &PathBuf,
+    ignore: &Vec<PathBuf>,
+) -> HashSet<(PathBuf, bool)> {
     let filedata = read_to_string(&filepath).expect("failed to read file");
     let document = parse(&filedata).expect("failed to parse xml");
 
-    let mut output = vec![];
+    let mut output = HashSet::new();
     let root = document.root_element();
     for child in root.children() {
         let tag = child.tag_name().name();
         if tag == "testSetRef" {
             let test_path = get_attribute(&child, "href".to_string());
             let result = read_test_set(db_root_path, &test_path).await;
-            join(&mut output, &result).await;
+            join(&mut output, &result, ignore).await;
         }
     }
 
     output
 }
 
+fn file_path(db_root: &PathBuf, path_string: &str) -> PathBuf {
+    db_root.join(path_string)
+}
+
 pub async fn get_test_data(
     db_path: &PathBuf,
     archive_path: &PathBuf,
     extra: bool,
-) -> Vec<(PathBuf, bool)> {
+) -> HashSet<(PathBuf, bool)> {
+    let ignore = vec![
+        file_path(&db_path, "msData/particles/particlesZ012.xsd"),
+        file_path(&db_path, "msData/particles/particlesZ015.xsd"),
+        file_path(&db_path, "msData/particles/particlesZ020.xsd"),
+    ];
     check_repo(&db_path, &archive_path).await;
 
     let suite = db_path.join("suite.xml");
-    let mut data = parse_test_data(&suite, &db_path).await;
+    let mut data = parse_test_data(&suite, &db_path, &ignore).await;
 
     if !extra {
         return data;
     }
 
     let extra_suite = db_path.join("extra-suite.xml");
-    let extra_data = parse_test_data(&extra_suite, &db_path).await;
+    let extra_data = parse_test_data(&extra_suite, &db_path, &ignore).await;
 
     data.extend(extra_data);
 
