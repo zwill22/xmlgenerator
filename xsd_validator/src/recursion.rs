@@ -16,7 +16,7 @@ pub(crate) fn recursion_check(path: &PathBuf) -> Result<(), XSDValidationError> 
         Ok(f) => f,
         Err(_) => return Err(XSDValidationError::ReadFileError),
     };
-    
+
     let doc = match Document::parse(&filedata) {
         Ok(d) => d,
         Err(_) => {

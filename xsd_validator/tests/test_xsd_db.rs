@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
     use std::path::{Path, PathBuf};
     use workspace_root::get_workspace_root;
     use xsdtestdata::get_test_data;
@@ -19,7 +20,7 @@ mod tests {
             XSDValidationError::XSDRecursionError => {
                 eprintln!("File includes recursive loop: {:?}", path);
             }
-            XSDValidationError::ParseError(e) => {
+            XSDValidationError::ParseError(_) => {
                 eprintln!("Invalid file listed as valid: {:?}", path)
             }
         }
@@ -46,12 +47,8 @@ mod tests {
         }
     }
 
-    fn validate(validator: &XSDValidator, file_list: &Vec<(PathBuf, bool)>, ignore_list: &Vec<PathBuf>) {
-        for (path, valid) in file_list {
-            if ignore_list.contains(path) {
-                continue;
-            }
-            println!("Validating {:?}", path);
+    fn validate(validator: &XSDValidator, files: &HashSet<(PathBuf, bool)>) {
+        for (path, valid) in files {
             if *valid {
                 test_valid_file(&validator, &path);
             } else {
@@ -60,24 +57,16 @@ mod tests {
         }
     }
 
-    fn file_path(db_root: &PathBuf, path_string: &str) -> PathBuf {
-        db_root.join(path_string)
-    }
-
     #[test]
     fn test_xsd() {
-        let validator = XSDValidator::new(true);
+        let validator = XSDValidator::new(false);
 
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");
         let archive_path = root.join("xsd_tests.zip");
 
-        let file_list = block_on(get_test_data(&db_root, &archive_path, false));
-        let ignore_list = vec![
-            file_path(&db_root, "msData/particles/particlesZ012.xsd"),
-            file_path(&db_root, "msData/particles/particlesZ015.xsd"),
-            file_path(&db_root, "msData/particles/particlesZ020.xsd"),
-        ];
-        validate(&validator, &file_list, &ignore_list);
+        let test_files = block_on(get_test_data(&db_root, &archive_path, true));
+
+        validate(&validator, &test_files);
     }
 }
