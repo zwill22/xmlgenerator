@@ -25,7 +25,7 @@ mod tests {
         }
     }
 
-    fn test_valid_file(validator: &XSDValidator, path: &Path) {
+    fn test_valid_file(validator: &XSDValidator, path: &PathBuf) {
         let result = validator.validate(path);
 
         match result {
@@ -38,7 +38,7 @@ mod tests {
         }
     }
 
-    fn test_invalid_file(validator: &XSDValidator, path: &Path) {
+    fn test_invalid_file(validator: &XSDValidator, path: &PathBuf) {
         if let Ok(value) = validator.validate(path) {
             if value {
                 eprintln!("Invalid XSD validated: {:?}", path);
@@ -66,7 +66,7 @@ mod tests {
 
     #[test]
     fn test_xsd() {
-        let validator = XSDValidator::new(false);
+        let validator = XSDValidator::new(true);
 
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");

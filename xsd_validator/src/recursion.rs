@@ -1,8 +1,8 @@
 use crate::XSDValidationError;
 use crate::tracker::Tracker;
-use roxmltree::{Document, Node};
-use std::fs::read_to_string;
-use std::path::Path;
+use file_to_string::read_file;
+use roxmltree::Document;
+use std::path::PathBuf;
 
 fn parse_document(document: &Document) -> Result<(), XSDValidationError> {
     let mut tracker = Tracker::new();
@@ -11,13 +11,12 @@ fn parse_document(document: &Document) -> Result<(), XSDValidationError> {
     tracker.check_node(&root)
 }
 
-pub(crate) fn recursion_check(path: &Path) -> Result<(), XSDValidationError> {
-    let filedata = match read_to_string(path) {
+pub(crate) fn recursion_check(path: &PathBuf) -> Result<(), XSDValidationError> {
+    let filedata = match read_file(path) {
         Ok(f) => f,
-        Err(e) => {
-            return Err(XSDValidationError::ReadFileError);
-        }
+        Err(_) => return Err(XSDValidationError::ReadFileError),
     };
+    
     let doc = match Document::parse(&filedata) {
         Ok(d) => d,
         Err(_) => {

@@ -4,7 +4,7 @@ use crate::recursion::recursion_check;
 use crate::warning_handler::WarningHandler;
 use libxml2_rs::{xmlCleanupParser, xmlInitParser};
 use std::env::{current_dir, set_current_dir};
-use std::path::Path;
+use std::path::PathBuf;
 
 mod error;
 mod parser;
@@ -24,7 +24,7 @@ impl XSDValidator {
         XSDValidator { print_warnings }
     }
 
-    fn validate_file(&self, path: &Path) -> Result<bool, XSDValidationError> {
+    fn validate_file(&self, path: &PathBuf) -> Result<bool, XSDValidationError> {
         recursion_check(path)?;
         let mut errors: Vec<String> = Vec::new();
 
@@ -54,7 +54,7 @@ impl XSDValidator {
         Ok(valid)
     }
 
-    pub fn validate(&self, path: &Path) -> Result<bool, XSDValidationError> {
+    pub fn validate(&self, path: &PathBuf) -> Result<bool, XSDValidationError> {
         let wd = current_dir().expect("current_dir() failed");
         let file_dir = path.parent().expect("Filepath has no parent");
 
