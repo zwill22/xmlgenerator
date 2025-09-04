@@ -1,5 +1,6 @@
 pub use crate::error::XSDValidationError;
 use crate::parser::Parser;
+use crate::recursion::recursion_check;
 use crate::warning_handler::WarningHandler;
 use libxml2_rs::{xmlCleanupParser, xmlInitParser};
 use std::env::{current_dir, set_current_dir};
@@ -7,7 +8,9 @@ use std::path::Path;
 
 mod error;
 mod parser;
+mod recursion;
 mod schema;
+pub mod tracker;
 mod warning_handler;
 
 pub struct XSDValidator {
@@ -22,6 +25,7 @@ impl XSDValidator {
     }
 
     fn validate_file(&self, path: &Path) -> Result<bool, XSDValidationError> {
+        recursion_check(path)?;
         let mut errors: Vec<String> = Vec::new();
 
         let parser = Parser::new(path)?;

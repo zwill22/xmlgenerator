@@ -5,4 +5,6 @@ pub enum XSDValidationError {
     OutputRedirectError(String),
     GenerateContextError,
     ParseError(String),
+    ReadFileError,
+    XSDRecursionError,
 }

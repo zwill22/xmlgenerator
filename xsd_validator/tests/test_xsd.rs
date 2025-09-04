@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use futures::executor::block_on;
     use std::fs;
     use std::fs::ReadDir;
     use workspace_root::get_workspace_root;
@@ -14,11 +15,7 @@ mod tests {
         paths
     }
 
-    #[test]
-    fn test_xsd() {
-        let validator = XSDValidator::new(true);
-
-        let files = fetch_test_files("working");
+    async fn validate_files(validator: &XSDValidator, files: ReadDir) {
         for file in files {
             let file = file.unwrap().path();
             let result = validator.validate(&file);
@@ -26,5 +23,15 @@ mod tests {
             assert!(result.is_ok());
             assert!(result.unwrap());
         }
+    }
+
+    #[test]
+    fn test_xsd() {
+        let validator = XSDValidator::new(true);
+
+        let files = fetch_test_files("working");
+
+        let validation = validate_files(&validator, files);
+        block_on(validation);
     }
 }
