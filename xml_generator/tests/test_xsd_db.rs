@@ -1,49 +1,51 @@
 #[cfg(test)]
 mod tests {
+    use futures::executor::block_on;
     use std::any::Any;
-    use std::io::{BufReader, BufWriter, prelude::*};
+    use std::collections::HashSet;
     use std::path::PathBuf;
-    use std::{fs, panic};
     use workspace_root::get_workspace_root;
-    use xmlgenerator::error::XMLGeneratorError;
-    use xmlgenerator::generate_xml;
+    use xsdtestdata::get_test_data;
 
-    fn get_file_path(path: &str) -> PathBuf {
-        let root: PathBuf = get_workspace_root();
+    use gag::Gag;
+    use std::panic;
+    use xmlgenerator::{XMLGenerator, XMLGeneratorError};
 
-        root.join(path)
-    }
-
-    fn read_file(path: &PathBuf) -> String {
-        fs::read_to_string(path).unwrap_or_else(|_| "".to_string())
-    }
-
-    fn process_error(error: &XMLGeneratorError) {
+    fn check_error(error: &XMLGeneratorError) {
         match error {
-            XMLGeneratorError::DataTypeError(e) => println!("Data Type Error: {}", e),
-            XMLGeneratorError::XSDParserError(e) => println!("XSD Parser Error: {}", e),
-            XMLGeneratorError::DataTypesFormatError(e) => {
-                println!("XSD DataTypes Format Error: {}", e)
+            XMLGeneratorError::XSDValidatorError(e) => panic!("XSD validator error: {}", e),
+            XMLGeneratorError::DataTypeError(e) => {
+                if e.contains("Cannot find data type") {
+                    eprintln!("{}", e);
+                } else {
+                    panic!("DataTypes error: {}", e)
+                }
             }
-            XMLGeneratorError::XMLBuilderError(e) => println!("XML Builder Error: {}", e),
+            XMLGeneratorError::XSDParserError(e) => eprintln!("XSD parser error: {}", e),
+            XMLGeneratorError::DataTypesFormatError(e) => {
+                if e.contains("No independent elements found") {
+                    eprintln!("{}", e);
+                } else if e.contains("No elements found") {
+                    eprintln!("{}", e);
+                } else {
+                    panic!("DataTypes format error: {}", e)
+                }
+            }
+            XMLGeneratorError::XMLBuilderError(e) => panic!("XML builder error: {}", e),
+            XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD: {}", e),
         }
     }
 
-    fn check_result<T>(
-        writer: &mut BufWriter<T>,
-        result: &Result<String, XMLGeneratorError>,
-        filepath: &PathBuf,
-    ) where
-        T: Write,
-    {
+    fn check_result_str(str: &String) {
+        if str.is_empty() {
+            panic!("Empty string is not allowed");
+        }
+    }
+
+    fn check_result(result: &Result<String, XMLGeneratorError>) {
         match result {
-            Ok(_) => {
-                let out = writeln!(writer, "{}", filepath.to_str().unwrap());
-                if let Err(e) = out {
-                    println!("Error writing file: {}", e);
-                }
-            }
-            Err(error) => process_error(error),
+            Ok(str) => check_result_str(str),
+            Err(err) => check_error(err),
         }
     }
 
@@ -53,7 +55,7 @@ mod tests {
         }
 
         if string.contains("not implemented") {
-            println!("Implementation error: {}", string);
+            eprintln!("Implementation error: {}", string);
             return;
         } else {
             panic!("Error: {}", string);
@@ -70,77 +72,67 @@ mod tests {
         }
     }
 
-    fn check_invalid_error(error: &XMLGeneratorError) {
-        match error {
-            XMLGeneratorError::DataTypeError(_) => {}
-            XMLGeneratorError::XSDParserError(_) => {}
-            XMLGeneratorError::DataTypesFormatError(_) => {}
-            XMLGeneratorError::XMLBuilderError(_) => panic!("XML builder called on invalid input"),
-        }
+    fn run_generator(
+        generator: &XMLGenerator,
+        path: &PathBuf,
+    ) -> Result<Result<String, XMLGeneratorError>, Box<dyn Any + Send>> {
+        let _err_gag = Gag::stderr().unwrap();
+
+        panic::catch_unwind(|| generator.generate(&path))
     }
 
-    fn check_invalid_result(result: &Result<String, XMLGeneratorError>) {
+    fn test_file(generator: &XMLGenerator, path: &PathBuf) {
+        let result = run_generator(generator, path);
+
         match result {
-            Ok(_) => panic!("Invalid input, result should return an error"),
-            Err(e) => check_invalid_error(e),
-        }
-    }
-
-    fn test_invalid_xml(filepath: &PathBuf) {
-        let contents = read_file(filepath);
-        if contents.is_empty() {
-            return;
-        }
-
-        match panic::catch_unwind(|| generate_xml(&contents)) {
-            Ok(result) => check_invalid_result(&result),
+            Ok(valid_result) => check_result(&valid_result),
             Err(error) => check_panic(error),
         }
     }
 
-    fn test_xml<T: Write>(writer: &mut BufWriter<T>, filepath: &PathBuf) {
-        let contents = read_file(filepath);
-        if contents.is_empty() {
-            return;
+    fn validate_file(generator: &XMLGenerator, filepath: &PathBuf, valid: bool) -> bool {
+        if !valid {
+            return false;
         }
 
-        let result = panic::catch_unwind(|| generate_xml(&contents));
+        let result = run_generator(generator, filepath);
 
         match result {
-            Ok(xml) => check_result(writer, &xml, filepath),
-            Err(error) => check_panic(error),
+            Ok(_) => true,
+            Err(_) => false,
         }
     }
 
-    fn test_files(output_writer: &mut BufWriter<fs::File>, filename: &PathBuf) {
-        let root = get_workspace_root();
-        let file = fs::File::open(filename).unwrap();
-        let reader = BufReader::new(file);
-
-        for line in reader.lines() {
-            let line = line.unwrap();
-            let path = root.join("xsdtests-master").join(&line);
-
-            if line.contains("invalid") {
-                test_invalid_xml(&path);
-            } else {
-                test_xml(output_writer, &path);
+    fn get_valid_files(
+        generator: &XMLGenerator,
+        root: &PathBuf,
+        archive: &PathBuf,
+    ) -> HashSet<PathBuf> {
+        let mut valid_files = HashSet::new();
+        let test_data = block_on(get_test_data(root, archive, false));
+        for (filepath, listed_as_valid) in test_data {
+            let valid = validate_file(generator, &filepath, listed_as_valid);
+            if valid {
+                valid_files.insert(filepath);
             }
         }
+
+        valid_files
     }
 
     #[test]
-    fn test_xsd() {
-        let valid_xsd = get_file_path("valid_xsd.txt");
+    fn test_xsd_db() {
+        let generator = XMLGenerator::new();
 
-        let output_file = fs::File::create(valid_xsd).expect("Unable to create file");
-        let mut output_writer = BufWriter::new(output_file);
+        let root = get_workspace_root();
+        let db_root = root.join("xsdtests-master");
+        let archive = root.join("xsdtests.zip");
 
-        let xsd_list = get_file_path("xsd_list.txt");
-        if xsd_list.exists() {
-            test_files(&mut output_writer, &xsd_list);
-        } else {
-            panic!("File does not exist");
+        let valid_files = get_valid_files(&generator, &db_root, &archive);
+
+        for path in valid_files {
+            println!("File: {:?}", path);
+            test_file(&generator, &path);
         }
     }
 }
