@@ -93,9 +93,8 @@ pub(crate) fn find_root_element(
         for item in independent_elements.iter() {
             println!("Independent element: {:?}", item.name);
         }
-        return Err(XMLGeneratorError::DataTypesFormatError(
-            "Multiple independent (root) elements found!".to_string(),
-        ));
+
+        unimplemented!("Multiple independent (root) elements");
     }
 
     for generator in generators.iter() {
