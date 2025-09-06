@@ -3,7 +3,8 @@ use xml_builder::XMLVersion;
 use xsd_parser::Schemas;
 
 pub(crate) fn fetch_schema_version(schemas: &Schemas) -> Result<XMLVersion, XMLGeneratorError> {
-    for (_schema_id, schema) in schemas.schemas() {
+    for (_schema_id, schema_info) in schemas.schemas() {
+        let schema = &schema_info.schema;
         if let Some(ns) = &schema.target_namespace {
             panic!("Target namespace {} is not supported", ns);
         }

@@ -23,11 +23,12 @@ fn fetch_element(content: &SchemaContent) -> Option<ElementGenerator> {
 
 pub(crate) fn fetch_elements(schemas: &Schemas) -> Vec<ElementGenerator> {
     let mut elements = vec![];
-    for (_schema_id, schema) in schemas.schemas() {
+    for (_schema_id, schema_info) in schemas.schemas() {
+        let schema = &schema_info.schema;
         for content in &schema.content {
-            let element = fetch_element(content);
-            if element.is_some() {
-                elements.push(element.unwrap());
+            let element = fetch_element(&content);
+            if let Some(e) = element {
+                elements.push(e);
             }
         }
     }

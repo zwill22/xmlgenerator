@@ -364,7 +364,8 @@ fn get_complex_type(complex: &ComplexBaseType) -> TypeGenerator {
 
 pub(crate) fn fetch_types(schemas: &Schemas) -> Vec<TypeGenerator> {
     let mut types = vec![];
-    for (_schema_id, schema) in schemas.schemas() {
+    for (_schema_id, schema_info) in schemas.schemas() {
+        let schema = &schema_info.schema;
         for content in &schema.content {
             let data_type = fetch_type(content);
             if data_type.is_some() {
