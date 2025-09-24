@@ -1,15 +1,15 @@
 use crate::attribute_generator::AttributeGenerator;
 use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
-use crate::generate::generate;
 use crate::group_generator::GroupGenerator;
 use crate::recursion_tracker::RecursionTracker;
+use crate::type_info::TypeInfo;
 use std::ops::Deref;
 use xml_builder::XMLElement;
 
 pub(crate) struct TypeGenerator {
     pub(crate) name: String,
-    pub(crate) type_info: Vec<String>,
+    pub(crate) type_info: Option<TypeInfo>,
     pub(crate) elements: Vec<ElementGenerator>,
     pub(crate) groups: Vec<GroupGenerator>,
     pub(crate) attributes: Vec<AttributeGenerator>,
@@ -25,7 +25,7 @@ impl TypeGenerator {
         data_types: &Vec<TypeGenerator>,
         elements: &Vec<ElementGenerator>,
     ) -> Result<(), XMLGeneratorError> {
-        if !self.type_info.is_empty() {
+        if let Some(type_info) = &self.type_info {
             if !self.elements.is_empty() {
                 return Err(XMLGeneratorError::DataTypesFormatError(
                     "Type includes type information and elements".to_string(),
@@ -38,10 +38,10 @@ impl TypeGenerator {
                 ));
             }
 
-            let output = generate(&self.type_info);
+            let output = type_info.generate();
             match output {
                 None => {
-                    return Err(XMLGeneratorError::DataTypeError(
+                    return Err(XMLGeneratorError::TypeGenerationError(
                         "No output generated".to_string(),
                     ));
                 }
@@ -88,7 +88,7 @@ impl TypeGenerator {
     pub(crate) fn new() -> Self {
         TypeGenerator {
             name: String::new(),
-            type_info: vec![],
+            type_info: None,
             elements: vec![],
             groups: vec![],
             attributes: vec![],

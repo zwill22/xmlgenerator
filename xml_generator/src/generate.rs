@@ -2,11 +2,7 @@ use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
 use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
-use fake::{Fake, Faker};
-use rand::{Rng, SeedableRng};
-use rand_regex;
-use rand_regex::Regex;
-use rand_xorshift::XorShiftRng;
+use crate::type_info::generate_type;
 use xml_builder::XMLElement;
 
 pub(crate) fn generate_reference(
@@ -27,65 +23,6 @@ pub(crate) fn generate_reference(
     ))
 }
 
-fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
-    Option::from(Faker.fake::<Output>().to_string())
-}
-
-pub(crate) fn generate_type(type_name: &String) -> Option<String> {
-    match type_name.as_str() {
-        "boolean" => make_fake::<bool>(),
-        "decimal" => make_fake::<f32>(),
-        "double" => make_fake::<f64>(),
-        "integer" => make_fake::<i32>(),
-        "positiveInteger" => make_fake::<u32>(),
-        "string" => make_fake::<String>(),
-        _ => None,
-    }
-}
-
-fn generate_regex(type_name: &String, pattern: &String) -> Option<String> {
-    if type_name.to_lowercase().ne("string") {
-        return None;
-    }
-
-    let mut rng = XorShiftRng::from_seed([0; 16]);
-
-    // creates a generator for sampling strings
-    let regex_result = Regex::compile(pattern, 1);
-    let generator = match regex_result {
-        Ok(regex) => regex,
-        Err(error) => {
-            unimplemented!("Regex pattern: {}\nError: {}", pattern, error);
-        }
-    };
-
-    let samples = (&mut rng)
-        .sample_iter(&generator)
-        .take(1)
-        .collect::<Vec<String>>();
-
-    if samples.is_empty() {
-        return None;
-    }
-
-    samples.last().cloned()
-}
-
-pub(crate) fn generate(type_name: &Vec<String>) -> Option<String> {
-    if type_name.len() == 1 {
-        let name = type_name.first().unwrap();
-
-        return generate_type(name);
-    } else if type_name.len() == 2 {
-        let name = type_name.first().unwrap();
-        let pattern = type_name.last().unwrap();
-
-        return generate_regex(name, pattern);
-    }
-
-    None
-}
-
 pub fn generate_type_output(
     xml_element: &mut XMLElement,
     data_tracker: &mut RecursionTracker,
@@ -93,9 +30,8 @@ pub fn generate_type_output(
     data_types: &Vec<TypeGenerator>,
     elements: &Vec<ElementGenerator>,
 ) -> Result<(), XMLGeneratorError> {
-    let output = generate_type(type_name);
-    if output.is_some() {
-        let result = xml_element.add_text(output.unwrap());
+    if let Some(output) = generate_type(type_name) {
+        let result = xml_element.add_text(output);
         return match result {
             Ok(_) => Ok(()),
             Err(err) => Err(XMLGeneratorError::XMLBuilderError(err.to_string())),
@@ -108,8 +44,5 @@ pub fn generate_type_output(
         }
     }
 
-    Err(XMLGeneratorError::DataTypeError(format!(
-        "Cannot find data type: {}",
-        type_name
-    )))
+    Err(XMLGeneratorError::DataTypeNotFoundError(type_name.clone()))
 }

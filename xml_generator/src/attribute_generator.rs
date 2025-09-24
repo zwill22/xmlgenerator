@@ -1,6 +1,6 @@
 use crate::error::XMLGeneratorError;
-use crate::generate::generate;
 use crate::type_generator::TypeGenerator;
+use crate::type_info::TypeInfo;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::AttributeUseType;
 
@@ -27,28 +27,29 @@ fn generate_attribute_from_type(
         ));
     }
 
-    if generator.type_info.is_empty() {
-        return Err(XMLGeneratorError::DataTypeError(
-            "No type dat for attribute".to_string(),
-        ));
+    if let Some(type_info) = &generator.type_info {
+        return match type_info.generate() {
+            Some(value) => {
+                xml_element.add_attribute(name.as_str(), value.as_str());
+                Ok(())
+            }
+            None => Err(XMLGeneratorError::DataTypeNotFoundError(
+                type_info.name.clone(),
+            )),
+        };
     }
 
-    let output = generate(&generator.type_info);
-    match output {
-        Some(value) => {
-            xml_element.add_attribute(name.as_str(), value.as_str());
-            Ok(())
-        }
-        None => Err(XMLGeneratorError::DataTypeError(
-            "Data type not found".to_string(),
-        )),
-    }
+    Err(XMLGeneratorError::DataTypeInformationError(format!(
+        "No type information found for type: {}",
+        name
+    )))
 }
 
 pub struct AttributeGenerator {
     pub(crate) name: String,
     pub(crate) attribute_type: AttributeUseType,
     pub(crate) type_name: String,
+    pub(crate) type_info: Option<TypeInfo>,
 }
 
 impl AttributeGenerator {
@@ -57,6 +58,7 @@ impl AttributeGenerator {
             name: String::new(),
             attribute_type: AttributeUseType::Required,
             type_name: String::new(),
+            type_info: None,
         }
     }
 
@@ -71,23 +73,18 @@ impl AttributeGenerator {
             ));
         }
 
-        if self.type_name.is_empty() {
-            return Err(XMLGeneratorError::DataTypesFormatError(
-                "Attribute type name is empty".to_string(),
-            ));
-        }
-
         if self.attribute_type == AttributeUseType::Prohibited {
             return Ok(());
         }
 
         let name = &self.name;
-        let type_name = &vec![self.type_name.clone()];
-        let value = generate(type_name);
-        if let Some(val) = value {
-            xml_element.add_attribute(name.as_str(), val.as_str());
+        if let Some(type_info) = &self.type_info {
+            let value = type_info.generate();
+            if let Some(val) = value {
+                xml_element.add_attribute(name.as_str(), val.as_str());
 
-            return Ok(());
+                return Ok(());
+            }
         }
 
         for type_generator in data_types {

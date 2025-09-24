@@ -7,16 +7,26 @@ use xsdvalidator::XSDValidationError;
 pub enum XMLGeneratorError {
     /// Error from XSDvalidator module
     XSDValidatorError(String),
-    /// Invalid XSD
-    InvalidXSDError(String),
-    ///  Error finding matching data type
-    DataTypeError(String),
+    /// Data type Error
+    DataTypeInformationError(String),
+    /// Error finding matching data type
+    DataTypeNotFoundError(String),
     /// Error parsing the input XSD file contents
     XSDParserError(String),
     /// Datatypes are in an invalid format
     DataTypesFormatError(String),
     /// Error generating the output XML structure
     XMLBuilderError(String),
+    /// Invalid XSD version
+    InvalidXSDVersionError(String),
+    /// Recursion detected
+    InfiniteRecursionError,
+    /// XSD contains no elements
+    NoElementsError,
+    /// Invalid XSD
+    InvalidXSDError(String),
+    /// Generator Error
+    TypeGenerationError(String),
 }
 
 impl From<XSDValidationError> for XMLGeneratorError {

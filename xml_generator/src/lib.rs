@@ -19,9 +19,9 @@ mod generate_output;
 mod generate_schema;
 mod group_generator;
 mod recursion_tracker;
-mod restriction_generator;
 mod schema_version;
 mod type_generator;
+mod type_info;
 
 pub struct XMLGenerator {
     validator: XSDValidator,

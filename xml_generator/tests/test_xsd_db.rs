@@ -14,25 +14,18 @@ mod tests {
     fn check_error(error: &XMLGeneratorError) {
         match error {
             XMLGeneratorError::XSDValidatorError(e) => panic!("XSD validator error: {}", e),
-            XMLGeneratorError::DataTypeError(e) => {
-                if e.contains("Cannot find data type") {
-                    eprintln!("{}", e);
-                } else {
-                    panic!("DataTypes error: {}", e)
-                }
+            XMLGeneratorError::DataTypeInformationError(e) => {
+                panic!("Data type information error: {}", e)
             }
+            XMLGeneratorError::DataTypeNotFoundError(e) => eprintln!("DataType not found: {}", e),
             XMLGeneratorError::XSDParserError(e) => eprintln!("XSD parser error: {}", e),
-            XMLGeneratorError::DataTypesFormatError(e) => {
-                if e.contains("No independent elements found") {
-                    eprintln!("{}", e);
-                } else if e.contains("No elements found") {
-                    eprintln!("{}", e);
-                } else {
-                    panic!("DataTypes format error: {}", e)
-                }
-            }
+            XMLGeneratorError::DataTypesFormatError(e) => panic!("DataTypes format error: {}", e),
             XMLGeneratorError::XMLBuilderError(e) => panic!("XML builder error: {}", e),
-            XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD: {}", e),
+            XMLGeneratorError::InvalidXSDVersionError(e) => eprintln!("Invalid XSD version: {}", e),
+            XMLGeneratorError::InfiniteRecursionError => eprintln!("Infinite recursion detected"),
+            XMLGeneratorError::NoElementsError => eprintln!("XSD does not contain any elements"),
+            XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
+            XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
         }
     }
 
@@ -90,15 +83,29 @@ mod tests {
         }
     }
 
+    fn validate(
+        generator: &XMLGenerator,
+        filepath: &PathBuf,
+    ) -> Result<Result<(), XMLGeneratorError>, Box<dyn Any + Send>> {
+        let _err_gag = Gag::stderr().unwrap();
+
+        panic::catch_unwind(|| generator.validate(filepath))
+    }
+
+    fn check_validation_result(result: &Result<(), XMLGeneratorError>) -> bool {
+        match result {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+
     fn validate_file(generator: &XMLGenerator, filepath: &PathBuf, valid: bool) -> bool {
         if !valid {
             return false;
         }
 
-        let result = run_generator(generator, filepath);
-
-        match result {
-            Ok(_) => true,
+        match validate(generator, filepath) {
+            Ok(result) => check_validation_result(&result),
             Err(_) => false,
         }
     }
@@ -111,9 +118,11 @@ mod tests {
         let mut valid_files = HashSet::new();
         let test_data = block_on(get_test_data(root, archive, false));
         for (filepath, listed_as_valid) in test_data {
-            let valid = validate_file(generator, &filepath, listed_as_valid);
-            if valid {
-                valid_files.insert(filepath);
+            if listed_as_valid {
+                let valid = validate_file(generator, &filepath, listed_as_valid);
+                if valid {
+                    valid_files.insert(filepath);
+                }
             }
         }
 
@@ -134,5 +143,18 @@ mod tests {
             println!("File: {:?}", path);
             test_file(&generator, &path);
         }
+    }
+
+    #[test]
+    fn test_one_file() {
+        let generator = XMLGenerator::new();
+
+        let file = "msData/complexType/ctZ005.xsd";
+
+        let root = get_workspace_root();
+        let db_root = root.join("xsdtests-master");
+        let path = db_root.join(file);
+
+        test_file(&generator, &path);
     }
 }

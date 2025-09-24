@@ -38,9 +38,7 @@ pub(crate) fn find_root_element(
     generators: &Vec<ElementGenerator>,
 ) -> Result<&ElementGenerator, XMLGeneratorError> {
     if generators.is_empty() {
-        return Err(XMLGeneratorError::DataTypesFormatError(
-            "No elements found".to_string(),
-        ));
+        return Err(XMLGeneratorError::NoElementsError);
     }
 
     let mut all_fields: Vec<&String> = vec![];

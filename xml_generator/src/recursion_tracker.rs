@@ -21,9 +21,7 @@ impl RecursionTracker {
 
     pub(crate) fn add(&mut self, generator: &ElementGenerator) -> Result<(), XMLGeneratorError> {
         if self.includes(generator) {
-            return Err(XMLGeneratorError::InvalidXSDError(
-                "Recursion detected".to_string(),
-            ));
+            return Err(XMLGeneratorError::InfiniteRecursionError);
         }
 
         let id = generator.get_id();

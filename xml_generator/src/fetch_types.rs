@@ -1,81 +1,14 @@
 use crate::attribute_generator::AttributeGenerator;
 use crate::element_generator::ElementGenerator;
 use crate::group_generator::GroupGenerator;
-use crate::restriction_generator::RestrictionGenerator;
 use crate::type_generator::TypeGenerator;
+use crate::type_info::{generate_type_info, get_qname};
 use xsd_parser::Schemas;
+use xsd_parser::models::schema::MaxOccurs;
 use xsd_parser::models::schema::xs::{
-    AttributeType, ComplexBaseType, ComplexBaseTypeContent, ElementType, ElementTypeContent, Facet,
-    FacetType, GroupType, GroupTypeContent, Restriction, RestrictionContent, SchemaContent,
-    SimpleBaseType, SimpleBaseTypeContent,
+    AttributeType, ComplexBaseType, ComplexBaseTypeContent, ElementType, ElementTypeContent,
+    GroupType, GroupTypeContent, SchemaContent, SimpleBaseType,
 };
-use xsd_parser::models::schema::{MaxOccurs, QName};
-
-fn get_qname(qname: &QName) -> String {
-    String::from_utf8(qname.local_name().to_vec()).unwrap()
-}
-
-fn get_facet_type(facet_type: &FacetType) -> String {
-    if facet_type.fixed {
-        unimplemented!("Fixed facet type");
-    }
-
-    if facet_type.annotation.is_some() {
-        unimplemented!("Annotation");
-    }
-
-    facet_type.value.clone()
-}
-
-fn get_facet(facet: &Facet) -> String {
-    match facet {
-        Facet::MinExclusive(x) => get_facet_type(x),
-        Facet::MinInclusive(x) => get_facet_type(x),
-        Facet::MaxExclusive(x) => get_facet_type(x),
-        Facet::MaxInclusive(x) => get_facet_type(x),
-        Facet::TotalDigits(x) => get_facet_type(x),
-        Facet::FractionDigits(x) => get_facet_type(x),
-        Facet::Length(x) => get_facet_type(x),
-        Facet::MinLength(x) => get_facet_type(x),
-        Facet::MaxLength(x) => get_facet_type(x),
-        Facet::Enumeration(x) => get_facet_type(x),
-        Facet::WhiteSpace(x) => get_facet_type(x),
-        Facet::Pattern(x) => get_facet_type(x),
-        Facet::Assertion(_) => unimplemented!("Assertion"),
-        Facet::ExplicitTimezone(x) => get_facet_type(x),
-    }
-}
-
-fn get_restriction_content(content: &RestrictionContent) -> String {
-    match content {
-        RestrictionContent::Annotation(_) => unimplemented!("Annotation"),
-        RestrictionContent::SimpleType(_) => unimplemented!("SimpleType"),
-        RestrictionContent::Facet(x) => get_facet(x),
-    }
-}
-
-fn get_restriction(restriction: &Restriction) -> RestrictionGenerator {
-    let mut generator = RestrictionGenerator::new();
-    if let Some(base) = &restriction.base {
-        generator.name = get_qname(base);
-    }
-
-    for content in &restriction.content {
-        let facet = get_restriction_content(content);
-        generator.facets.push(facet);
-    }
-
-    generator
-}
-
-fn get_content_restriction(content: &SimpleBaseTypeContent) -> RestrictionGenerator {
-    match content {
-        SimpleBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
-        SimpleBaseTypeContent::Restriction(x) => get_restriction(x),
-        SimpleBaseTypeContent::List(_) => unimplemented!("List"),
-        SimpleBaseTypeContent::Union(_) => unimplemented!("Union"),
-    }
-}
 
 fn get_simple_type(simple: &SimpleBaseType) -> TypeGenerator {
     let mut generator = TypeGenerator::new();
@@ -88,24 +21,9 @@ fn get_simple_type(simple: &SimpleBaseType) -> TypeGenerator {
         unimplemented!("Final");
     }
 
-    let mut restrictions = vec![];
-    for content in &simple.content {
-        let restriction = get_content_restriction(content);
-        restrictions.push(restriction);
-    }
+    let type_info = generate_type_info(&simple.content);
 
-    if restrictions.is_empty() {
-        generator.type_info.push("string".to_string());
-
-        return generator;
-    }
-
-    for restriction in &restrictions {
-        generator.type_info.push(restriction.name.clone());
-        for facet in &restriction.facets {
-            generator.type_info.push(facet.clone());
-        }
-    }
+    generator.type_info = Some(type_info);
 
     generator
 }
