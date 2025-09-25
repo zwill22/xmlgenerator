@@ -144,17 +144,4 @@ mod tests {
             test_file(&generator, &path);
         }
     }
-
-    #[test]
-    fn test_one_file() {
-        let generator = XMLGenerator::new();
-
-        let file = "msData/complexType/ctZ005.xsd";
-
-        let root = get_workspace_root();
-        let db_root = root.join("xsdtests-master");
-        let path = db_root.join(file);
-
-        test_file(&generator, &path);
-    }
 }

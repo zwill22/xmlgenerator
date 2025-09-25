@@ -20,24 +20,30 @@ mod tests {
         paths
     }
 
-    fn check_error(error_string: &String, expected_error: &String) {
-        assert_eq!(error_string, expected_error);
+    fn check_error(error: &XMLGeneratorError, expected_error: &String) {
+        match error {
+            XMLGeneratorError::XSDValidatorError(e) => panic!("XSD validator error: {}", e),
+            XMLGeneratorError::DataTypeInformationError(e) => {
+                panic!("Data type information error: {}", e)
+            }
+            XMLGeneratorError::DataTypeNotFoundError(e) => panic!("Data type not found: {}", e),
+            XMLGeneratorError::XSDParserError(e) => panic!("XSD parser error: {}", e),
+            XMLGeneratorError::DataTypesFormatError(e) => panic!("DataTypes format error: {}", e),
+            XMLGeneratorError::XMLBuilderError(e) => panic!("XML builder error: {}", e),
+            XMLGeneratorError::InvalidXSDVersionError(e) => panic!("Invalid XSD version: {}", e),
+            XMLGeneratorError::InfiniteRecursionError => {
+                assert_eq!("Recursion detected", expected_error)
+            }
+            XMLGeneratorError::NoElementsError => panic!("No elements included in XSD"),
+            XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
+            XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
+        }
     }
 
-    fn check_invalid_result(result: Result<String, XMLGeneratorError>, expected_error: &String) {
-        assert!(result.is_err());
-
-        match result.unwrap_err() {
-            XMLGeneratorError::DataTypeError(error) => {
-                panic!("Data type error: {}", error)
-            }
-            XMLGeneratorError::XSDParserError(error) => panic!("Parse error: {}", error),
-            XMLGeneratorError::DataTypesFormatError(error) => check_error(&error, &expected_error),
-            XMLGeneratorError::XMLBuilderError(error) => {
-                panic!("XML generation error: {}", error)
-            }
-            XMLGeneratorError::XSDValidatorError(error) => panic!("XSD Validator error: {}", error),
-            XMLGeneratorError::InvalidXSDError(error) => check_error(&error, &expected_error),
+    fn check_invalid_result(result: &Result<String, XMLGeneratorError>, expected_error: &String) {
+        match result {
+            Ok(_) => panic!("No error thrown for invalid result"),
+            Err(error) => check_error(error, expected_error),
         }
     }
 
@@ -54,7 +60,7 @@ mod tests {
     fn test_xml(generator: &XMLGenerator, filepath: &PathBuf, expected: &String) {
         let xml = panic::catch_unwind(|| generator.generate(filepath));
         match xml {
-            Ok(result) => check_invalid_result(result, expected),
+            Ok(result) => check_invalid_result(&result, expected),
             Err(error) => check_invalid_panic(error, expected),
         }
     }
