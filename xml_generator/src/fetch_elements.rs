@@ -9,7 +9,7 @@ fn fetch_element(content: &SchemaContent) -> Option<ElementGenerator> {
         SchemaContent::Import(_) => unimplemented!("Import"),
         SchemaContent::Redefine(_) => unimplemented!("Redefine"),
         SchemaContent::Override(_) => unimplemented!("Override"),
-        SchemaContent::Annotation(_) => unimplemented!("Annotation"),
+        SchemaContent::Annotation(_) => None,
         SchemaContent::DefaultOpenContent(_) => unimplemented!("DefaultOpenContent"),
         SchemaContent::SimpleType(_) => None,
         SchemaContent::ComplexType(_) => None,

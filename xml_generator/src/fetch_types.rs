@@ -34,7 +34,7 @@ fn fetch_type(content: &SchemaContent) -> Option<TypeGenerator> {
         SchemaContent::Import(_) => unimplemented!("Import"),
         SchemaContent::Redefine(_) => unimplemented!("Redefine"),
         SchemaContent::Override(_) => unimplemented!("Override"),
-        SchemaContent::Annotation(_) => unimplemented!("Annotation"),
+        SchemaContent::Annotation(_) => None,
         SchemaContent::DefaultOpenContent(_) => unimplemented!("DefaultOpenContent"),
         SchemaContent::SimpleType(x) => Some(get_simple_type(x)),
         SchemaContent::ComplexType(x) => Some(get_complex_type(x)),
@@ -267,13 +267,11 @@ fn get_complex_type(complex: &ComplexBaseType) -> TypeGenerator {
     }
 
     for content in &complex.content {
-        let group = get_complex_group(content);
-        if group.is_some() {
-            generator.groups.push(group.unwrap());
+        if let Some(group) = get_complex_group(content) {
+            generator.groups.push(group);
         }
-        let attribute = get_complex_attributes(content);
-        if attribute.is_some() {
-            generator.attributes.push(attribute.unwrap());
+        if let Some(attribute) = get_complex_attributes(content) {
+            generator.attributes.push(attribute);
         }
     }
 
