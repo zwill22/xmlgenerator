@@ -1,5 +1,6 @@
 use fake::{Fake, Faker};
 use rand::{Rng, SeedableRng};
+use rand::seq::IndexedRandom;
 use rand_regex::Regex;
 use rand_xorshift::XorShiftRng;
 use xsd_parser::models::schema::QName;
@@ -22,6 +23,12 @@ pub(crate) fn generate_type(type_name: &String) -> Option<String> {
         "NMTOKEN" => make_fake::<String>(),
         _ => None,
     }
+}
+
+fn generate_enumeration(enumerations: &Vec<String>) -> Option<String> {
+    let mut rng = rand::rng();
+
+    enumerations.choose(&mut rng).cloned()
 }
 
 fn generate_regex(pattern: &String) -> Option<String> {
@@ -48,6 +55,13 @@ fn generate_regex(pattern: &String) -> Option<String> {
     samples.last().cloned()
 }
 
+fn handle_enumeration(type_info: &mut TypeInfo, enumeration: &FacetType) {
+    let value = &enumeration.value;
+
+    type_info.enumerations.push(value.clone());
+}
+
+
 fn handle_pattern(type_info: &mut TypeInfo, pattern: &FacetType) {
     if !pattern.fixed {
         unimplemented!("Unfixed patterns");
@@ -67,7 +81,7 @@ fn handle_facet(type_info: &mut TypeInfo, facet: &Facet) {
         Facet::Length(_) => unimplemented!("Length facet"),
         Facet::MinLength(_) => unimplemented!("MinLength facet"),
         Facet::MaxLength(_) => unimplemented!("MaxLength facet"),
-        Facet::Enumeration(_) => unimplemented!("Enumeration facet"),
+        Facet::Enumeration(facet_type) => handle_enumeration(type_info, facet_type),
         Facet::WhiteSpace(_) => unimplemented!("WhiteSpace facet"),
         Facet::Pattern(facet_type) => handle_pattern(type_info, facet_type),
         Facet::Assertion(_) => unimplemented!("Assertion facet"),
@@ -118,6 +132,7 @@ pub(crate) fn generate_type_info(content: &Vec<SimpleBaseTypeContent>) -> TypeIn
 pub(crate) struct TypeInfo {
     pub(crate) name: String,
     pub(crate) pattern: Option<String>,
+    pub(crate) enumerations: Vec<String>,
 }
 
 impl TypeInfo {
@@ -125,13 +140,23 @@ impl TypeInfo {
         TypeInfo {
             name: String::new(),
             pattern: None,
+            enumerations: Vec::new(),
         }
     }
 
     pub(crate) fn generate(&self) -> Option<String> {
+        if !self.enumerations.is_empty() {
+            if self.pattern.is_some() {
+                panic!("Type info includes enumeration and pattern data");
+            }
+
+            return generate_enumeration(&self.enumerations);
+        }
+
         if let Some(pattern) = &self.pattern {
             return generate_regex(pattern);
         }
+
         match generate_type(&self.name) {
             Some(name) => Some(name),
             None => None,
