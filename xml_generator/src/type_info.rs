@@ -63,10 +63,6 @@ fn handle_enumeration(type_info: &mut TypeInfo, enumeration: &FacetType) {
 
 
 fn handle_pattern(type_info: &mut TypeInfo, pattern: &FacetType) {
-    if !pattern.fixed {
-        unimplemented!("Unfixed patterns");
-    }
-
     type_info.pattern = Some(pattern.value.clone());
 }
 
