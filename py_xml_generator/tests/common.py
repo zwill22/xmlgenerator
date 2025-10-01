@@ -1,5 +1,3 @@
-import pyxmlgenerator
-
 from pathlib import Path
 from xmlschema import XMLSchema, XMLSchemaValidationError
 
@@ -15,21 +13,22 @@ def get_project_root() -> Path:
     )
 
 
-def validate_output(input_file: Path | str):
+def validate_output(xml_generator, input_file: Path | str):
     """
     Validate whether py-xmlgenerator generates output that matches the input schema
-    
+
+    :param xml_generator: XMLGenerator fixture
     :param input_file: Input schema passed to py-xmlgenerator
     
     :raise x
     :return: 
     """
-    with open(input_file, 'r') as f:
-        file_data = f.read()
 
-    result: str = pyxmlgenerator.generate(file_data)
+    filepath = str(input_file)
 
-    schema = XMLSchema(file_data)
+    result: str = xml_generator.generate(filepath)
+
+    schema = XMLSchema(filepath)
 
     try:
         schema.validate(result)

@@ -1,8 +1,8 @@
 import pytest
-from pyxmlgenerator import generate as generate_xml
 
-def test_empty():
+def test_empty(xml_generator):
+
     with pytest.raises(RuntimeError) as e:
-        generate_xml("")
+        xml_generator.generate("")
 
-    assert str(e.value) == "XSD Parser encountered an error.\nXML Error: Unexpected event: Eof!; position=0"
+    assert str(e.value) == "XMLGenerator panic error: Filepath has no parent"

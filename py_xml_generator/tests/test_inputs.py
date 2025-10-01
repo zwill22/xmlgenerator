@@ -11,6 +11,8 @@ def get_files() -> list[Path]:
     return [file for file in example_dir.iterdir()]
 
 
+
+
 @pytest.mark.parametrize("input_file", get_files())
-def test_files(input_file):
-    validate_output(input_file)
+def test_files(xml_generator, input_file):
+    validate_output(xml_generator, input_file)

@@ -1,10 +1,6 @@
 import pytest
-from git import Repo
 from pathlib import Path
 from typing import List
-
-from xmlschema import XMLSchemaValidationError, XMLSchemaParseError, XMLSchemaModelError
-from xmlschema.exceptions import XMLResourceParseError
 
 from .common import validate_output, get_project_root
 
@@ -32,46 +28,37 @@ def get_file_list(root_dir: Path, xsd_dir: Path) -> List[Path]:
         return list_from_dir(xsd_dir)
 
 
-def output_list(output: List[Path], root_dir: Path, xsd_dir: Path):
-    output_file = root_dir / "xsd_list.txt"
-
-    if output_file.is_file():
-        return
-
-    with open(output_file, 'w') as f:
-        for file in output:
-            f.write(f"{str(file.relative_to(xsd_dir))}\n")
-
-
-def fetch_xsd_data() -> List[Path]:
+def fetch_xsd_files() -> List[Path]:
     root_dir = get_project_root()
-    local_dir = root_dir / "xsdtests-master"
+    xsd_dir = root_dir / "xsdtests-master"
 
-    if local_dir.is_dir():
-        xsd_dir = local_dir
-    else:
-        remote: str = "https://github.com/w3c/xsdtests.git"
-        repo = Repo.clone_from(remote, local_dir)
-        xsd_dir = Path(repo.working_dir)
+    assert xsd_dir.is_dir()
 
     files = get_file_list(root_dir, xsd_dir)
 
-    output_list(files, root_dir, xsd_dir)
-
-    return []
+    return files
 
 
-data = fetch_xsd_data()
-
+data = fetch_xsd_files()
 
 def id_fn(file: Path):
     return str(file)
 
 
+def validate_schema(xml_generator, xsd_file: Path):
+    filepath = str(xsd_file)
+    xml_generator.validate(filepath)
+
+
 @pytest.mark.parametrize("file", data, ids=id_fn)
-def test_xsd_file(file):
+def test_xsd_file(xml_generator, file):
     try:
-        validate_output(file)
+        validate_schema(xml_generator, file)
+    except RuntimeError:
+        return
+
+    try:
+        validate_output(xml_generator, file)
     except RuntimeError as e:
         for arg in e.args:
             errors = [

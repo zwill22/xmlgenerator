@@ -7,6 +7,17 @@ function reset_conda() {
   fi
 }
 
+function reset_dir() {
+  if [[ -v original_wd ]]; then
+    cd "${original_wd}" || exit 4
+  fi
+}
+
+# Ensure correct working directory
+original_wd=${PWD}
+directory=$(dirname "$0")
+cd "${directory}" || exit 4
+
 echo "Build py-xmlgenerator"
 unset OLD_CONDA_PREFIX
 echo "Setup"
@@ -25,10 +36,12 @@ build=$?
 if [[ ${build} -ne 0 ]]; then
     echo "Failed to build py-xmlgenerator"
     reset_conda
+    reset_dir
     exit "${build}"
 fi
 
 echo "Build complete"
 
 reset_conda
+reset_dir
 exit 0

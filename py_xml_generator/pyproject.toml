@@ -26,7 +26,6 @@ dev = [
     "pytest>=8.4.1",
     "ruff>=0.12.7",
     "xmlschema>=4.1.0",
-    "gitpython>=3.1.45",
 ]
 
 [tool.pytest.ini_options]
