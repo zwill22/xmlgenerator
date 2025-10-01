@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "pyxmlgenerator"
-description = "Python bindings for XMLGenerator"
+description = "Python bindings for the Rust XMLGenerator library"
 requires-python = ">=3.9"
 readme = "../README.md"
 authors = [

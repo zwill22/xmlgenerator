@@ -1,73 +1,96 @@
-use std::any::Any;
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::create_exception;
+use pyo3::exceptions::{PyException, PyRuntimeError};
 use pyo3::prelude::*;
+use std::any::Any;
 use std::panic;
+use std::path::PathBuf;
+use xmlgenerator::XMLGenerator;
 use xmlgenerator::error::XMLGeneratorError;
-use xmlgenerator::generate_xml;
 
-fn generate_parser_error(err_string: String) -> PyErr {
-    PyRuntimeError::new_err("XSD Parser encountered an error.\n".to_owned() + err_string.as_str())
-}
+create_exception!(pyxmlgenerator, XSDValidatorError, PyException);
+create_exception!(pyxmlgenerator, DataTypeInformationError, PyException);
+create_exception!(pyxmlgenerator, DataTypeNotFoundError, PyException);
+create_exception!(pyxmlgenerator, XSDParserError, PyException);
+create_exception!(pyxmlgenerator, DataTypesFormatError, PyException);
+create_exception!(pyxmlgenerator, XMLBuilderError, PyException);
+create_exception!(pyxmlgenerator, InvalidXSDVersionError, PyException);
+create_exception!(pyxmlgenerator, InfiniteRecursionError, PyException);
+create_exception!(pyxmlgenerator, NoElementsError, PyException);
+create_exception!(pyxmlgenerator, InvalidXSDError, PyException);
+create_exception!(pyxmlgenerator, TypeGenerationError, PyException);
 
-fn generate_data_format_error(err_string: String) -> PyErr {
-    PyRuntimeError::new_err("Input not in valid format:".to_owned() + err_string.as_str())
-}
-
-fn generate_data_type_error(err_string: String) -> PyErr {
-    PyRuntimeError::new_err("Input contains invalid type:".to_owned() + err_string.as_str())
-}
-
-fn generate_xml_builder_error(err_string: String) -> PyErr {
-    PyRuntimeError::new_err("XMLBuilder encountered an error\n".to_owned() + err_string.as_str())
-}
-fn get_error(error: XMLGeneratorError) -> PyErr {
+fn handle_error(error: XMLGeneratorError) -> PyErr {
     match error {
-        XMLGeneratorError::XSDParserError(e) => generate_parser_error(e),
-        XMLGeneratorError::DataTypesFormatError(e) => generate_data_format_error(e),
-        XMLGeneratorError::DataTypeError(e) => generate_data_type_error(e),
-        XMLGeneratorError::XMLBuilderError(e) => generate_xml_builder_error(e),
+        XMLGeneratorError::XSDValidatorError(e) => XSDValidatorError::new_err(e),
+        XMLGeneratorError::DataTypeInformationError(e) => DataTypeInformationError::new_err(e),
+        XMLGeneratorError::DataTypeNotFoundError(e) => DataTypeNotFoundError::new_err(e),
+        XMLGeneratorError::XSDParserError(e) => XSDParserError::new_err(e),
+        XMLGeneratorError::DataTypesFormatError(e) => DataTypesFormatError::new_err(e),
+        XMLGeneratorError::XMLBuilderError(e) => XMLBuilderError::new_err(e),
+        XMLGeneratorError::InvalidXSDVersionError(e) => InvalidXSDVersionError::new_err(e),
+        XMLGeneratorError::InfiniteRecursionError => {
+            InfiniteRecursionError::new_err("Infinite Recursion error")
+        }
+        XMLGeneratorError::NoElementsError => NoElementsError::new_err("No elements found in XSD"),
+        XMLGeneratorError::InvalidXSDError(e) => InvalidXSDError::new_err(e),
+        XMLGeneratorError::TypeGenerationError(e) => TypeGenerationError::new_err(e),
     }
 }
 
-fn parse_result(result: Result<String, XMLGeneratorError>) -> PyResult<String> {
+fn handle_panic(error: Box<dyn Any>) -> PyErr {
+    if let Some(s) = error.downcast_ref::<&str>() {
+        let msg = format!("XMLGenerator Implementation error: {}", s);
+        PyRuntimeError::new_err(msg)
+    } else if let Some(s) = error.downcast_ref::<String>() {
+        let msg = format!("XMLGenerator panic error: {}", s);
+        PyRuntimeError::new_err(msg)
+    } else {
+        PyRuntimeError::new_err("XMLGenerator: unknown error")
+    }
+}
+
+fn handle_result<T>(result: Result<T, XMLGeneratorError>) -> PyResult<T> {
     match result {
-        Ok(xml_string) => Ok(xml_string),
-        Err(e) => {
-            let py_error = get_error(e);
-            Err(py_error)
+        Ok(output) => Ok(output),
+        Err(error) => Err(handle_error(error)),
+    }
+}
+
+#[pyclass(name = "XMLGenerator")]
+pub struct PyXMLGenerator {
+    inner: XMLGenerator,
+}
+
+#[pymethods]
+impl PyXMLGenerator {
+    #[new]
+    fn new() -> PyResult<Self> {
+        match panic::catch_unwind(|| XMLGenerator::new()) {
+            Ok(generator) => Ok(PyXMLGenerator { inner: generator }),
+            Err(error) => Err(handle_panic(error)),
+        }
+    }
+
+    fn validate(&self, filepath: String) -> PyResult<()> {
+        let path_buf = PathBuf::from(filepath);
+        match panic::catch_unwind(|| self.inner.validate(&path_buf)) {
+            Ok(result) => handle_result(result),
+            Err(error) => Err(handle_panic(error)),
+        }
+    }
+
+    fn generate(&self, filepath: String) -> PyResult<String> {
+        let path_buf = PathBuf::from(filepath);
+        match panic::catch_unwind(|| self.inner.generate(&path_buf)) {
+            Ok(result) => handle_result(result),
+            Err(error) => Err(handle_panic(error)),
         }
     }
 }
 
-fn panic_error(error: Box<dyn Any>) -> PyResult<String> {
-    let pyerror: PyErr;
-    if let Some(s) = error.downcast_ref::<&str>() {
-        let msg = format!("XMLGenerator Implementation error: {}", s);
-        pyerror = PyRuntimeError::new_err(msg);
-    } else if let Some(s) = error.downcast_ref::<String>() {
-        let msg = format!("XMLGenerator panic error: {}", s);
-        pyerror = PyRuntimeError::new_err(msg);
-    } else {
-        pyerror = PyRuntimeError::new_err("XMLGenerator: unknown error");
-    }
-
-    Err(pyerror)
-}
-
-/// Formats the sum of two numbers as string.
-#[pyfunction]
-fn generate(xsd_string: String) -> PyResult<String> {
-    let result = panic::catch_unwind(|| generate_xml(&xsd_string));
-
-    match result {
-        Ok(xml) => parse_result(xml),
-        Err(e) => panic_error(e),
-    }
-}
-
-/// A Python module implemented in Rust.
 #[pymodule]
 fn pyxmlgenerator(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(generate, m)?)?;
+    m.add_class::<PyXMLGenerator>()?;
+
     Ok(())
 }
