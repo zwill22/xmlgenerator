@@ -1,6 +1,6 @@
 use crate::error::XMLGeneratorError;
 use crate::type_generator::TypeGenerator;
-use crate::type_info::TypeInfo;
+use crate::type_info::{TypeInfo, generate_type};
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::AttributeUseType;
 
@@ -84,6 +84,11 @@ impl AttributeGenerator {
                 xml_element.add_attribute(name.as_str(), val.as_str());
 
                 return Ok(());
+            }
+        } else {
+            let value = generate_type(&self.type_name);
+            if let Some(val) = value {
+                xml_element.add_attribute(name.as_str(), val.as_str());
             }
         }
 

@@ -18,6 +18,7 @@ pub(crate) fn generate_type(type_name: &String) -> Option<String> {
         "decimal" => make_fake::<f32>(),
         "double" => make_fake::<f64>(),
         "integer" => make_fake::<i32>(),
+        "int" => make_fake::<i32>(),
         "positiveInteger" => make_fake::<u32>(),
         "string" => make_fake::<String>(),
         "NMTOKEN" => make_fake::<String>(),
