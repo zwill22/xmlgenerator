@@ -36,7 +36,7 @@ def validate_output(xml_generator, input_file: Path | str):
         print()
         print("Result does not match schema:")
         print("XSD")
-        print(schema)
+        print(schema.get_text())
         print("XML")
         print(result)
         print()

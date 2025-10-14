@@ -18,6 +18,7 @@ create_exception!(pyxmlgenerator, InfiniteRecursionError, PyException);
 create_exception!(pyxmlgenerator, NoElementsError, PyException);
 create_exception!(pyxmlgenerator, InvalidXSDError, PyException);
 create_exception!(pyxmlgenerator, TypeGenerationError, PyException);
+create_exception!(pyxmlgenerator, ImplementationError, PyException);
 
 fn handle_error(error: XMLGeneratorError) -> PyErr {
     match error {
@@ -39,8 +40,8 @@ fn handle_error(error: XMLGeneratorError) -> PyErr {
 
 fn handle_panic(error: Box<dyn Any>) -> PyErr {
     if let Some(s) = error.downcast_ref::<&str>() {
-        let msg = format!("XMLGenerator Implementation error: {}", s);
-        PyRuntimeError::new_err(msg)
+        let msg = format!("{}", s);
+        ImplementationError::new_err(msg)
     } else if let Some(s) = error.downcast_ref::<String>() {
         let msg = format!("XMLGenerator panic error: {}", s);
         PyRuntimeError::new_err(msg)
@@ -89,8 +90,19 @@ impl PyXMLGenerator {
 }
 
 #[pymodule]
-fn pyxmlgenerator(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn pyxmlgenerator(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyXMLGenerator>()?;
-
+    m.add("XSDValidatorError", _py.get_type::<XSDValidatorError>())?;
+    m.add("DataTypeInformationError", _py.get_type::<DataTypeInformationError>())?;
+    m.add("DataTypeNotFoundError", _py.get_type::<DataTypeNotFoundError>())?;
+    m.add("XSDParserError", _py.get_type::<XSDParserError>())?;
+    m.add("DataTypesFormatError", _py.get_type::<DataTypesFormatError>())?;
+    m.add("XMLBuilderError", _py.get_type::<XMLBuilderError>())?;
+    m.add("InvalidXSDVersionError", _py.get_type::<InvalidXSDVersionError>())?;
+    m.add("InfiniteRecursionError", _py.get_type::<InfiniteRecursionError>())?;
+    m.add("NoElementsError", _py.get_type::<NoElementsError>())?;
+    m.add("InvalidXSDError", _py.get_type::<InvalidXSDError>())?;
+    m.add("TypeGenerationError", _py.get_type::<TypeGenerationError>())?;
+    m.add("ImplementationError", _py.get_type::<ImplementationError>())?;
     Ok(())
 }

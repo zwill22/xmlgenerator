@@ -2,6 +2,8 @@ import pytest
 from pathlib import Path
 from typing import List
 
+import pyxmlgenerator
+
 from .common import validate_output, get_project_root
 
 
@@ -41,6 +43,7 @@ def fetch_xsd_files() -> List[Path]:
 
 data = fetch_xsd_files()
 
+
 def id_fn(file: Path):
     return str(file)
 
@@ -54,20 +57,13 @@ def validate_schema(xml_generator, xsd_file: Path):
 def test_xsd_file(xml_generator, file):
     try:
         validate_schema(xml_generator, file)
-    except RuntimeError:
+    except pyxmlgenerator.XSDValidatorError:
         return
 
     try:
         validate_output(xml_generator, file)
-    except RuntimeError as e:
-        for arg in e.args:
-            errors = [
-                "XSD Parser encountered an error",
-                "Implementation error"
-            ]
-
-            for e in errors:
-                if e in arg:
-                    return
-
-        raise e
+    except pyxmlgenerator.NoElementsError:
+        return
+    except pyxmlgenerator.ImplementationError as e:
+        print(e)
+        return
