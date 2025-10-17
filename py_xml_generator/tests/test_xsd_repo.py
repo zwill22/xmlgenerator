@@ -9,16 +9,8 @@ from pyxsdtestdata import get_xsd_test_data
 from .common import validate_output, get_project_root
 
 
-def fetch_xsd_files(
-        xsd_directory: str = "xsdtests-master",
-        archive_filename: str = "xsdtests.zip",
-        include_extras: bool = True
-) -> List[Path]:
-    root_dir = get_project_root()
-    xsd_dir_path = root_dir / xsd_directory
-    archive_path = root_dir / archive_filename
-
-    data = get_xsd_test_data(xsd_dir_path, archive_path, include_extras)
+def fetch_xsd_files(xsd_root_path: Path, archive_path: Path, include_extras: bool) -> List[Path]:
+    data = get_xsd_test_data(xsd_root_path, archive_path, include_extras)
 
     valid_files = []
     for entry in data:
@@ -33,10 +25,28 @@ def fetch_xsd_files(
 
     return valid_files
 
-valid_data = fetch_xsd_files()
 
-def id_fn(file: Path):
-    return str(file)
+xsd_directory = "xsdtests-master"
+archive_filename = "xsdtests.zip"
+extras = True
+
+root = get_project_root()
+xsd_filepath = root / xsd_directory
+archive_filepath = root / archive_filename
+
+valid_data = fetch_xsd_files(xsd_filepath, archive_filepath, extras)
+
+
+def id_fn(file: Path) -> str:
+    full_path = str(file)
+    root_path = str(xsd_filepath)
+
+    out = full_path.replace(root_path, "")
+
+    if out.startswith("/"):
+        return out[1:]
+
+    return out
 
 
 def validate_schema(xml_generator, xsd_file: Path):
