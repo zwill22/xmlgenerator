@@ -1,6 +1,6 @@
 use fake::{Fake, Faker};
-use rand::{Rng, SeedableRng};
 use rand::seq::IndexedRandom;
+use rand::{Rng, SeedableRng};
 use rand_regex::Regex;
 use rand_xorshift::XorShiftRng;
 use xsd_parser::models::schema::QName;
@@ -33,27 +33,22 @@ fn generate_enumeration(enumerations: &Vec<String>) -> Option<String> {
 }
 
 fn generate_regex(pattern: &String) -> Option<String> {
-    let mut rng = XorShiftRng::from_seed([0; 16]);
+    let seed = rand::random();
+    let mut rng = XorShiftRng::seed_from_u64(seed);
 
-    // creates a generator for sampling strings
-    let regex_result = Regex::compile(pattern, 1);
-    let generator = match regex_result {
-        Ok(regex) => regex,
-        Err(error) => {
-            unimplemented!("Regex pattern: {}\nError: {}", pattern, error);
-        }
-    };
+    let regex = Regex::compile(pattern, 100).unwrap();
 
-    let samples = (&mut rng)
-        .sample_iter(&generator)
-        .take(1)
+    let mut samples = (&mut rng)
+        .sample_iter(&regex)
+        .take(1000)
         .collect::<Vec<String>>();
 
-    if samples.is_empty() {
-        return None;
-    }
+    samples.sort();
 
-    samples.last().cloned()
+    match samples.first() {
+        None => None,
+        Some(s) => Some(s.to_string()),
+    }
 }
 
 fn handle_enumeration(type_info: &mut TypeInfo, enumeration: &FacetType) {
@@ -62,8 +57,9 @@ fn handle_enumeration(type_info: &mut TypeInfo, enumeration: &FacetType) {
     type_info.enumerations.push(value.clone());
 }
 
-
 fn handle_pattern(type_info: &mut TypeInfo, pattern: &FacetType) {
+    println!("Pattern: {}", pattern.value);
+
     type_info.pattern = Some(pattern.value.clone());
 }
 
