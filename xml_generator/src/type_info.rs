@@ -33,10 +33,13 @@ fn generate_enumeration(enumerations: &Vec<String>) -> Option<String> {
 }
 
 fn generate_regex(pattern: &String) -> Option<String> {
-    let seed = rand::random();
+    let seed = 42;
     let mut rng = XorShiftRng::seed_from_u64(seed);
 
-    let regex = Regex::compile(pattern, 100).unwrap();
+    let regex = match Regex::compile(pattern, 100) {
+        Ok(regex) => regex,
+        Err(_) => return None,
+    };
 
     let mut samples = (&mut rng)
         .sample_iter(&regex)
