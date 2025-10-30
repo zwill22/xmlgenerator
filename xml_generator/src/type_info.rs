@@ -1,8 +1,9 @@
 use fake::{Fake, Faker};
 use rand::seq::IndexedRandom;
 use rand::{Rng, SeedableRng};
-use rand_regex::Regex;
+use rand_regex;
 use rand_xorshift::XorShiftRng;
+use regex;
 use xsd_parser::models::schema::QName;
 use xsd_parser::models::schema::xs::{
     Facet, FacetType, Restriction, RestrictionContent, SimpleBaseTypeContent,
@@ -32,11 +33,11 @@ fn generate_enumeration(enumerations: &Vec<String>) -> Option<String> {
     enumerations.choose(&mut rng).cloned()
 }
 
-fn generate_regex(pattern: &String) -> Option<String> {
+fn generate_regex(pattern: &regex::Regex) -> Option<String> {
     let seed = 42;
     let mut rng = XorShiftRng::seed_from_u64(seed);
 
-    let regex = match Regex::compile(pattern, 100) {
+    let regex = match rand_regex::Regex::compile(pattern.as_str(), 100) {
         Ok(regex) => regex,
         Err(_) => return None,
     };
@@ -60,10 +61,26 @@ fn handle_enumeration(type_info: &mut TypeInfo, enumeration: &FacetType) {
     type_info.enumerations.push(value.clone());
 }
 
-fn handle_pattern(type_info: &mut TypeInfo, pattern: &FacetType) {
-    println!("Pattern: {}", pattern.value);
+fn handle_regex_pattern(type_info: &mut TypeInfo, pattern: &str) {
+    match regex::Regex::new(pattern) {
+        Ok(regex) => {
+            type_info.pattern = Some(regex);
+        }
+        Err(pattern_err) => {
+            let escape = regex::escape(pattern);
+            if escape.as_str() != pattern {
+                handle_regex_pattern(type_info, escape.as_str());
+            } else {
+                panic!("Unable to compile regex: {}", pattern_err);
+            }
+        }
+    }
+}
 
-    type_info.pattern = Some(pattern.value.clone());
+fn handle_pattern(type_info: &mut TypeInfo, pattern: &FacetType) {
+    let regex_str = pattern.value.as_str();
+
+    handle_regex_pattern(type_info, regex_str);
 }
 
 fn handle_facet(type_info: &mut TypeInfo, facet: &Facet) {
@@ -127,7 +144,7 @@ pub(crate) fn generate_type_info(content: &Vec<SimpleBaseTypeContent>) -> TypeIn
 
 pub(crate) struct TypeInfo {
     pub(crate) name: String,
-    pub(crate) pattern: Option<String>,
+    pub(crate) pattern: Option<regex::Regex>,
     pub(crate) enumerations: Vec<String>,
 }
 
@@ -166,8 +183,19 @@ impl PartialEq for TypeInfo {
             return false;
         }
 
-        if self.pattern != other.pattern {
-            return false;
+        match &self.pattern {
+            None => match other.pattern {
+                None => {}
+                Some(_) => return false,
+            },
+            Some(pattern1) => match &other.pattern {
+                None => return false,
+                Some(pattern2) => {
+                    if pattern1.as_str() != pattern2.as_str() {
+                        return false;
+                    }
+                }
+            },
         }
 
         true
