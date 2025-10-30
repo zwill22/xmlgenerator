@@ -1,5 +1,7 @@
+import os
 from pathlib import Path
 from xmlschema import XMLSchema, XMLSchemaValidationError
+
 
 def get_project_root() -> Path:
     """
@@ -25,6 +27,10 @@ def validate_output(xml_generator, input_file: Path | str):
     """
 
     filepath = str(input_file)
+    file_dir = Path(input_file).parent
+
+    cwd = Path.cwd()
+    os.chdir(file_dir)
 
     result: str = xml_generator.generate(filepath)
 
@@ -41,3 +47,5 @@ def validate_output(xml_generator, input_file: Path | str):
         print(result)
         print()
         raise e
+    finally:
+        os.chdir(cwd)
