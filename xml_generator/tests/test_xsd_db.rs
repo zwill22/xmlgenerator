@@ -17,7 +17,7 @@ mod tests {
             XMLGeneratorError::DataTypeInformationError(e) => {
                 panic!("Data type information error: {}", e)
             }
-            XMLGeneratorError::DataTypeNotFoundError(e) => eprintln!("DataType not found: {}", e),
+            XMLGeneratorError::DataTypeNotFoundError(e) => panic!("DataType not found: {}", e),
             XMLGeneratorError::XSDParserError(e) => eprintln!("XSD parser error: {}", e),
             XMLGeneratorError::DataTypesFormatError(e) => panic!("DataTypes format error: {}", e),
             XMLGeneratorError::XMLBuilderError(e) => panic!("XML builder error: {}", e),

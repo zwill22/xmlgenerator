@@ -1,9 +1,13 @@
+use chrono::Duration;
+use fake::faker;
 use fake::{Fake, Faker};
+use num_traits::Signed;
 use rand::seq::IndexedRandom;
 use rand::{Rng, SeedableRng};
 use rand_regex;
 use rand_xorshift::XorShiftRng;
 use regex;
+use time::{Date, Time, format_description};
 use xsd_parser::models::schema::QName;
 use xsd_parser::models::schema::xs::{
     Facet, FacetType, Restriction, RestrictionContent, SimpleBaseTypeContent,
@@ -13,16 +17,126 @@ fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
     Option::from(Faker.fake::<Output>().to_string())
 }
 
+fn make_fake_signed<Output: fake::Dummy<Faker> + ToString + Signed>(
+    positive: bool,
+) -> Option<String> {
+    let val: Output = Faker.fake::<Output>();
+
+    let abs_val = val.abs();
+
+    if positive {
+        return Option::from(abs_val.to_string());
+    }
+
+    let negative_val = abs_val.neg();
+
+    Option::from(negative_val.to_string())
+}
+
+fn fake_date() -> Date {
+    faker::time::en::Date().fake::<Date>()
+}
+
+fn fake_date_format(format: &str) -> Option<String> {
+    let date = fake_date();
+    let format = format_description::parse(format).unwrap();
+
+    match date.format(&format) {
+        Ok(format) => Some(format),
+        Err(_) => None,
+    }
+}
+
+fn generate_list(date_type: &String) -> Option<String> {
+    let n = rand::rng().random_range(1..=10);
+    let mut out = "".to_string();
+    let item_type = match date_type.as_str() {
+        "NMTOKENS" => "NMTOKEN",
+        "IDREFS" => "IDREF",
+        _ => return None,
+    };
+
+    for i in 0..n {
+        if i != 0 {
+            out.push(' ');
+        }
+        let item = match generate_type(&item_type.to_string()) {
+            Some(item) => item,
+            None => return None,
+        };
+
+        out.push_str(&item);
+    }
+
+    Some(out)
+}
+
 pub(crate) fn generate_type(type_name: &String) -> Option<String> {
     match type_name.as_str() {
+        // Numeric Data Types
+        "byte" => make_fake::<i8>(),     // A signed 8-bit integer
+        "decimal" => make_fake::<f32>(), // A decimal value
+        "int" => make_fake::<i32>(),     // A signed 32-bit integer
+        "integer" => make_fake::<i32>(), // An integer value
+        "long" => make_fake::<i64>(),    // A signed 64-bit integer
+        "negativeInteger" => make_fake_signed::<i32>(false), // A signed negative integer
+        "nonNegativeInteger" => make_fake_signed::<i32>(true), // A signed positive integer
+        "nonPositiveInteger" => make_fake_signed::<i32>(false), // A non-positive integer
+        "positiveInteger" => make_fake_signed::<i32>(true), // A positive integer
+        "short" => make_fake::<i16>(),   // A signed 16-bit integer
+        "unsignedLong" => make_fake::<u64>(), // An unsigned 64-bit integer
+        "unsignedInt" => make_fake::<u32>(), // An unsigned 32-bit integer
+        "unsignedShort" => make_fake::<u16>(), // An unsigned 16-bit integer
+        "unsignedByte" => make_fake::<u8>(), // An unsigned 8-bit integer
+
+        // String data types
+        // TODO Add patterns for string types
+        "ENTITIES" => make_fake::<String>(),         // ENTITIES
+        "ENTITY" => make_fake::<String>(),           // ENTITY
+        "ID" => make_fake::<String>(),               // A string that represents the ID attribute
+        "IDREF" => make_fake::<String>(),            // A string that represents the IDREF attribute
+        "language" => make_fake::<String>(),         // A string that contains a valid language id
+        "Name" => make_fake::<String>(),             // A string that contains a valid XML name
+        "NCName" => make_fake::<String>(),           // NCName
+        "NMTOKEN" => make_fake::<String>(), // A string that represents the NMTOKEN attribute
+        "normalizedString" => make_fake::<String>(), // A string that does not contain line feeds, carriage returns, or tabs
+        "QName" => make_fake::<String>(),            // QName
+        "string" => make_fake::<String>(),           // A string
+        "token" => make_fake::<String>(), // A string that does not contain line feeds, carriage returns, tabs, leading or trailing spaces, or multiple spaces
+
+        // Date time data types
+        "date" => make_fake::<Date>(), // Defines a date value
+        "dateTime" => Some(faker::time::en::DateTime().fake()), // Defines a date and time value
+        "duration" => make_fake::<Duration>(), // Defines a time interval
+        "gDay" => fake_date_format("[day]"), // Defines the day (DD)
+        "gMonth" => fake_date_format("[month]"), // Defines the month (MM)
+        "gMonthDay" => fake_date_format("[month]-[day]"), // Defines the month and day (MM-DD)
+        "gYear" => fake_date_format("[year]"), // Defines the year (YYYY)
+        "gYearMonth" => fake_date_format("[year]-[month]"), // Defines the year and month (YYYY-MM)
+        "time" => make_fake::<Time>(),
+
+        // Miscellaneous data types
+        "anyURI" => make_fake::<http::Uri>(),
+        "base64Binary" => Some(fake::base64::Base64.fake()),
         "boolean" => make_fake::<bool>(),
-        "decimal" => make_fake::<f32>(),
+        "float" => make_fake::<f32>(),
         "double" => make_fake::<f64>(),
-        "integer" => make_fake::<i32>(),
-        "int" => make_fake::<i32>(),
-        "positiveInteger" => make_fake::<u32>(),
-        "string" => make_fake::<String>(),
-        "NMTOKEN" => make_fake::<String>(),
+        "hexBinary" => {
+            let fake_string = make_fake::<String>().unwrap();
+            let fake_hex_from_string = hex::encode(fake_string.as_bytes());
+
+            Some(fake_hex_from_string)
+        }
+        "NOTATION" => make_fake::<String>(),
+
+        // List types
+        "NMTOKENS" => generate_list(type_name),
+        "IDREFS" => generate_list(type_name),
+
+        // Just use a string for any type
+        "anyType" => make_fake::<String>(),
+        "anySimpleType" => make_fake::<String>(),
+
         _ => None,
     }
 }
