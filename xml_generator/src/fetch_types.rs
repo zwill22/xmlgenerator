@@ -1,3 +1,4 @@
+use crate::XMLGeneratorError;
 use crate::attribute_generator::AttributeGenerator;
 use crate::element_generator::ElementGenerator;
 use crate::group_generator::GroupGenerator;
@@ -10,7 +11,7 @@ use xsd_parser::models::schema::xs::{
     GroupType, GroupTypeContent, SchemaContent, SimpleBaseType,
 };
 
-fn get_simple_type(simple: &SimpleBaseType) -> TypeGenerator {
+fn get_simple_type(simple: &SimpleBaseType) -> Result<TypeGenerator, XMLGeneratorError> {
     let mut generator = TypeGenerator::new();
     generator.name = simple.name.clone().unwrap_or("".to_string());
     if generator.name.is_empty() {
@@ -21,14 +22,14 @@ fn get_simple_type(simple: &SimpleBaseType) -> TypeGenerator {
         unimplemented!("Final");
     }
 
-    let type_info = generate_type_info(&simple.content);
+    let type_info = generate_type_info(&simple.content)?;
 
     generator.type_info = Some(type_info);
 
-    generator
+    Ok(generator)
 }
 
-fn fetch_type(content: &SchemaContent) -> Option<TypeGenerator> {
+fn fetch_type(content: &SchemaContent) -> Option<Result<TypeGenerator, XMLGeneratorError>> {
     match content {
         SchemaContent::Include(_) => unimplemented!("Include"),
         SchemaContent::Import(_) => unimplemented!("Import"),
@@ -46,7 +47,7 @@ fn fetch_type(content: &SchemaContent) -> Option<TypeGenerator> {
     }
 }
 
-fn get_element_content(content: &ElementTypeContent) -> TypeGenerator {
+fn get_element_content(content: &ElementTypeContent) -> Result<TypeGenerator, XMLGeneratorError> {
     match content {
         ElementTypeContent::Annotation(_) => unimplemented!("Annotation"),
         ElementTypeContent::SimpleType(x) => get_simple_type(x),
@@ -58,7 +59,9 @@ fn get_element_content(content: &ElementTypeContent) -> TypeGenerator {
     }
 }
 
-pub(crate) fn get_element_type(element: &ElementType) -> ElementGenerator {
+pub(crate) fn get_element_type(
+    element: &ElementType,
+) -> Result<ElementGenerator, XMLGeneratorError> {
     let mut generator = ElementGenerator::new();
 
     generator.name = element.name.clone();
@@ -117,14 +120,14 @@ pub(crate) fn get_element_type(element: &ElementType) -> ElementGenerator {
     }
 
     for content in &element.content {
-        let result = get_element_content(content);
+        let result = get_element_content(content)?;
         generator.contents.push(result);
     }
 
-    generator
+    Ok(generator)
 }
 
-fn get_group_content(content: &GroupTypeContent) -> ElementGenerator {
+fn get_group_content(content: &GroupTypeContent) -> Result<ElementGenerator, XMLGeneratorError> {
     match content {
         GroupTypeContent::Annotation(_) => unimplemented!("Annotation"),
         GroupTypeContent::Element(x) => get_element_type(x),
@@ -136,7 +139,7 @@ fn get_group_content(content: &GroupTypeContent) -> ElementGenerator {
     }
 }
 
-fn get_group(group: &GroupType) -> GroupGenerator {
+fn get_group(group: &GroupType) -> Result<GroupGenerator, XMLGeneratorError> {
     let mut generator = GroupGenerator::new();
 
     if group.name.is_some() {
@@ -155,23 +158,25 @@ fn get_group(group: &GroupType) -> GroupGenerator {
     };
 
     for content in &group.content {
-        let element = get_group_content(content);
+        let element = get_group_content(content)?;
         generator.elements.push(element);
     }
 
-    generator
+    Ok(generator)
 }
 
-fn get_complex_group(content: &ComplexBaseTypeContent) -> Option<GroupGenerator> {
+fn get_complex_group(
+    content: &ComplexBaseTypeContent,
+) -> Option<Result<GroupGenerator, XMLGeneratorError>> {
     match content {
         ComplexBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
         ComplexBaseTypeContent::SimpleContent(_) => unimplemented!("SimpleContent"),
         ComplexBaseTypeContent::ComplexContent(_) => unimplemented!("ComplexContent"),
         ComplexBaseTypeContent::OpenContent(_) => unimplemented!("OpenContent"),
-        ComplexBaseTypeContent::Group(x) => Option::from(get_group(x)),
-        ComplexBaseTypeContent::All(x) => Option::from(get_group(x)),
-        ComplexBaseTypeContent::Choice(x) => Option::from(get_group(x)),
-        ComplexBaseTypeContent::Sequence(x) => Option::from(get_group(x)),
+        ComplexBaseTypeContent::Group(x) => Some(get_group(x)),
+        ComplexBaseTypeContent::All(x) => Some(get_group(x)),
+        ComplexBaseTypeContent::Choice(x) => Some(get_group(x)),
+        ComplexBaseTypeContent::Sequence(x) => Some(get_group(x)),
         ComplexBaseTypeContent::Attribute(_) => None,
         ComplexBaseTypeContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
         ComplexBaseTypeContent::AnyAttribute(_) => unimplemented!("AnyAttribute"),
@@ -241,7 +246,7 @@ fn get_complex_attributes(content: &ComplexBaseTypeContent) -> Option<AttributeG
     }
 }
 
-fn get_complex_type(complex: &ComplexBaseType) -> TypeGenerator {
+fn get_complex_type(complex: &ComplexBaseType) -> Result<TypeGenerator, XMLGeneratorError> {
     let mut generator = TypeGenerator::new();
     generator.name = complex.name.clone().unwrap_or("".to_string());
 
@@ -268,27 +273,29 @@ fn get_complex_type(complex: &ComplexBaseType) -> TypeGenerator {
 
     for content in &complex.content {
         if let Some(group) = get_complex_group(content) {
-            generator.groups.push(group);
+            generator.groups.push(group?);
         }
         if let Some(attribute) = get_complex_attributes(content) {
             generator.attributes.push(attribute);
         }
     }
 
-    generator
+    Ok(generator)
 }
 
-pub(crate) fn fetch_types(schemas: &Schemas) -> Vec<TypeGenerator> {
+pub(crate) fn fetch_types(schemas: &Schemas) -> Result<Vec<TypeGenerator>, XMLGeneratorError> {
     let mut types = vec![];
     for (_schema_id, schema_info) in schemas.schemas() {
         let schema = &schema_info.schema;
         for content in &schema.content {
-            let data_type = fetch_type(content);
-            if data_type.is_some() {
-                types.push(data_type.unwrap());
+            match fetch_type(content) {
+                Some(data_type) => {
+                    types.push(data_type?);
+                }
+                None => {}
             }
         }
     }
 
-    types
+    Ok(types)
 }

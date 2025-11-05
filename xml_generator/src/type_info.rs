@@ -1,3 +1,4 @@
+use crate::XMLGeneratorError;
 use chrono::Duration;
 use fake::faker;
 use fake::{Fake, Faker};
@@ -169,35 +170,59 @@ fn generate_regex(pattern: &regex::Regex) -> Option<String> {
     }
 }
 
-fn handle_enumeration(type_info: &mut TypeInfo, enumeration: &FacetType) {
+fn handle_enumeration(
+    type_info: &mut TypeInfo,
+    enumeration: &FacetType,
+) -> Result<(), XMLGeneratorError> {
     let value = &enumeration.value;
 
     type_info.enumerations.push(value.clone());
+
+    Ok(())
 }
 
-fn handle_regex_pattern(type_info: &mut TypeInfo, pattern: &str) {
-    match regex::Regex::new(pattern) {
+fn check_carriage_returns(pattern: &str) -> Result<(), XMLGeneratorError> {
+    let stripped = pattern.replace("\\r\\n", "");
+
+    if stripped.contains("\\r") {
+        return Err(XMLGeneratorError::UnimplementedFeature(
+            "Carriage returns".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn handle_regex_pattern(type_info: &mut TypeInfo, pattern: &str) -> Result<(), XMLGeneratorError> {
+    check_carriage_returns(pattern)?;
+
+    let lf_pattern = pattern.to_string();
+    match regex::Regex::new(lf_pattern.as_str()) {
         Ok(regex) => {
             type_info.pattern = Some(regex);
+            Ok(())
         }
         Err(pattern_err) => {
-            let escape = regex::escape(pattern);
-            if escape.as_str() != pattern {
-                handle_regex_pattern(type_info, escape.as_str());
+            let escape = regex::escape(lf_pattern.as_str());
+            if escape.as_str() != lf_pattern {
+                handle_regex_pattern(type_info, escape.as_str())
             } else {
-                panic!("Unable to compile regex: {}", pattern_err);
+                Err(XMLGeneratorError::RegexError(format!(
+                    "Compilation error: {}",
+                    pattern_err
+                )))
             }
         }
     }
 }
 
-fn handle_pattern(type_info: &mut TypeInfo, pattern: &FacetType) {
+fn handle_pattern(type_info: &mut TypeInfo, pattern: &FacetType) -> Result<(), XMLGeneratorError> {
     let regex_str = pattern.value.as_str();
 
-    handle_regex_pattern(type_info, regex_str);
+    handle_regex_pattern(type_info, regex_str)
 }
 
-fn handle_facet(type_info: &mut TypeInfo, facet: &Facet) {
+fn handle_facet(type_info: &mut TypeInfo, facet: &Facet) -> Result<(), XMLGeneratorError> {
     match facet {
         Facet::MinExclusive(_) => unimplemented!("MinExclusive facet"),
         Facet::MinInclusive(_) => unimplemented!("MinInclusive facet"),
@@ -216,7 +241,10 @@ fn handle_facet(type_info: &mut TypeInfo, facet: &Facet) {
     }
 }
 
-fn handle_content(type_info: &mut TypeInfo, content: &RestrictionContent) {
+fn handle_content(
+    type_info: &mut TypeInfo,
+    content: &RestrictionContent,
+) -> Result<(), XMLGeneratorError> {
     match content {
         RestrictionContent::Annotation(_) => unimplemented!("Annotation"),
         RestrictionContent::SimpleType(_) => unimplemented!("SimpleType"),
@@ -228,17 +256,25 @@ pub(crate) fn get_qname(qname: &QName) -> String {
     String::from_utf8(qname.local_name().to_vec()).unwrap()
 }
 
-fn get_restriction(type_info: &mut TypeInfo, restriction: &Restriction) {
+fn get_restriction(
+    type_info: &mut TypeInfo,
+    restriction: &Restriction,
+) -> Result<(), XMLGeneratorError> {
     if let Some(base) = &restriction.base {
         type_info.name = get_qname(base);
     }
 
     for content in &restriction.content {
-        handle_content(type_info, content);
+        handle_content(type_info, content)?;
     }
+
+    Ok(())
 }
 
-fn parse_restriction(type_info: &mut TypeInfo, content: &SimpleBaseTypeContent) {
+fn parse_restriction(
+    type_info: &mut TypeInfo,
+    content: &SimpleBaseTypeContent,
+) -> Result<(), XMLGeneratorError> {
     match content {
         SimpleBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
         SimpleBaseTypeContent::Restriction(x) => get_restriction(type_info, x),
@@ -247,13 +283,15 @@ fn parse_restriction(type_info: &mut TypeInfo, content: &SimpleBaseTypeContent) 
     }
 }
 
-pub(crate) fn generate_type_info(content: &Vec<SimpleBaseTypeContent>) -> TypeInfo {
+pub(crate) fn generate_type_info(
+    content: &Vec<SimpleBaseTypeContent>,
+) -> Result<TypeInfo, XMLGeneratorError> {
     let mut type_info = TypeInfo::new();
     for item in content {
-        parse_restriction(&mut type_info, item);
+        parse_restriction(&mut type_info, item)?;
     }
 
-    type_info
+    Ok(type_info)
 }
 
 pub(crate) struct TypeInfo {

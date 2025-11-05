@@ -27,6 +27,10 @@ pub enum XMLGeneratorError {
     InvalidXSDError(String),
     /// Generator Error
     TypeGenerationError(String),
+    /// Regex Compilation Error
+    RegexError(String),
+    /// Unimplemented Feature
+    UnimplementedFeature(String),
 }
 
 impl From<XSDValidationError> for XMLGeneratorError {

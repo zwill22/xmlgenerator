@@ -26,6 +26,8 @@ mod tests {
             XMLGeneratorError::NoElementsError => eprintln!("XSD does not contain any elements"),
             XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
+            XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
+            XMLGeneratorError::UnimplementedFeature(e) => eprintln!("Unimplemented feature: {}", e),
         }
     }
 

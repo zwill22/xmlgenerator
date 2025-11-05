@@ -1,9 +1,10 @@
+use crate::XMLGeneratorError;
 use crate::element_generator::ElementGenerator;
 use crate::fetch_types::get_element_type;
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::SchemaContent;
 
-fn fetch_element(content: &SchemaContent) -> Option<ElementGenerator> {
+fn fetch_element(content: &SchemaContent) -> Option<Result<ElementGenerator, XMLGeneratorError>> {
     match content {
         SchemaContent::Include(_) => unimplemented!("Include"),
         SchemaContent::Import(_) => unimplemented!("Import"),
@@ -21,17 +22,19 @@ fn fetch_element(content: &SchemaContent) -> Option<ElementGenerator> {
     }
 }
 
-pub(crate) fn fetch_elements(schemas: &Schemas) -> Vec<ElementGenerator> {
+pub(crate) fn fetch_elements(
+    schemas: &Schemas,
+) -> Result<Vec<ElementGenerator>, XMLGeneratorError> {
     let mut elements = vec![];
     for (_schema_id, schema_info) in schemas.schemas() {
         let schema = &schema_info.schema;
         for content in &schema.content {
             let element = fetch_element(&content);
             if let Some(e) = element {
-                elements.push(e);
+                elements.push(e?);
             }
         }
     }
 
-    elements
+    Ok(elements)
 }
