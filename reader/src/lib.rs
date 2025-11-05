@@ -32,7 +32,7 @@ fn read_file_encoding(
     encodings: &Encodings,
     index: usize,
 ) -> Result<String, Error> {
-    let file = File::open(file_path).expect("failed to open file");
+    let file = File::open(file_path)?;
     let encoding = match encodings.get(index) {
         Some(encoding) => encoding,
         None => return Err(Error::new(ErrorKind::InvalidData, "cannot read file")),

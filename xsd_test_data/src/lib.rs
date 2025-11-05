@@ -2,9 +2,10 @@ use file_to_string::read_file;
 use reqwest::get;
 use roxmltree::{Document, Node, ParsingOptions};
 use std::collections::HashSet;
-use std::fs::{File, canonicalize, read_to_string};
+use std::fs::{File, canonicalize};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use zip::read::root_dir_common_filter;
 
 #[derive(Debug)]
 pub enum XSDTestDataError {
@@ -29,7 +30,7 @@ impl Schema {
     }
 }
 
-async fn fetch_repo(archive_path: &PathBuf) -> File {
+async fn fetch_repo(archive_path: &PathBuf) {
     let url = "https://github.com/w3c/xsdtests/archive/refs/heads/master.zip".to_string();
 
     let response = get(url).await.expect("failed to send request");
@@ -37,8 +38,6 @@ async fn fetch_repo(archive_path: &PathBuf) -> File {
 
     let mut file = File::create(archive_path).expect("failed to create file");
     file.write_all(&content).expect("failed to write to file");
-
-    file
 }
 
 fn extract_repo(db_root: &PathBuf, archive: &File) -> Result<(), XSDTestDataError> {
@@ -47,7 +46,7 @@ fn extract_repo(db_root: &PathBuf, archive: &File) -> Result<(), XSDTestDataErro
         Err(_) => return Err(XSDTestDataError::ArchiveError),
     };
 
-    match archive.extract(db_root) {
+    match archive.extract_unwrapped_root_dir(db_root, root_dir_common_filter) {
         Ok(_) => Ok(()),
         Err(_) => Err(XSDTestDataError::ArchiveExtractionError),
     }
@@ -55,7 +54,7 @@ fn extract_repo(db_root: &PathBuf, archive: &File) -> Result<(), XSDTestDataErro
 
 async fn get_archive_file(archive_path: &PathBuf) -> File {
     if !archive_path.exists() {
-        return fetch_repo(archive_path).await;
+        fetch_repo(archive_path).await;
     }
 
     File::open(archive_path).expect("failed to open file")
@@ -256,7 +255,7 @@ async fn parse_test_data(
     db_root_path: &PathBuf,
     ignore: &Vec<PathBuf>,
 ) -> HashSet<(PathBuf, bool)> {
-    let filedata = read_to_string(&filepath).expect("failed to read file");
+    let filedata = read_file(&filepath).expect("failed to read file");
     let document = parse(&filedata).expect("failed to parse xml");
 
     let mut output = HashSet::new();
@@ -307,7 +306,7 @@ pub async fn get_test_data(
 #[cfg(test)]
 mod tests {
     use crate::get_test_data;
-    use futures::executor::block_on;
+    use tokio::runtime::Runtime;
     use workspace_root::get_workspace_root;
 
     #[test]
@@ -315,7 +314,10 @@ mod tests {
         let db = get_workspace_root().join("xsdtests-master");
         let archive = get_workspace_root().join("xsdtests.zip");
         let extra = true;
-        let data = block_on(get_test_data(&db, &archive, extra));
+
+        let rt = Runtime::new().unwrap();
+
+        let data = rt.block_on(get_test_data(&db, &archive, extra));
 
         let mut valid = 0;
         let mut invalid = 0;

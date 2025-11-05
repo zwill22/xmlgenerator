@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use futures::executor::block_on;
     use std::any::Any;
     use std::collections::HashSet;
     use std::path::PathBuf;
+    use tokio::runtime::Runtime;
     use workspace_root::get_workspace_root;
     use xsdtestdata::get_test_data;
 
@@ -116,7 +116,13 @@ mod tests {
         archive: &PathBuf,
     ) -> HashSet<PathBuf> {
         let mut valid_files = HashSet::new();
-        let test_data = block_on(get_test_data(root, archive, false));
+
+        // Create the runtime
+        let rt = Runtime::new().unwrap();
+
+        // Spawn a future onto the runtime
+        let test_data = rt.block_on(get_test_data(root, archive, false));
+
         for (filepath, listed_as_valid) in test_data {
             if listed_as_valid {
                 let valid = validate_file(generator, &filepath, listed_as_valid);
