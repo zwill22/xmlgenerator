@@ -6,3 +6,4 @@ schema.xsd
 /target
 Cargo.lock
 xsdtests-master
+xsdtests.zip

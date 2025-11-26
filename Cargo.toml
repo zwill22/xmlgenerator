@@ -6,11 +6,13 @@ members = [
     "xml_generator",
     "py_xml_generator",
     "xsd_test_data",
-    "py_xsd_test_data"
+    "py_xsd_test_data",
+    "regex_translator"
 ]
 default-members = [
     "xsd_validator",
-    "xml_generator"
+    "regex_translator",
+    "xml_generator",
 ]
 
 [workspace.package]
@@ -24,5 +26,6 @@ repository = "https://github.com/zwill22/xmlgenerator"
 file_to_string = { version = "0.1.0", path = "reader" }
 xsdtestdata = { version = "0.1.0", path = "xsd_test_data" }
 xsdvalidator = { version = "0.1.0", path = "xsd_validator" }
+regex-translator = { version = "0.1.0", path = "regex_translator" }
 xmlgenerator = { version = "0.1.0", path = "xml_generator" }
 pyxsdtestdata = { version = "0.1.0", path = "py_xsd_test_data" }
