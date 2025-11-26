@@ -5,6 +5,7 @@ with open("output.txt", 'r') as f:
 
 impl = set()
 invalid_data_type = set()
+regex = set()
 independent = set()
 dependent = set()
 unknown_values = set()
@@ -41,6 +42,8 @@ for item in out:
         impl.add(item.replace("Implementation error: not implemented: ", ""))
     elif "DataType not found: " in item:
         invalid_data_type.add(item.replace("DataType not found: ", ""))
+    elif "Unsupported Regex Pattern: " in item:
+        regex.add(item.replace("Unsupported Regex Pattern: ", ""))
     elif "Independent element: " in item:
         result = re.findall(r"Some\(\"(.*?)\"\)", item)
         independent.add(result[0])
@@ -75,6 +78,8 @@ for item in out:
         invalid_file += 1
     elif "XSD parser error: XML Error: Attribute Error: " in item:
         attribute_errors.add(item.replace("XSD parser error: XML Error: Attribute Error: ", ""))
+    elif "Unimplemented feature" in item:
+        pass
     elif item.strip() != "":
         other.add(item)
 
@@ -114,6 +119,7 @@ def print_resource_errors(locations: set[str], currents: set[str]):
 
 print_number(impl, "Implementation errors")
 print_number(invalid_data_type, "Invalid data types")
+print_number(regex, "Invalid regex patterns")
 print_number(independent, "Independent elements")
 print_number(dependent, "Dependent errors")
 print_unknown(unknown_values, unknown_value_positions, unknown_value_elements)
@@ -142,6 +148,7 @@ def print_results(data: set[str], title: str):
 print()
 print_results(impl, "Implementation errors")
 print_results(invalid_data_type, "Invalid data types")
+print_results(regex, "Invalid regex patterns")
 print_results(independent, "Independent elements")
 print_results(dependent, "Dependent elements")
 print_results(unknown_value_elements, "Unknown value locations")
