@@ -20,6 +20,38 @@ pub enum RegexTranslationError {
     SurrogatesError,
 }
 
+impl From<regexml::Error> for RegexTranslationError {
+    fn from(e: regexml::Error) -> Self {
+        match e {
+            regexml::Error::Internal => {
+                RegexTranslationError::InvalidInput("Internal error".to_string())
+            }
+            regexml::Error::InvalidFlags(e) => RegexTranslationError::InvalidInput(e.to_string()),
+            regexml::Error::Syntax(e) => RegexTranslationError::InvalidInput(e.to_string()),
+            regexml::Error::MatchesEmptyString => {
+                RegexTranslationError::InvalidInput("Empty string".to_string())
+            }
+            regexml::Error::InvalidReplacementString(e) => {
+                RegexTranslationError::InvalidInput(e.to_string())
+            }
+        }
+    }
+}
+
+impl From<regex::Error> for RegexTranslationError {
+    fn from(e: regex::Error) -> Self {
+        match e {
+            regex::Error::Syntax(expr) => RegexTranslationError::RegexError(expr),
+            regex::Error::CompiledTooBig(u) => {
+                let str = format!("Regex string cannot be compiled, size: {}", u);
+
+                RegexTranslationError::RegexError(str)
+            }
+            _ => RegexTranslationError::RegexError(e.to_string()),
+        }
+    }
+}
+
 impl Display for RegexTranslationError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
@@ -31,29 +63,10 @@ impl Display for RegexTranslationError {
         }
     }
 }
-
-fn handle_regxml_error(error: regexml::Error) -> Result<(), RegexTranslationError> {
-    let out_error = match error {
-        regexml::Error::Internal => {
-            RegexTranslationError::InvalidInput("Internal error".to_string())
-        }
-        regexml::Error::InvalidFlags(e) => RegexTranslationError::InvalidInput(e.to_string()),
-        regexml::Error::Syntax(e) => RegexTranslationError::InvalidInput(e.to_string()),
-        regexml::Error::MatchesEmptyString => {
-            RegexTranslationError::InvalidInput("Empty string".to_string())
-        }
-        regexml::Error::InvalidReplacementString(e) => {
-            RegexTranslationError::InvalidInput(e.to_string())
-        }
-    };
-
-    Err(out_error)
-}
-
 fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
     match regexml::Regex::xsd(input, "") {
         Ok(_) => Ok(()),
-        Err(e) => handle_regxml_error(e),
+        Err(e) => Err(e.into()),
     }
 }
 
@@ -188,29 +201,14 @@ fn handle_surrogates(output: &str) -> Result<(), RegexTranslationError> {
     Ok(())
 }
 
-fn handle_output_validation_error(
-    output: &str,
-    error: regex::Error,
-) -> Result<(), RegexTranslationError> {
-    handle_surrogates(output)?;
-
-    let translation_error = match error {
-        regex::Error::Syntax(expr) => RegexTranslationError::RegexError(expr),
-        regex::Error::CompiledTooBig(u) => {
-            let str = format!("Regex string cannot be compiled, size: {}", u);
-
-            RegexTranslationError::RegexError(str)
-        }
-        _ => RegexTranslationError::RegexError(error.to_string()),
-    };
-
-    Err(translation_error)
-}
-
 fn validate_output(output: &str) -> Result<(), RegexTranslationError> {
     match regex::Regex::new(output) {
         Ok(_) => Ok(()),
-        Err(e) => handle_output_validation_error(output, e),
+        Err(e) => {
+            handle_surrogates(output)?;
+
+            Err(e.into())
+        }
     }
 }
 
