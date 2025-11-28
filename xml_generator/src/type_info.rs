@@ -8,6 +8,7 @@ use rand::{Rng, SeedableRng};
 use rand_regex;
 use rand_xorshift::XorShiftRng;
 use regex;
+use regextranslator::RegexTranslator;
 use time::{Date, Time, format_description};
 use xsd_parser::models::schema::QName;
 use xsd_parser::models::schema::xs::{
@@ -111,7 +112,7 @@ pub(crate) fn generate_type(type_name: &String) -> Option<String> {
         "duration" => make_fake::<Duration>(), // Defines a time interval
         "gDay" => fake_date_format("[day]"), // Defines the day (DD)
         "gMonth" => fake_date_format("[month]"), // Defines the month (MM)
-        "gMonthDay" => fake_date_format("[month]-[day]"), // Defines the month and day (MM-DD)
+        "gMonthDay" => fake_date_format("--[month]-[day]"), // Defines the month and day (MM-DD)
         "gYear" => fake_date_format("[year]"), // Defines the year (YYYY)
         "gYearMonth" => fake_date_format("[year]-[month]"), // Defines the year and month (YYYY-MM)
         "time" => make_fake::<Time>(),
@@ -193,36 +194,46 @@ fn check_carriage_returns(pattern: &str) -> Result<(), XMLGeneratorError> {
     Ok(())
 }
 
-fn handle_regex_pattern(type_info: &mut TypeInfo, pattern: &str) -> Result<(), XMLGeneratorError> {
+fn handle_regex_pattern(
+    type_info: &mut TypeInfo,
+    pattern: &str,
+    translator: &RegexTranslator,
+) -> Result<(), XMLGeneratorError> {
     check_carriage_returns(pattern)?;
 
-    let lf_pattern = pattern.to_string();
-    match regex::Regex::new(lf_pattern.as_str()) {
+    match regex::Regex::new(pattern) {
         Ok(regex) => {
             type_info.pattern = Some(regex);
             Ok(())
         }
         Err(pattern_err) => {
-            let escape = regex::escape(lf_pattern.as_str());
-            if escape.as_str() != lf_pattern {
-                handle_regex_pattern(type_info, escape.as_str())
-            } else {
-                Err(XMLGeneratorError::RegexError(format!(
-                    "Compilation error: {}",
-                    pattern_err
-                )))
+            let translation = translator.translate(pattern)?;
+
+            if translation.as_str() == pattern {
+                let error = format!("Compilation error: {}", pattern_err);
+                return Err(XMLGeneratorError::RegexError(error));
             }
+
+            handle_regex_pattern(type_info, &translation, translator)
         }
     }
 }
 
-fn handle_pattern(type_info: &mut TypeInfo, pattern: &FacetType) -> Result<(), XMLGeneratorError> {
+fn handle_pattern(
+    type_info: &mut TypeInfo,
+    pattern: &FacetType,
+    regex_translator: &RegexTranslator,
+) -> Result<(), XMLGeneratorError> {
     let regex_str = pattern.value.as_str();
 
-    handle_regex_pattern(type_info, regex_str)
+    handle_regex_pattern(type_info, regex_str, regex_translator)
 }
 
-fn handle_facet(type_info: &mut TypeInfo, facet: &Facet) -> Result<(), XMLGeneratorError> {
+fn handle_facet(
+    type_info: &mut TypeInfo,
+    facet: &Facet,
+    regex_translator: &RegexTranslator,
+) -> Result<(), XMLGeneratorError> {
     match facet {
         Facet::MinExclusive(_) => unimplemented!("MinExclusive facet"),
         Facet::MinInclusive(_) => unimplemented!("MinInclusive facet"),
@@ -235,7 +246,7 @@ fn handle_facet(type_info: &mut TypeInfo, facet: &Facet) -> Result<(), XMLGenera
         Facet::MaxLength(_) => unimplemented!("MaxLength facet"),
         Facet::Enumeration(facet_type) => handle_enumeration(type_info, facet_type),
         Facet::WhiteSpace(_) => unimplemented!("WhiteSpace facet"),
-        Facet::Pattern(facet_type) => handle_pattern(type_info, facet_type),
+        Facet::Pattern(facet_type) => handle_pattern(type_info, facet_type, regex_translator),
         Facet::Assertion(_) => unimplemented!("Assertion facet"),
         Facet::ExplicitTimezone(_) => unimplemented!("ExplicitTimezone facet"),
     }
@@ -244,11 +255,12 @@ fn handle_facet(type_info: &mut TypeInfo, facet: &Facet) -> Result<(), XMLGenera
 fn handle_content(
     type_info: &mut TypeInfo,
     content: &RestrictionContent,
+    regex_translator: &RegexTranslator,
 ) -> Result<(), XMLGeneratorError> {
     match content {
         RestrictionContent::Annotation(_) => unimplemented!("Annotation"),
         RestrictionContent::SimpleType(_) => unimplemented!("SimpleType"),
-        RestrictionContent::Facet(facet) => handle_facet(type_info, facet),
+        RestrictionContent::Facet(facet) => handle_facet(type_info, facet, regex_translator),
     }
 }
 
@@ -259,13 +271,14 @@ pub(crate) fn get_qname(qname: &QName) -> String {
 fn get_restriction(
     type_info: &mut TypeInfo,
     restriction: &Restriction,
+    regex_translator: &RegexTranslator,
 ) -> Result<(), XMLGeneratorError> {
     if let Some(base) = &restriction.base {
         type_info.name = get_qname(base);
     }
 
     for content in &restriction.content {
-        handle_content(type_info, content)?;
+        handle_content(type_info, content, regex_translator)?;
     }
 
     Ok(())
@@ -274,10 +287,11 @@ fn get_restriction(
 fn parse_restriction(
     type_info: &mut TypeInfo,
     content: &SimpleBaseTypeContent,
+    regex_translator: &RegexTranslator,
 ) -> Result<(), XMLGeneratorError> {
     match content {
         SimpleBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
-        SimpleBaseTypeContent::Restriction(x) => get_restriction(type_info, x),
+        SimpleBaseTypeContent::Restriction(x) => get_restriction(type_info, x, regex_translator),
         SimpleBaseTypeContent::List(_) => unimplemented!("List"),
         SimpleBaseTypeContent::Union(_) => unimplemented!("Union"),
     }
@@ -285,10 +299,11 @@ fn parse_restriction(
 
 pub(crate) fn generate_type_info(
     content: &Vec<SimpleBaseTypeContent>,
+    regex_translator: &RegexTranslator,
 ) -> Result<TypeInfo, XMLGeneratorError> {
     let mut type_info = TypeInfo::new();
     for item in content {
-        parse_restriction(&mut type_info, item)?;
+        parse_restriction(&mut type_info, item, regex_translator)?;
     }
 
     Ok(type_info)

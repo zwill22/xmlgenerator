@@ -1,3 +1,4 @@
+use regextranslator::RegexTranslationError;
 use xsdvalidator::XSDValidationError;
 
 /// XML generator error
@@ -57,6 +58,18 @@ impl From<XSDValidationError> for XMLGeneratorError {
             XSDValidationError::XSDRecursionError => {
                 XMLGeneratorError::InvalidXSDError("Recursive elements found".to_string())
             }
+        }
+    }
+}
+
+impl From<RegexTranslationError> for XMLGeneratorError {
+    fn from(value: RegexTranslationError) -> Self {
+        match value {
+            RegexTranslationError::InvalidInput(str) => XMLGeneratorError::InvalidXSDError(str),
+            RegexTranslationError::RegexError(str) => XMLGeneratorError::InvalidXSDError(str),
+            RegexTranslationError::FileReadError(str) => XMLGeneratorError::InvalidXSDError(str),
+            RegexTranslationError::DataError(str) => XMLGeneratorError::RegexError(str),
+            RegexTranslationError::SurrogatesError => XMLGeneratorError::UnimplementedFeature("Regex Surrogates".to_string()),
         }
     }
 }

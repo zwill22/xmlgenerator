@@ -12,7 +12,7 @@ mod tests {
     fn fetch_test_files(directory: &str) -> ReadDir {
         let root: PathBuf = get_workspace_root();
 
-        let mut example_dir = path::PathBuf::from(root);
+        let mut example_dir = PathBuf::from(root);
         example_dir.push("examples");
         example_dir.push(directory);
         let paths = fs::read_dir(example_dir).unwrap();
@@ -37,6 +37,8 @@ mod tests {
             XMLGeneratorError::NoElementsError => panic!("No elements included in XSD"),
             XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
+            XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
+            XMLGeneratorError::UnimplementedFeature(e) => panic!("Unimplemented feature: {}", e),
         }
     }
 

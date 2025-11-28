@@ -4,6 +4,7 @@ use crate::element_generator::ElementGenerator;
 use crate::group_generator::GroupGenerator;
 use crate::type_generator::TypeGenerator;
 use crate::type_info::{generate_type_info, get_qname};
+use regextranslator::RegexTranslator;
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::MaxOccurs;
 use xsd_parser::models::schema::xs::{
@@ -11,7 +12,10 @@ use xsd_parser::models::schema::xs::{
     GroupType, GroupTypeContent, SchemaContent, SimpleBaseType,
 };
 
-fn get_simple_type(simple: &SimpleBaseType) -> Result<TypeGenerator, XMLGeneratorError> {
+fn get_simple_type(
+    simple: &SimpleBaseType,
+    regex_translator: &RegexTranslator,
+) -> Result<TypeGenerator, XMLGeneratorError> {
     let mut generator = TypeGenerator::new();
     generator.name = simple.name.clone().unwrap_or("".to_string());
     if generator.name.is_empty() {
@@ -22,14 +26,17 @@ fn get_simple_type(simple: &SimpleBaseType) -> Result<TypeGenerator, XMLGenerato
         unimplemented!("Final");
     }
 
-    let type_info = generate_type_info(&simple.content)?;
+    let type_info = generate_type_info(&simple.content, regex_translator)?;
 
     generator.type_info = Some(type_info);
 
     Ok(generator)
 }
 
-fn fetch_type(content: &SchemaContent) -> Option<Result<TypeGenerator, XMLGeneratorError>> {
+fn fetch_type(
+    content: &SchemaContent,
+    regex_translator: &RegexTranslator,
+) -> Option<Result<TypeGenerator, XMLGeneratorError>> {
     match content {
         SchemaContent::Include(_) => unimplemented!("Include"),
         SchemaContent::Import(_) => unimplemented!("Import"),
@@ -37,8 +44,8 @@ fn fetch_type(content: &SchemaContent) -> Option<Result<TypeGenerator, XMLGenera
         SchemaContent::Override(_) => unimplemented!("Override"),
         SchemaContent::Annotation(_) => None,
         SchemaContent::DefaultOpenContent(_) => unimplemented!("DefaultOpenContent"),
-        SchemaContent::SimpleType(x) => Some(get_simple_type(x)),
-        SchemaContent::ComplexType(x) => Some(get_complex_type(x)),
+        SchemaContent::SimpleType(x) => Some(get_simple_type(x, regex_translator)),
+        SchemaContent::ComplexType(x) => Some(get_complex_type(x, regex_translator)),
         SchemaContent::Group(_) => unimplemented!("Top-level group not supported"),
         SchemaContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
         SchemaContent::Element(_) => None,
@@ -47,11 +54,14 @@ fn fetch_type(content: &SchemaContent) -> Option<Result<TypeGenerator, XMLGenera
     }
 }
 
-fn get_element_content(content: &ElementTypeContent) -> Result<TypeGenerator, XMLGeneratorError> {
+fn get_element_content(
+    content: &ElementTypeContent,
+    regex_translator: &RegexTranslator,
+) -> Result<TypeGenerator, XMLGeneratorError> {
     match content {
         ElementTypeContent::Annotation(_) => unimplemented!("Annotation"),
-        ElementTypeContent::SimpleType(x) => get_simple_type(x),
-        ElementTypeContent::ComplexType(x) => get_complex_type(x),
+        ElementTypeContent::SimpleType(x) => get_simple_type(x, regex_translator),
+        ElementTypeContent::ComplexType(x) => get_complex_type(x, regex_translator),
         ElementTypeContent::Alternative(_) => unimplemented!("Alternative"),
         ElementTypeContent::Unique(_) => unimplemented!("Unique"),
         ElementTypeContent::Key(_) => unimplemented!("Key"),
@@ -61,6 +71,7 @@ fn get_element_content(content: &ElementTypeContent) -> Result<TypeGenerator, XM
 
 pub(crate) fn get_element_type(
     element: &ElementType,
+    regex_translator: &RegexTranslator,
 ) -> Result<ElementGenerator, XMLGeneratorError> {
     let mut generator = ElementGenerator::new();
 
@@ -120,17 +131,20 @@ pub(crate) fn get_element_type(
     }
 
     for content in &element.content {
-        let result = get_element_content(content)?;
+        let result = get_element_content(content, regex_translator)?;
         generator.contents.push(result);
     }
 
     Ok(generator)
 }
 
-fn get_group_content(content: &GroupTypeContent) -> Result<ElementGenerator, XMLGeneratorError> {
+fn get_group_content(
+    content: &GroupTypeContent,
+    regex_translator: &RegexTranslator,
+) -> Result<ElementGenerator, XMLGeneratorError> {
     match content {
         GroupTypeContent::Annotation(_) => unimplemented!("Annotation"),
-        GroupTypeContent::Element(x) => get_element_type(x),
+        GroupTypeContent::Element(x) => get_element_type(x, regex_translator),
         GroupTypeContent::Group(_) => unimplemented!("Embedded groups"),
         GroupTypeContent::All(_) => unimplemented!("Embedded groups"),
         GroupTypeContent::Choice(_) => unimplemented!("Embedded groups"),
@@ -139,7 +153,10 @@ fn get_group_content(content: &GroupTypeContent) -> Result<ElementGenerator, XML
     }
 }
 
-fn get_group(group: &GroupType) -> Result<GroupGenerator, XMLGeneratorError> {
+fn get_group(
+    group: &GroupType,
+    regex_translator: &RegexTranslator,
+) -> Result<GroupGenerator, XMLGeneratorError> {
     let mut generator = GroupGenerator::new();
 
     if group.name.is_some() {
@@ -158,7 +175,7 @@ fn get_group(group: &GroupType) -> Result<GroupGenerator, XMLGeneratorError> {
     };
 
     for content in &group.content {
-        let element = get_group_content(content)?;
+        let element = get_group_content(content, regex_translator)?;
         generator.elements.push(element);
     }
 
@@ -167,16 +184,17 @@ fn get_group(group: &GroupType) -> Result<GroupGenerator, XMLGeneratorError> {
 
 fn get_complex_group(
     content: &ComplexBaseTypeContent,
+    regex_translator: &RegexTranslator,
 ) -> Option<Result<GroupGenerator, XMLGeneratorError>> {
     match content {
         ComplexBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
         ComplexBaseTypeContent::SimpleContent(_) => unimplemented!("SimpleContent"),
         ComplexBaseTypeContent::ComplexContent(_) => unimplemented!("ComplexContent"),
         ComplexBaseTypeContent::OpenContent(_) => unimplemented!("OpenContent"),
-        ComplexBaseTypeContent::Group(x) => Some(get_group(x)),
-        ComplexBaseTypeContent::All(x) => Some(get_group(x)),
-        ComplexBaseTypeContent::Choice(x) => Some(get_group(x)),
-        ComplexBaseTypeContent::Sequence(x) => Some(get_group(x)),
+        ComplexBaseTypeContent::Group(x) => Some(get_group(x, regex_translator)),
+        ComplexBaseTypeContent::All(x) => Some(get_group(x, regex_translator)),
+        ComplexBaseTypeContent::Choice(x) => Some(get_group(x, regex_translator)),
+        ComplexBaseTypeContent::Sequence(x) => Some(get_group(x, regex_translator)),
         ComplexBaseTypeContent::Attribute(_) => None,
         ComplexBaseTypeContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
         ComplexBaseTypeContent::AnyAttribute(_) => unimplemented!("AnyAttribute"),
@@ -246,7 +264,10 @@ fn get_complex_attributes(content: &ComplexBaseTypeContent) -> Option<AttributeG
     }
 }
 
-fn get_complex_type(complex: &ComplexBaseType) -> Result<TypeGenerator, XMLGeneratorError> {
+fn get_complex_type(
+    complex: &ComplexBaseType,
+    regex_translator: &RegexTranslator,
+) -> Result<TypeGenerator, XMLGeneratorError> {
     let mut generator = TypeGenerator::new();
     generator.name = complex.name.clone().unwrap_or("".to_string());
 
@@ -272,7 +293,7 @@ fn get_complex_type(complex: &ComplexBaseType) -> Result<TypeGenerator, XMLGener
     }
 
     for content in &complex.content {
-        if let Some(group) = get_complex_group(content) {
+        if let Some(group) = get_complex_group(content, regex_translator) {
             generator.groups.push(group?);
         }
         if let Some(attribute) = get_complex_attributes(content) {
@@ -283,12 +304,15 @@ fn get_complex_type(complex: &ComplexBaseType) -> Result<TypeGenerator, XMLGener
     Ok(generator)
 }
 
-pub(crate) fn fetch_types(schemas: &Schemas) -> Result<Vec<TypeGenerator>, XMLGeneratorError> {
+pub(crate) fn fetch_types(
+    schemas: &Schemas,
+    regex_translator: &RegexTranslator,
+) -> Result<Vec<TypeGenerator>, XMLGeneratorError> {
     let mut types = vec![];
     for (_schema_id, schema_info) in schemas.schemas() {
         let schema = &schema_info.schema;
         for content in &schema.content {
-            match fetch_type(content) {
+            match fetch_type(content, regex_translator) {
                 Some(data_type) => {
                     types.push(data_type?);
                 }

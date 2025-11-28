@@ -6,6 +6,7 @@ use crate::generate_output::generate_output;
 use crate::generate_schema::generate_schema;
 use crate::schema_version::fetch_schema_version;
 use std::path::PathBuf;
+use regextranslator::RegexTranslator;
 use xsdvalidator::XSDValidator;
 
 mod attribute_generator;
@@ -25,13 +26,15 @@ mod type_info;
 
 pub struct XMLGenerator {
     validator: XSDValidator,
+    translator: RegexTranslator,
 }
 
 impl XMLGenerator {
     pub fn new() -> XMLGenerator {
         let validator = XSDValidator::new(false);
+        let translator = RegexTranslator::new().unwrap();
 
-        XMLGenerator { validator }
+        XMLGenerator { validator, translator }
     }
 
     pub fn validate(&self, path: &PathBuf) -> Result<(), XMLGeneratorError> {
@@ -69,8 +72,8 @@ impl XMLGenerator {
         self.validate(xsd_path)?;
 
         let version = fetch_schema_version(&schemas)?;
-        let data_types = fetch_types(&schemas)?;
-        let elements = fetch_elements(&schemas)?;
+        let data_types = fetch_types(&schemas, &self.translator)?;
+        let elements = fetch_elements(&schemas, &self.translator)?;
         let root_element = find_root_element(&elements)?;
 
         generate_output(root_element, &data_types, &elements, version)
