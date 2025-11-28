@@ -1,5 +1,7 @@
 extern crate alloc;
+extern crate core;
 
+use core::fmt::Display;
 use polars::prelude::*;
 use regex;
 use regexml;
@@ -7,52 +9,51 @@ use regexml;
 use std::collections::HashMap;
 use std::path;
 
+mod test;
+
 #[derive(Debug)]
 pub enum RegexTranslationError {
     InvalidInput(String),
     RegexError(String),
     FileReadError(String),
     DataError(String),
+    SurrogatesError,
 }
 
-impl From<regexml::Error> for RegexTranslationError {
-    fn from(value: regexml::Error) -> Self {
-        match value {
-            regexml::Error::Internal => {
-                RegexTranslationError::InvalidInput(String::from("Internal error"))
-            }
-            regexml::Error::InvalidFlags(e) => RegexTranslationError::InvalidInput(e.to_string()),
-            regexml::Error::Syntax(e) => RegexTranslationError::InvalidInput(e.to_string()),
-            regexml::Error::MatchesEmptyString => {
-                RegexTranslationError::InvalidInput(String::from("Empty string"))
-            }
-            regexml::Error::InvalidReplacementString(e) => {
-                RegexTranslationError::InvalidInput(e.to_string())
-            }
+impl Display for RegexTranslationError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            RegexTranslationError::InvalidInput(e) => write!(f, "Invalid input: {}", e),
+            RegexTranslationError::RegexError(e) => write!(f, "Regex error: {}", e),
+            RegexTranslationError::FileReadError(e) => write!(f, "File read error: {}", e),
+            RegexTranslationError::DataError(e) => write!(f, "Data error: {}", e),
+            RegexTranslationError::SurrogatesError => write!(f, "Surrogate error"),
         }
     }
 }
 
-impl From<regex::Error> for RegexTranslationError {
-    fn from(value: regex::Error) -> Self {
-        match value {
-            regex::Error::Syntax(e) => RegexTranslationError::RegexError(e.to_string()),
-            regex::Error::CompiledTooBig(e) => {
-                let str = format!("Regex string cannot be compiled, size: {}", e);
-                RegexTranslationError::RegexError(str)
-            }
-            _ => RegexTranslationError::RegexError("Unknown error".to_string()),
+fn handle_regxml_error(error: regexml::Error) -> Result<(), RegexTranslationError> {
+    let out_error = match error {
+        regexml::Error::Internal => {
+            RegexTranslationError::InvalidInput("Internal error".to_string())
         }
-    }
+        regexml::Error::InvalidFlags(e) => RegexTranslationError::InvalidInput(e.to_string()),
+        regexml::Error::Syntax(e) => RegexTranslationError::InvalidInput(e.to_string()),
+        regexml::Error::MatchesEmptyString => {
+            RegexTranslationError::InvalidInput("Empty string".to_string())
+        }
+        regexml::Error::InvalidReplacementString(e) => {
+            RegexTranslationError::InvalidInput(e.to_string())
+        }
+    };
+
+    Err(out_error)
 }
 
 fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
     match regexml::Regex::xsd(input, "") {
         Ok(_) => Ok(()),
-        Err(e) => {
-            eprintln!("Invalid input: {}", input);
-            Err(e.into())
-        }
+        Err(e) => handle_regxml_error(e),
     }
 }
 
@@ -95,7 +96,7 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
                 .str()
                 .replace_all(
                     lit(r#""?U\+(.*?)..U\+(.*?)$"?"#),
-                    lit(r"[\u${1}-\u${2}]"),
+                    lit(r"[\u{${1}}-\u{${2}}]"),
                     false,
                 )
                 .str()
@@ -106,8 +107,6 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
                 .replace_all(lit(r"\[\w+\]"), lit(r""), false)
                 .str()
                 .replace_all(lit(r"\s"), lit(r""), false)
-                .str()
-                .replace_all(lit(r"-"), lit(""), false)
                 .str()
                 .replace_all(lit(r#"""#), lit(r""), false)
                 .alias("Name"),
@@ -127,137 +126,145 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
             Ok(_) => {
                 map.insert(k, v);
             }
-            Err(_) => {
+            Err(e) => {
                 if !k.to_string().contains("Surrogates") {
-                    return Err(RegexTranslationError::FileReadError(
-                        "Unknown blocks in datafile".to_string(),
-                    ));
+                    return Err(RegexTranslationError::FileReadError(format!(
+                        "Unknown blocks in datafile: {}",
+                        e
+                    )));
                 }
             }
         }
     }
 
+    // Additional mappings
+    map.insert(
+        "CombiningMarksforSymbols".to_string(),
+        r"[\u20D0-\u20FF]".to_string(),
+    );
+
     Ok(map)
 }
 
-fn replace(input: &str) -> Result<String, RegexTranslationError> {
-    let map = unicode_blocks()?; // TODO Replace with const
+fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
+    // TODO Replace with const
+    let unicode_blocks = unicode_blocks()?;
 
-    let mut output = input.to_string();
+    let mut output = HashMap::new();
 
-    for (k, v) in map {
-        let string = format!(r"\p{{Is{}}}", k);
+    for (k, v) in unicode_blocks {
+        // Unicode block (set)
+        let block = format!(r"\p{{Is{}}}", k);
+        let set = format!(r"{}", v);
 
-        if input.contains(&string) {
-            output = input.replace(&string, &v);
-        }
+        output.insert(block, set);
+
+        // Set negation
+        let neg_block = format!(r"\P{{Is{}}}", k);
+        let neg_set = format!(r"[^{}]", v);
+
+        output.insert(neg_block, neg_set);
     }
 
     Ok(output)
+}
+
+fn handle_surrogates(output: &str) -> Result<(), RegexTranslationError> {
+    let surrogate_strings = vec![
+        r"\p{IsHighSurrogates}",
+        r"\p{IsHighPrivateUseSurrogates}",
+        r"\p{IsLowSurrogates}",
+        r"\P{IsHighSurrogates}",
+        r"\P{IsHighPrivateUseSurrogates}",
+        r"\P{IsLowSurrogates}",
+    ];
+
+    for string in surrogate_strings {
+        if output.contains(string) {
+            return Err(RegexTranslationError::SurrogatesError);
+        }
+    }
+
+    Ok(())
+}
+
+fn handle_output_validation_error(
+    output: &str,
+    error: regex::Error,
+) -> Result<(), RegexTranslationError> {
+    handle_surrogates(output)?;
+
+    let translation_error = match error {
+        regex::Error::Syntax(expr) => RegexTranslationError::RegexError(expr),
+        regex::Error::CompiledTooBig(u) => {
+            let str = format!("Regex string cannot be compiled, size: {}", u);
+
+            RegexTranslationError::RegexError(str)
+        }
+        _ => RegexTranslationError::RegexError(error.to_string()),
+    };
+
+    Err(translation_error)
 }
 
 fn validate_output(output: &str) -> Result<(), RegexTranslationError> {
     match regex::Regex::new(output) {
         Ok(_) => Ok(()),
-        Err(e) => Err(e.into()),
+        Err(e) => handle_output_validation_error(output, e),
     }
 }
 
-pub fn translate(input: &str) -> Result<String, RegexTranslationError> {
-    validate_input(input)?;
-
-    let output = replace(input)?;
-    validate_output(&output)?;
-
-    Ok(output)
+pub struct RegexTranslator {
+    mappings: HashMap<String, String>,
 }
 
-#[cfg(test)]
-mod tests {
-    use std::collections::HashSet;
-    use file_to_string::read_file;
-    use roxmltree::{Attribute, Document};
-    use roxmltree::Node;
-    use crate::translate;
+impl RegexTranslator {
+    pub fn new() -> Result<Self, RegexTranslationError> {
+        let mut mappings = get_unicode_mappings()?;
 
-    use std::path::PathBuf;
-    use tokio::runtime::Runtime;
-    use xsdtestdata::get_test_data;
-    use workspace_root::get_workspace_root;
+        let i = r"\i".to_string();
+        let i_set = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
 
+        let c = r"\c".to_string();
+        let c_set = r"[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
 
-    fn parse_attribute(regex: &mut HashSet<String>, attribute: &Attribute) {
-        if attribute.name().trim().to_lowercase() == "value" {
-            regex.insert(attribute.value().to_string());
-        }
+        mappings.insert(i, i_set.to_string());
+        mappings.insert(c, c_set.to_string());
+
+        let neg_i = r"\I".to_string();
+        let neg_i_set = format!(r"[^{}]", i_set);
+
+        let neg_c = r"\C".to_string();
+        let neg_c_set = format!(r"[^{}]", c_set);
+
+        mappings.insert(neg_i, neg_i_set.to_string());
+        mappings.insert(neg_c, neg_c_set.to_string());
+
+        Ok(Self { mappings })
     }
 
-    fn parse_node(regex: &mut HashSet<String>, node: Node) {
-        let name = node.tag_name().name().trim().to_string();
+    fn replace(&self, input: &str) -> Result<String, RegexTranslationError> {
+        let mut output = input.to_string();
 
-        if name == "pattern" {
-            for attribute in node.attributes() {
-                parse_attribute(regex, &attribute);
+        for (k, v) in self.mappings.iter() {
+            if input.contains(k) {
+                output = output.as_str().replace(k, v.as_str());
             }
         }
 
-        for child in node.children() {
-            parse_node(regex, child);
-        }
+        let regex = regex::Regex::new(r"([^-\\])-\[").unwrap();
+        output = regex.replace_all(output.as_str(), "$1--[").to_string();
+
+        Ok(output)
     }
 
+    pub fn translate(&self, input: &str) -> Result<String, RegexTranslationError> {
+        validate_input(input)?;
 
-    fn parse_file(regex: &mut HashSet<String>, filepath: &PathBuf) {
-        let xml_string = match read_file(&filepath) {
-            Ok(s) => s,
-            Err(e) => panic!("{}", e),
-        };
+        let output = self.replace(input)?;
 
-        let xml_tree = match Document::parse(xml_string.as_str()) {
-            Ok(t) => t,
-            Err(e) => panic!("{}", e),
-        };
+        validate_output(&output)?;
 
-        let root = xml_tree.root();
-        parse_node(regex, root);
-    }
-
-    fn get_regex_strings(root: &PathBuf, archive: &PathBuf) -> HashSet<String> {
-        let mut regex = HashSet::new();
-
-        // Create the runtime
-        let rt = Runtime::new().unwrap();
-
-        // Spawn a future onto the runtime
-        let test_data = rt.block_on(get_test_data(root, archive, true));
-
-        for (filepath, listed_as_valid) in test_data {
-            if listed_as_valid {
-                parse_file(&mut regex, &filepath);
-            }
-
-        }
-
-        regex
-    }
-
-    #[test]
-    fn it_works() {
-        let root = get_workspace_root();
-        let db_root = root.as_path().join("xsdtests-master");
-        let archive = root.as_path().join("xsdtests.zip");
-
-        let regex = get_regex_strings(&db_root, &archive);
-
-        for input_regex in regex {
-            match translate(input_regex.as_str()) {
-                Ok(out) => {
-                    if input_regex != out {
-                        print!("Translated:\t{}\t->\t{}", input_regex, out);
-                    }
-                },
-                Err(e) => panic!("Error translating: {}", input_regex)
-            }
-        }
+        Ok(output)
     }
 }
