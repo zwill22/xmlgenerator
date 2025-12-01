@@ -68,3 +68,8 @@ def test_xsd_file(xml_generator, file):
     except pyxmlgenerator.ImplementationError as e:
         print(e)
         return
+
+# def test_single_file(xml_generator):
+#     file = "msData/regex/reI57.xsd"
+#     filepath = xsd_filepath / file
+#     test_xsd_file(xml_generator, filepath)

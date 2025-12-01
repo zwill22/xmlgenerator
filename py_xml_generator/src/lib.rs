@@ -19,6 +19,7 @@ create_exception!(pyxmlgenerator, NoElementsError, PyException);
 create_exception!(pyxmlgenerator, InvalidXSDError, PyException);
 create_exception!(pyxmlgenerator, TypeGenerationError, PyException);
 create_exception!(pyxmlgenerator, ImplementationError, PyException);
+create_exception!(pyxmlgenerator, RegexError, PyException);
 
 fn handle_error(error: XMLGeneratorError) -> PyErr {
     match error {
@@ -35,6 +36,8 @@ fn handle_error(error: XMLGeneratorError) -> PyErr {
         XMLGeneratorError::NoElementsError => NoElementsError::new_err("No elements found in XSD"),
         XMLGeneratorError::InvalidXSDError(e) => InvalidXSDError::new_err(e),
         XMLGeneratorError::TypeGenerationError(e) => TypeGenerationError::new_err(e),
+        XMLGeneratorError::RegexError(e) => RegexError::new_err(e),
+        XMLGeneratorError::UnimplementedFeature(e) => ImplementationError::new_err(e),
     }
 }
 
