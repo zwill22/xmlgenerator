@@ -1,0 +1,13 @@
+[package]
+name = "pyxsdtestdata"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "pyxsdtestdata"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.26.0"
+futures = "0.3.31"
+xsdtestdata = { workspace = true }

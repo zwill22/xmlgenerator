@@ -1,10 +1,31 @@
-[package]
-name = "xmlgenerator"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+resolver = "3"
+members = [
+    "reader",
+    "xsd_validator",
+    "xml_generator",
+    "py_xml_generator",
+    "xsd_test_data",
+    "py_xsd_test_data",
+    "regex_translator"
+]
+default-members = [
+    "xsd_validator",
+    "regex_translator",
+    "xml_generator",
+]
 
-[dependencies]
-xsd-parser = "1.2.0"
-syn = { version = "2.0.104", features = ["full"] }
-xml-builder = "0.5.4"
-fake = "4.3.0"
+[workspace.package]
+version = "0.1.0"
+authors = ["Z M Williams <z.m.will@icloud.com>"]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/zwill22/xmlgenerator"
+
+[workspace.dependencies]
+file_to_string = { version = "0.1.0", path = "reader" }
+xsdtestdata = { version = "0.1.0", path = "xsd_test_data" }
+xsdvalidator = { version = "0.1.0", path = "xsd_validator" }
+regextranslator = { version = "0.1.0", path = "regex_translator" }
+xmlgenerator = { version = "0.1.0", path = "xml_generator" }
+pyxsdtestdata = { version = "0.1.0", path = "py_xsd_test_data" }
