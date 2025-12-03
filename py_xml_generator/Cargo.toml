@@ -8,7 +8,7 @@ name = "pyxmlgenerator"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.26.0"
+pyo3 = "0.27.2"
 xmlgenerator = { workspace = true }
 
 [dev-dependencies]

@@ -4,7 +4,7 @@ mod tests {
     use std::any::Any;
     use std::fs::ReadDir;
     use std::path::PathBuf;
-    use std::{fs, panic, path};
+    use std::{fs, panic};
     use workspace_root::get_workspace_root;
     use xmlgenerator::XMLGenerator;
     use xmlgenerator::error::XMLGeneratorError;

@@ -8,6 +8,5 @@ name = "pyxsdtestdata"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.26.0"
-futures = "0.3.31"
+pyo3 = "0.27.2"
 xsdtestdata = { workspace = true }

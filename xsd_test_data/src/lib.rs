@@ -1,5 +1,5 @@
 use file_to_string::read_file;
-use reqwest::get;
+use reqwest::blocking;
 use roxmltree::{Document, Node, ParsingOptions};
 use std::collections::HashSet;
 use std::fs::{File, canonicalize};
@@ -30,11 +30,11 @@ impl Schema {
     }
 }
 
-async fn fetch_repo(archive_path: &PathBuf) {
+fn fetch_repo(archive_path: &PathBuf) {
     let url = "https://github.com/w3c/xsdtests/archive/refs/heads/master.zip".to_string();
 
-    let response = get(url).await.expect("failed to send request");
-    let content = response.bytes().await.expect("failed to get bytes");
+    let response = blocking::get(url).expect("failed to send request");
+    let content = response.bytes().expect("failed to get bytes");
 
     let mut file = File::create(archive_path).expect("failed to create file");
     file.write_all(&content).expect("failed to write to file");
@@ -52,20 +52,20 @@ fn extract_repo(db_root: &PathBuf, archive: &File) -> Result<(), XSDTestDataErro
     }
 }
 
-async fn get_archive_file(archive_path: &PathBuf) -> File {
+fn get_archive_file(archive_path: &PathBuf) -> File {
     if !archive_path.exists() {
-        fetch_repo(archive_path).await;
+        fetch_repo(archive_path);
     }
 
     File::open(archive_path).expect("failed to open file")
 }
 
-async fn check_repo(db_root: &PathBuf, archive_path: &PathBuf) {
+fn check_repo(db_root: &PathBuf, archive_path: &PathBuf) {
     if db_root.exists() {
         return;
     }
 
-    let archive = get_archive_file(archive_path).await;
+    let archive = get_archive_file(archive_path);
 
     match extract_repo(db_root, &archive) {
         Ok(_) => {}
@@ -219,7 +219,7 @@ fn get_instance_test(schemas: &mut Vec<Schema>, node: &Node, path: &PathBuf) {
     }
 }
 
-async fn read_test_set(root_path: &PathBuf, extension: &String) -> Vec<Schema> {
+fn read_test_set(root_path: &PathBuf, extension: &String) -> Vec<Schema> {
     let filepath = root_path.join(extension);
     let mut schemas = Vec::new();
     read_test_set_file(&mut schemas, &filepath);
@@ -237,7 +237,7 @@ fn get_attribute(node: &Node, name: String) -> String {
     panic!("attribute not found");
 }
 
-async fn join(
+fn join(
     output: &mut HashSet<(PathBuf, bool)>,
     new_results: &Vec<Schema>,
     ignore: &Vec<PathBuf>,
@@ -250,7 +250,7 @@ async fn join(
     }
 }
 
-async fn parse_test_data(
+fn parse_test_data(
     filepath: &PathBuf,
     db_root_path: &PathBuf,
     ignore: &Vec<PathBuf>,
@@ -264,8 +264,8 @@ async fn parse_test_data(
         let tag = child.tag_name().name();
         if tag == "testSetRef" {
             let test_path = get_attribute(&child, "href".to_string());
-            let result = read_test_set(db_root_path, &test_path).await;
-            join(&mut output, &result, ignore).await;
+            let result = read_test_set(db_root_path, &test_path);
+            join(&mut output, &result, ignore);
         }
     }
 
@@ -276,7 +276,7 @@ fn file_path(db_root: &PathBuf, path_string: &str) -> PathBuf {
     db_root.join(path_string)
 }
 
-pub async fn get_test_data(
+pub fn get_test_data(
     db_path: &PathBuf,
     archive_path: &PathBuf,
     extra: bool,
@@ -286,17 +286,17 @@ pub async fn get_test_data(
         file_path(&db_path, "msData/particles/particlesZ015.xsd"),
         file_path(&db_path, "msData/particles/particlesZ020.xsd"),
     ];
-    check_repo(&db_path, &archive_path).await;
+    check_repo(&db_path, &archive_path);
 
     let suite = db_path.join("suite.xml");
-    let mut data = parse_test_data(&suite, &db_path, &ignore).await;
+    let mut data = parse_test_data(&suite, &db_path, &ignore);
 
     if !extra {
         return data;
     }
 
     let extra_suite = db_path.join("extra-suite.xml");
-    let extra_data = parse_test_data(&extra_suite, &db_path, &ignore).await;
+    let extra_data = parse_test_data(&extra_suite, &db_path, &ignore);
 
     data.extend(extra_data);
 
@@ -306,7 +306,6 @@ pub async fn get_test_data(
 #[cfg(test)]
 mod tests {
     use crate::get_test_data;
-    use tokio::runtime::Runtime;
     use workspace_root::get_workspace_root;
 
     #[test]
@@ -315,9 +314,7 @@ mod tests {
         let archive = get_workspace_root().join("xsdtests.zip");
         let extra = true;
 
-        let rt = Runtime::new().unwrap();
-
-        let data = rt.block_on(get_test_data(&db, &archive, extra));
+        let data = get_test_data(&db, &archive, extra);
 
         let mut valid = 0;
         let mut invalid = 0;

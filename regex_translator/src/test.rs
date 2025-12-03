@@ -7,7 +7,6 @@ mod tests {
     use std::collections::HashSet;
 
     use std::path::PathBuf;
-    use tokio::runtime::Runtime;
     use workspace_root::get_workspace_root;
     use xsdtestdata::get_test_data;
 
@@ -49,11 +48,7 @@ mod tests {
     fn get_regex_strings(root: &PathBuf, archive: &PathBuf) -> HashSet<String> {
         let mut regex = HashSet::new();
 
-        // Create the runtime
-        let rt = Runtime::new().unwrap();
-
-        // Spawn a future onto the runtime
-        let test_data = rt.block_on(get_test_data(root, archive, true));
+        let test_data = get_test_data(root, archive, true);
 
         for (filepath, listed_as_valid) in test_data {
             if listed_as_valid {

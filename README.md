@@ -74,13 +74,15 @@ fn main() {
 
 **NOTE:** *Only a single `XMLGenerator` should be created. Multiple instances of this class cause undefined behaviour.*
 
-# Python Example
+## Python Example
 
-The following example illustrates a similar workflow in Python, using the built-in [argparse](https://docs.python.org/3/library/argparse.html) and [pathlib](https://docs.python.org/3/library/pathlib.html) librarys to read and validate command-line input.
+The following example illustrates a similar workflow in Python, using the built-in [argparse](https://docs.python.org/3/library/argparse.html) and [pathlib](https://docs.python.org/3/library/pathlib.html) libraries to read and validate command-line input.
 ```python
 import pathlib
 import argparse
 import pyxmlgenerator
+
+from xmlschema import XMLSchema
 
 parser = argparse.ArgumentParser()
 parser.add_argument("filepaths", type=pathlib.Path, nargs='+')
@@ -109,8 +111,22 @@ for path in paths:
         exit(0)
     
     print("Output generated!")
-    print(output)
+
+    # Generate sc
+    schema = XMLSchema(path_str)
+    
+    if schema.is_valid(output):
+        print("Output is valid")
+    else:
+        print("Output does not match input schema")
+
 ```
+This example uses Python's [xmlschema libray][xmlschema] to validate output XML strings.
+
+## Test Data
+
+This library includes some minimal examples which are tested. However, the majority of tests are performed on files in the [xsdtests database][xsdtests]. The `xsdtestdata` crate manages the acquisistion and metadata for this database. This data is used in the `regextranslator`, `xsdvalidator`, and `xmlgenerator` crates for testing. Additionally, a Python wrapper `pyxsdtestdata` is provided and used to test `pyxmlgenerator`. 
+
 
 [//]: # (Links)
 [rust]: https://www.rust-lang.org
@@ -123,6 +139,8 @@ for path in paths:
 [license]: https://github.com/zwill22/OpenBusAPI/blob/main/LICENSE
 [libxml2]: https://gitlab.gnome.org/GNOME/libxml2
 [libxml2-rs]: https://github.com/zwill22/libxml2-rs.git
+[xsdtests]: https://github.com/w3c/xsdtests
+[xmlschema]: https://pypi.org/project/xmlschema/
 
 [//]: # (Badges)
 [python-badge]: https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff

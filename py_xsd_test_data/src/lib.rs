@@ -1,5 +1,4 @@
-use futures::executor::block_on;
-use pyo3::exceptions::{PyRuntimeError};
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use std::any::Any;
 use std::collections::HashSet;
@@ -25,13 +24,10 @@ fn get_xsd_test_data(
     archive_path: PathBuf,
     include_extra_files: bool,
 ) -> PyResult<HashSet<(PathBuf, bool)>> {
-    match panic::catch_unwind(|| {
-        block_on(get_test_data(
-            &database_dir,
-            &archive_path,
-            include_extra_files,
-        ))
-    }) {
+    let result =
+        panic::catch_unwind(|| get_test_data(&database_dir, &archive_path, include_extra_files));
+
+    match result {
         Ok(result) => Ok(result),
         Err(e) => Err(handle_panic(e)),
     }
