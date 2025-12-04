@@ -16,6 +16,14 @@ The project includes several Cargo crates to achieve this goal.
 
 ## Dependencies
 
+System requirements:
+- [Rust][rust] - Installed via Rustup
+- [Python][python] - Required for `pyxmlgenerator`
+- [uv][uv] - Recommended for installation of Python packages (Optional)
+- [cmake][cmake] - Required for [libxml2-rs][libxml2-rs]
+- [libxml2][libxml2] - Required for [libxml2-rs][libxml2-rs]
+
+Cargo dependencies:
 - [libxml2-rs][libxml2-rs] - Custom Rust bindings for the [libxml2][libxml2] C library
 - [XSD-parser](https://github.com/Bergmann89/xsd-parser) - Parsing input XSD schemas
 - [xml-builder](https://github.com/cocool97/xml-builder) - Building output XML
@@ -141,6 +149,8 @@ This library includes some minimal examples which are tested. However, the major
 [libxml2-rs]: https://github.com/zwill22/libxml2-rs.git
 [xsdtests]: https://github.com/w3c/xsdtests
 [xmlschema]: https://pypi.org/project/xmlschema/
+[uv]: https://github.com/astral-sh/uv
+[cmake]: https://cmake.org
 
 [//]: # (Badges)
 [python-badge]: https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff
