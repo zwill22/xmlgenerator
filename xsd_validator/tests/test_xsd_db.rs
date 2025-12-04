@@ -65,7 +65,7 @@ mod tests {
         let db_root = root.join("xsdtests-master");
         let archive_path = root.join("xsd_tests.zip");
 
-        let test_files = block_on(get_test_data(&db_root, &archive_path, true));
+        let test_files = get_test_data(&db_root, &archive_path, true);
 
         validate(&validator, &test_files);
     }
