@@ -80,6 +80,8 @@ for item in out:
         attribute_errors.add(item.replace("XSD parser error: XML Error: Attribute Error: ", ""))
     elif "Unimplemented feature" in item:
         pass
+    elif "File: " in item:
+        pass
     elif item.strip() != "":
         other.add(item)
 
