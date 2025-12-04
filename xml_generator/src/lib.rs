@@ -31,12 +31,6 @@ pub struct XMLGenerator {
 
 impl Default for XMLGenerator {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl XMLGenerator {
-    pub fn new() -> XMLGenerator {
         let validator = XSDValidator::new(false);
         let translator = RegexTranslator::new().unwrap();
 
@@ -44,6 +38,12 @@ impl XMLGenerator {
             validator,
             translator,
         }
+    }
+}
+
+impl XMLGenerator {
+    pub fn new() -> XMLGenerator {
+        XMLGenerator::default()
     }
 
     pub fn validate(&self, path: &PathBuf) -> Result<(), XMLGeneratorError> {

@@ -220,18 +220,17 @@ mod tests {
     }
     // TODO Invalid XSD input should be caught by XSDValidator
 
-    // #[test]
-    // fn test_one_file() {
-    //     let generator = XMLGenerator::new();
-    //
-    //     //let file = "ibmData/valid/D3_4_23/d3_4_23v01.xsd";
-    //     let file = "msData/regex/reI57.xsd";
-    //     println!("File: {}", file);
-    //
-    //     let root = get_workspace_root();
-    //     let db_root = root.join("xsdtests-master");
-    //     let path = db_root.join(file);
-    //
-    //     test_file(&generator, &path);
-    // }
+    #[test]
+    fn test_one_file() {
+        let generator = XMLGenerator::new();
+
+        let file = "sunData/ElemDecl/typeDef/typeDef00501m/typeDef00501m1.xsd";
+        //println!("File: {}", file);
+
+        let root = get_workspace_root();
+        let db_root = root.join("xsdtests-master");
+        let path = db_root.join(file);
+
+        test_file(&generator, &path, &mut HashMap::new());
+    }
 }

@@ -8,15 +8,15 @@ pub struct Tracker {
 
 impl Default for Tracker {
     fn default() -> Self {
-        Self::new()
+        Tracker {
+            values: [].iter().cloned().collect(),
+        }
     }
 }
 
 impl Tracker {
-    pub fn new() -> Tracker {
-        Tracker {
-            values: [].iter().cloned().collect(),
-        }
+    pub fn new() -> Self {
+        Default::default()
     }
 
     fn includes(&self, node: &Node) -> bool {

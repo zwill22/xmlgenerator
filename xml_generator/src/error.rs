@@ -1,5 +1,5 @@
-use xml_builder::XMLError;
 use regextranslator::RegexTranslationError;
+use xml_builder::XMLError;
 use xsdvalidator::XSDValidationError;
 
 /// XML generator error
@@ -83,8 +83,7 @@ impl From<XMLError> for XMLGeneratorError {
     fn from(value: XMLError) -> Self {
         match value {
             XMLError::InsertError(str) => XMLGeneratorError::XMLBuilderError(str),
-            XMLError::IOError(str) => XMLGeneratorError::XMLBuilderError(str)
+            XMLError::IOError(str) => XMLGeneratorError::XMLBuilderError(str),
         }
     }
-
 }
