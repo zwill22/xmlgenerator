@@ -57,24 +57,14 @@ impl TypeGenerator {
         for element in self.elements.iter() {
             let child = element.generate(data_tracker, data_types, elements)?;
 
-            let result = xml_element.add_child(child);
-            if result.is_err() {
-                return Err(XMLGeneratorError::XMLBuilderError(
-                    "Unable to add child to element".to_string(),
-                ));
-            }
+            xml_element.add_child(child)?;
         }
 
         for group in self.groups.iter() {
             for element in group.elements.iter() {
                 let child = element.generate(data_tracker, data_types, elements)?;
 
-                let result = xml_element.add_child(child);
-                if result.is_err() {
-                    return Err(XMLGeneratorError::XMLBuilderError(
-                        "Unable to add group child to element".to_string(),
-                    ));
-                }
+                xml_element.add_child(child)?;
             }
         }
 

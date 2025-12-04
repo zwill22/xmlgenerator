@@ -85,14 +85,7 @@ pub(crate) fn find_root_element(
     }
 
     if independent_elements.len() > 1 {
-        for item in dependent_elements.iter() {
-            println!("Dependent element: {:?}", item.name);
-        }
-        for item in independent_elements.iter() {
-            println!("Independent element: {:?}", item.name);
-        }
-
-        unimplemented!("Multiple independent (root) elements");
+        return Err(XMLGeneratorError::MultipleRootsError);
     }
 
     for generator in generators.iter() {

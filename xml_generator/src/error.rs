@@ -1,3 +1,4 @@
+use xml_builder::XMLError;
 use regextranslator::RegexTranslationError;
 use xsdvalidator::XSDValidationError;
 
@@ -26,6 +27,8 @@ pub enum XMLGeneratorError {
     NoElementsError,
     /// Invalid XSD
     InvalidXSDError(String),
+    /// Multiple Roots elements in XSD
+    MultipleRootsError,
     /// Generator Error
     TypeGenerationError(String),
     /// Regex Compilation Error
@@ -74,4 +77,14 @@ impl From<RegexTranslationError> for XMLGeneratorError {
             }
         }
     }
+}
+
+impl From<XMLError> for XMLGeneratorError {
+    fn from(value: XMLError) -> Self {
+        match value {
+            XMLError::InsertError(str) => XMLGeneratorError::XMLBuilderError(str),
+            XMLError::IOError(str) => XMLGeneratorError::XMLBuilderError(str)
+        }
+    }
+
 }
