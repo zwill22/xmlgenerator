@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use std::any::Any;
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet};
     use std::path::PathBuf;
     use workspace_root::get_workspace_root;
     use xsdtestdata::get_test_data;
@@ -10,23 +10,48 @@ mod tests {
     use std::panic;
     use xmlgenerator::{XMLGenerator, XMLGeneratorError};
 
-    fn check_error(error: &XMLGeneratorError) {
+    fn increment(stats: &mut HashMap<String, Stat>, name: &str, value: &String) {
+        match stats.get_mut(name) {
+            None => {
+                let mut stat = Stat::new();
+                stat.add(value);
+
+                stats.insert(name.to_string(), stat);
+            }
+            Some(stat) => stat.add(value),
+        }
+    }
+
+    fn check_error(error: &XMLGeneratorError, stats: &mut HashMap<String, Stat>) {
         match error {
             XMLGeneratorError::XSDValidatorError(e) => panic!("XSD validator error: {}", e),
             XMLGeneratorError::DataTypeInformationError(e) => {
                 panic!("Data type information error: {}", e)
             }
             XMLGeneratorError::DataTypeNotFoundError(e) => panic!("DataType not found: {}", e),
-            XMLGeneratorError::XSDParserError(e) => eprintln!("XSD parser error: {}", e),
+            XMLGeneratorError::XSDParserError(e) => {
+                increment(stats, "XSD Parser Errors", e);
+            }
             XMLGeneratorError::DataTypesFormatError(e) => panic!("DataTypes format error: {}", e),
             XMLGeneratorError::XMLBuilderError(e) => panic!("XML builder error: {}", e),
-            XMLGeneratorError::InvalidXSDVersionError(e) => eprintln!("Invalid XSD version: {}", e),
-            XMLGeneratorError::InfiniteRecursionError => eprintln!("Infinite recursion detected"),
-            XMLGeneratorError::NoElementsError => eprintln!("XSD does not contain any elements"),
+            XMLGeneratorError::InvalidXSDVersionError(e) => {
+                increment(stats, "Invalid XSD Version", e);
+            }
+            XMLGeneratorError::InfiniteRecursionError => {
+                increment(stats, "Infinite Recursion", &"".to_string());
+            }
+            XMLGeneratorError::NoElementsError => {
+                increment(stats, "No Elements", &"".to_string());
+            }
             XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
+            XMLGeneratorError::MultipleRootsError => {
+                increment(stats, "Multiple Roots", &"".to_string());
+            }
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
             XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
-            XMLGeneratorError::UnimplementedFeature(e) => eprintln!("Unimplemented feature: {}", e),
+            XMLGeneratorError::UnimplementedFeature(_) => {
+                increment(stats, "Unimplemented Features", &"".to_string());
+            }
         }
     }
 
@@ -36,31 +61,31 @@ mod tests {
         }
     }
 
-    fn check_result(result: &Result<String, XMLGeneratorError>) {
+    fn check_result(result: &Result<String, XMLGeneratorError>, stats: &mut HashMap<String, Stat>) {
         match result {
             Ok(str) => check_result_str(str),
-            Err(err) => check_error(err),
+            Err(err) => check_error(err, stats),
         }
     }
 
-    fn check_error_string(string: &String) {
+    fn check_error_string(string: &String, stats: &mut HashMap<String, Stat>) {
         if string.is_empty() {
             panic!("Unknown error");
         }
 
         if string.contains("not implemented") {
-            eprintln!("Implementation error: {}", string);
+            increment(stats, "Unimplemented", string);
             return;
         } else {
             panic!("Error: {}", string);
         }
     }
 
-    fn check_panic(error: Box<dyn Any>) {
+    fn check_panic(error: Box<dyn Any>, stats: &mut HashMap<String, Stat>) {
         if let Some(s) = error.downcast_ref::<&str>() {
-            check_error_string(&s.to_string());
+            check_error_string(&s.to_string(), stats);
         } else if let Some(s) = error.downcast_ref::<String>() {
-            check_error_string(s)
+            check_error_string(s, stats);
         } else {
             panic!("Unknown error");
         }
@@ -75,12 +100,12 @@ mod tests {
         panic::catch_unwind(|| generator.generate(&path))
     }
 
-    fn test_file(generator: &XMLGenerator, path: &PathBuf) {
+    fn test_file(generator: &XMLGenerator, path: &PathBuf, stats: &mut HashMap<String, Stat>) {
         let result = run_generator(generator, path);
 
         match result {
-            Ok(valid_result) => check_result(&valid_result),
-            Err(error) => check_panic(error),
+            Ok(valid_result) => check_result(&valid_result, stats),
+            Err(error) => check_panic(error, stats),
         }
     }
 
@@ -132,6 +157,31 @@ mod tests {
         valid_files
     }
 
+    struct Stat {
+        count: usize,
+        types: HashSet<String>,
+    }
+
+    impl Default for Stat {
+        fn default() -> Self {
+            Self {
+                count: 0,
+                types: HashSet::new(),
+            }
+        }
+    }
+
+    impl Stat {
+        fn new() -> Self {
+            Default::default()
+        }
+
+        fn add(&mut self, s: &str) {
+            self.count += 1;
+            self.types.insert(s.to_string());
+        }
+    }
+
     #[test]
     fn test_xsd_db() {
         let generator = XMLGenerator::new();
@@ -142,11 +192,33 @@ mod tests {
 
         let valid_files = get_valid_files(&generator, &db_root, &archive);
 
+        let mut stats = HashMap::new();
+
         for path in valid_files {
-            println!("File: {:?}", path);
-            test_file(&generator, &path);
+            test_file(&generator, &path, &mut stats);
         }
+
+        if stats.is_empty() {
+            return;
+        }
+
+        println!();
+        println!("{:<32} \tTotal\tUnique", "Error type");
+        println!("------------------------------------------------------");
+        let mut total = 0;
+        let mut unique = 0;
+        for (name, val) in stats.iter() {
+            let u = val.types.len();
+
+            total += val.count;
+            unique += u;
+            println!("{:<32}:\t{:5}\t{:6}", name, val.count, u);
+        }
+        println!("======================================================");
+        println!("{:<32} \t{:5}\t{:6}", "Total", total, unique);
+        println!();
     }
+    // TODO Invalid XSD input should be caught by XSDValidator
 
     // #[test]
     // fn test_one_file() {
