@@ -5,8 +5,8 @@ use crate::find_root::find_root_element;
 use crate::generate_output::generate_output;
 use crate::generate_schema::generate_schema;
 use crate::schema_version::fetch_schema_version;
-use std::path::PathBuf;
 use regextranslator::RegexTranslator;
+use std::path::PathBuf;
 use xsdvalidator::XSDValidator;
 
 mod attribute_generator;
@@ -29,12 +29,21 @@ pub struct XMLGenerator {
     translator: RegexTranslator,
 }
 
+impl Default for XMLGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl XMLGenerator {
     pub fn new() -> XMLGenerator {
         let validator = XSDValidator::new(false);
         let translator = RegexTranslator::new().unwrap();
 
-        XMLGenerator { validator, translator }
+        XMLGenerator {
+            validator,
+            translator,
+        }
     }
 
     pub fn validate(&self, path: &PathBuf) -> Result<(), XMLGeneratorError> {

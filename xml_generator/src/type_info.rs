@@ -5,9 +5,7 @@ use fake::{Fake, Faker};
 use num_traits::Signed;
 use rand::seq::IndexedRandom;
 use rand::{Rng, SeedableRng};
-use rand_regex;
 use rand_xorshift::XorShiftRng;
-use regex;
 use regextranslator::RegexTranslator;
 use time::{Date, Time, format_description};
 use xsd_parser::models::schema::QName;
@@ -43,16 +41,13 @@ fn fake_date_format(format: &str) -> Option<String> {
     let date = fake_date();
     let format = format_description::parse(format).unwrap();
 
-    match date.format(&format) {
-        Ok(format) => Some(format),
-        Err(_) => None,
-    }
+    date.format(&format).ok()
 }
 
-fn generate_list(date_type: &String) -> Option<String> {
+fn generate_list(date_type: &str) -> Option<String> {
     let n = rand::rng().random_range(1..=10);
     let mut out = "".to_string();
-    let item_type = match date_type.as_str() {
+    let item_type = match date_type {
         "NMTOKENS" => "NMTOKEN",
         "IDREFS" => "IDREF",
         _ => return None,
@@ -62,10 +57,7 @@ fn generate_list(date_type: &String) -> Option<String> {
         if i != 0 {
             out.push(' ');
         }
-        let item = match generate_type(&item_type.to_string()) {
-            Some(item) => item,
-            None => return None,
-        };
+        let item = generate_type(item_type)?;
 
         out.push_str(&item);
     }
@@ -73,8 +65,8 @@ fn generate_list(date_type: &String) -> Option<String> {
     Some(out)
 }
 
-pub(crate) fn generate_type(type_name: &String) -> Option<String> {
-    match type_name.as_str() {
+pub(crate) fn generate_type(type_name: &str) -> Option<String> {
+    match type_name {
         // Numeric Data Types
         "byte" => make_fake::<i8>(),     // A signed 8-bit integer
         "decimal" => make_fake::<f32>(), // A decimal value
@@ -143,7 +135,7 @@ pub(crate) fn generate_type(type_name: &String) -> Option<String> {
     }
 }
 
-fn generate_enumeration(enumerations: &Vec<String>) -> Option<String> {
+fn generate_enumeration(enumerations: &[String]) -> Option<String> {
     let mut rng = rand::rng();
 
     enumerations.choose(&mut rng).cloned()
@@ -165,10 +157,7 @@ fn generate_regex(pattern: &regex::Regex) -> Option<String> {
 
     samples.sort();
 
-    match samples.first() {
-        None => None,
-        Some(s) => Some(s.to_string()),
-    }
+    samples.first().map(|s| s.to_string())
 }
 
 fn handle_enumeration(
@@ -337,10 +326,7 @@ impl TypeInfo {
             return generate_regex(pattern);
         }
 
-        match generate_type(&self.name) {
-            Some(name) => Some(name),
-            None => None,
-        }
+        generate_type(&self.name)
     }
 }
 

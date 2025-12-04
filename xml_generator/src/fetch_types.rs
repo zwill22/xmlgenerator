@@ -210,7 +210,7 @@ fn get_attribute(attribute: &AttributeType) -> AttributeGenerator {
         generator.type_name = get_qname(attribute_type);
     }
 
-    generator.attribute_type = attribute.use_.clone();
+    generator.attribute_type = attribute.use_;
 
     if attribute.ref_.is_some() {
         unimplemented!("Attribute references");
@@ -312,11 +312,8 @@ pub(crate) fn fetch_types(
     for (_schema_id, schema_info) in schemas.schemas() {
         let schema = &schema_info.schema;
         for content in &schema.content {
-            match fetch_type(content, regex_translator) {
-                Some(data_type) => {
-                    types.push(data_type?);
-                }
-                None => {}
+            if let Some(data_type) = fetch_type(content, regex_translator) {
+                types.push(data_type?);
             }
         }
     }

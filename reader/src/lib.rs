@@ -47,15 +47,15 @@ fn read_file_encoding(
     let mut string = String::new();
     match reader.read_to_string(&mut string) {
         Ok(_) => Ok(string),
-        Err(_) => read_file_encoding(&file_path, &encodings, index + 1),
+        Err(_) => read_file_encoding(file_path, encodings, index + 1),
     }
 }
 
 pub fn read_file(filepath: &PathBuf) -> Result<String, Error> {
     let encodings = Encodings::generate();
 
-    match read_to_string(&filepath) {
+    match read_to_string(filepath) {
         Ok(s) => Ok(s),
-        Err(_) => read_file_encoding(&filepath, &encodings, 0),
+        Err(_) => read_file_encoding(filepath, &encodings, 0),
     }
 }

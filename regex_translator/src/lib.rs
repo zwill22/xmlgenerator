@@ -3,8 +3,6 @@ extern crate core;
 
 use core::fmt::Display;
 use polars::prelude::*;
-use regex;
-use regexml;
 
 use std::collections::HashMap;
 use std::path;
@@ -168,9 +166,8 @@ fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationErr
     for (k, v) in unicode_blocks {
         // Unicode block (set)
         let block = format!(r"\p{{Is{}}}", k);
-        let set = format!(r"{}", v);
 
-        output.insert(block, set);
+        output.insert(block, v.to_string());
 
         // Set negation
         let neg_block = format!(r"\P{{Is{}}}", k);

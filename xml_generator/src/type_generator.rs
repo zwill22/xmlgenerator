@@ -112,7 +112,7 @@ impl PartialEq for TypeGenerator {
             return false;
         }
 
-        if !self.groups.deref().into_iter().eq(&other.groups) {
+        if !self.groups.deref().iter().eq(&other.groups) {
             return false;
         }
         if !self.attributes.eq(&other.attributes) {

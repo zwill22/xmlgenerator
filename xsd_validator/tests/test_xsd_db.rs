@@ -6,8 +6,6 @@ mod tests {
     use xsdtestdata::get_test_data;
     use xsdvalidator::{XSDValidationError, XSDValidator};
 
-    use futures::executor::block_on;
-
     fn check_error(error: &XSDValidationError, path: &Path) {
         match error {
             XSDValidationError::PathError => panic!("Error resolving path: {:?}", path),

@@ -237,11 +237,7 @@ fn get_attribute(node: &Node, name: String) -> String {
     panic!("attribute not found");
 }
 
-fn join(
-    output: &mut HashSet<(PathBuf, bool)>,
-    new_results: &Vec<Schema>,
-    ignore: &Vec<PathBuf>,
-) {
+fn join(output: &mut HashSet<(PathBuf, bool)>, new_results: &Vec<Schema>, ignore: &Vec<PathBuf>) {
     for result in new_results {
         if ignore.contains(&result.path) {
             continue;

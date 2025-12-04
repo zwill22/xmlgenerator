@@ -6,6 +6,12 @@ pub struct Tracker {
     values: HashSet<u32>,
 }
 
+impl Default for Tracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Tracker {
     pub fn new() -> Tracker {
         Tracker {
@@ -38,13 +44,13 @@ impl Tracker {
     }
 
     pub fn check_node(&mut self, node: &Node) -> Result<(), XSDValidationError> {
-        self.add(&node)?;
+        self.add(node)?;
 
         for child in node.children() {
             self.check_node(&child)?;
         }
 
-        self.remove(&node);
+        self.remove(node);
 
         Ok(())
     }

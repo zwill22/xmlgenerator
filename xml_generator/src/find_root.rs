@@ -20,14 +20,14 @@ fn get_content_list(generator: &TypeGenerator) -> Result<Vec<&String>, XMLGenera
 }
 
 fn get_field_struct<'a>(
-    generators: &'a Vec<ElementGenerator>,
+    generators: &'a [ElementGenerator],
     field: &String,
 ) -> Option<&'a ElementGenerator> {
     for generator in generators.iter() {
-        if let Some(name) = &generator.name {
-            if name.eq(field) {
-                return Option::from(generator);
-            }
+        if let Some(name) = &generator.name
+            && name.eq(field)
+        {
+            return Option::from(generator);
         }
     }
 
@@ -35,7 +35,7 @@ fn get_field_struct<'a>(
 }
 
 pub(crate) fn find_root_element(
-    generators: &Vec<ElementGenerator>,
+    generators: &[ElementGenerator],
 ) -> Result<&ElementGenerator, XMLGeneratorError> {
     if generators.is_empty() {
         return Err(XMLGeneratorError::NoElementsError);
@@ -50,7 +50,7 @@ pub(crate) fn find_root_element(
         }
         if generator.type_info.is_some() {
             let type_info = generator.type_info.as_ref().unwrap();
-            if type_info.len() > 0 {
+            if !type_info.is_empty() {
                 all_types.push(type_info);
             }
         }
@@ -58,16 +58,16 @@ pub(crate) fn find_root_element(
         for content in generator.contents.iter() {
             let content_list = get_content_list(content)?;
             for item in content_list {
-                all_fields.push(&item);
+                all_fields.push(item);
             }
         }
     }
 
     let mut dependent_elements = vec![];
     for field in all_fields {
-        let structure = get_field_struct(&generators, field);
-        if structure.is_some() {
-            dependent_elements.push(structure.unwrap());
+        let structure = get_field_struct(generators, field);
+        if let Some(item) = structure {
+            dependent_elements.push(item);
         }
     }
 

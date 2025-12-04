@@ -69,7 +69,9 @@ impl From<RegexTranslationError> for XMLGeneratorError {
             RegexTranslationError::RegexError(str) => XMLGeneratorError::InvalidXSDError(str),
             RegexTranslationError::FileReadError(str) => XMLGeneratorError::InvalidXSDError(str),
             RegexTranslationError::DataError(str) => XMLGeneratorError::RegexError(str),
-            RegexTranslationError::SurrogatesError => XMLGeneratorError::UnimplementedFeature("Regex Surrogates".to_string()),
+            RegexTranslationError::SurrogatesError => {
+                XMLGeneratorError::UnimplementedFeature("Regex Surrogates".to_string())
+            }
         }
     }
 }

@@ -96,13 +96,28 @@ impl PyXMLGenerator {
 fn pyxmlgenerator(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyXMLGenerator>()?;
     m.add("XSDValidatorError", _py.get_type::<XSDValidatorError>())?;
-    m.add("DataTypeInformationError", _py.get_type::<DataTypeInformationError>())?;
-    m.add("DataTypeNotFoundError", _py.get_type::<DataTypeNotFoundError>())?;
+    m.add(
+        "DataTypeInformationError",
+        _py.get_type::<DataTypeInformationError>(),
+    )?;
+    m.add(
+        "DataTypeNotFoundError",
+        _py.get_type::<DataTypeNotFoundError>(),
+    )?;
     m.add("XSDParserError", _py.get_type::<XSDParserError>())?;
-    m.add("DataTypesFormatError", _py.get_type::<DataTypesFormatError>())?;
+    m.add(
+        "DataTypesFormatError",
+        _py.get_type::<DataTypesFormatError>(),
+    )?;
     m.add("XMLBuilderError", _py.get_type::<XMLBuilderError>())?;
-    m.add("InvalidXSDVersionError", _py.get_type::<InvalidXSDVersionError>())?;
-    m.add("InfiniteRecursionError", _py.get_type::<InfiniteRecursionError>())?;
+    m.add(
+        "InvalidXSDVersionError",
+        _py.get_type::<InvalidXSDVersionError>(),
+    )?;
+    m.add(
+        "InfiniteRecursionError",
+        _py.get_type::<InfiniteRecursionError>(),
+    )?;
     m.add("NoElementsError", _py.get_type::<NoElementsError>())?;
     m.add("InvalidXSDError", _py.get_type::<InvalidXSDError>())?;
     m.add("TypeGenerationError", _py.get_type::<TypeGenerationError>())?;

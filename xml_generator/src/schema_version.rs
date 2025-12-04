@@ -23,7 +23,7 @@ fn check_namespace(ns: &String, schemas: &Schemas) -> Result<(), XMLGeneratorErr
 }
 
 pub(crate) fn fetch_schema_version(schemas: &Schemas) -> Result<XMLVersion, XMLGeneratorError> {
-    for (_schema_id, schema_info) in schemas.schemas() {
+    if let Some((_schema_id, schema_info)) = schemas.schemas().next() {
         let schema = &schema_info.schema;
         if let Some(ns) = &schema.target_namespace {
             check_namespace(ns, schemas)?;

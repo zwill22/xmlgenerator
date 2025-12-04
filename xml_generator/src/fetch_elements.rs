@@ -34,7 +34,7 @@ pub(crate) fn fetch_elements(
     for (_schema_id, schema_info) in schemas.schemas() {
         let schema = &schema_info.schema;
         for content in &schema.content {
-            let element = fetch_element(&content, regex_translator);
+            let element = fetch_element(content, regex_translator);
             if let Some(e) = element {
                 elements.push(e?);
             }
