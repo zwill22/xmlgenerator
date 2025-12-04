@@ -5,7 +5,7 @@ build-backend = "maturin"
 [project]
 name = "pyxsdtestdata"
 description = "Python bindings for the Rust XSD test data generator"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 readme = "../README.md"
 authors = [
     { name = "Z M Williams", email = "z.m.will@icloud.com" },
