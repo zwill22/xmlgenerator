@@ -21,11 +21,11 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version:
-          - 3.9
           - 3.10
           - 3.11
           - 3.12
           - 3.13
+          - 3.14
 
     steps:
       - name: Checkout
@@ -37,6 +37,12 @@ jobs:
 
       - name: Set up Rust
         run: rustup show
+
+      - name: Setup cmake
+        if: ${{ env.ACT }}
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: '3.22'
 
       - name: UV setup
         uses: astral-sh/setup-uv@v6
