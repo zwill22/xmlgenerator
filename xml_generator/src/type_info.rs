@@ -1,4 +1,5 @@
 use crate::XMLGeneratorError;
+use crate::error::unimplemented;
 use chrono::Duration;
 use fake::faker;
 use fake::{Fake, Faker};
@@ -224,20 +225,20 @@ fn handle_facet(
     regex_translator: &RegexTranslator,
 ) -> Result<(), XMLGeneratorError> {
     match facet {
-        Facet::MinExclusive(_) => unimplemented!("MinExclusive facet"),
-        Facet::MinInclusive(_) => unimplemented!("MinInclusive facet"),
-        Facet::MaxExclusive(_) => unimplemented!("MaxExclusive facet"),
-        Facet::MaxInclusive(_) => unimplemented!("MaxInclusive facet"),
-        Facet::TotalDigits(_) => unimplemented!("TotalDigits facet"),
-        Facet::FractionDigits(_) => unimplemented!("FractionDigits facet"),
-        Facet::Length(_) => unimplemented!("Length facet"),
-        Facet::MinLength(_) => unimplemented!("MinLength facet"),
-        Facet::MaxLength(_) => unimplemented!("MaxLength facet"),
+        Facet::MinExclusive(_) => unimplemented("MinExclusive facet"),
+        Facet::MinInclusive(_) => unimplemented("MinInclusive facet"),
+        Facet::MaxExclusive(_) => unimplemented("MaxExclusive facet"),
+        Facet::MaxInclusive(_) => unimplemented("MaxInclusive facet"),
+        Facet::TotalDigits(_) => unimplemented("TotalDigits facet"),
+        Facet::FractionDigits(_) => unimplemented("FractionDigits facet"),
+        Facet::Length(_) => unimplemented("Length facet"),
+        Facet::MinLength(_) => unimplemented("MinLength facet"),
+        Facet::MaxLength(_) => unimplemented("MaxLength facet"),
         Facet::Enumeration(facet_type) => handle_enumeration(type_info, facet_type),
-        Facet::WhiteSpace(_) => unimplemented!("WhiteSpace facet"),
+        Facet::WhiteSpace(_) => unimplemented("WhiteSpace facet"),
         Facet::Pattern(facet_type) => handle_pattern(type_info, facet_type, regex_translator),
-        Facet::Assertion(_) => unimplemented!("Assertion facet"),
-        Facet::ExplicitTimezone(_) => unimplemented!("ExplicitTimezone facet"),
+        Facet::Assertion(_) => unimplemented("Assertion facet"),
+        Facet::ExplicitTimezone(_) => unimplemented("ExplicitTimezone facet"),
     }
 }
 
@@ -247,8 +248,8 @@ fn handle_content(
     regex_translator: &RegexTranslator,
 ) -> Result<(), XMLGeneratorError> {
     match content {
-        RestrictionContent::Annotation(_) => unimplemented!("Annotation"),
-        RestrictionContent::SimpleType(_) => unimplemented!("SimpleType"),
+        RestrictionContent::Annotation(_) => unimplemented("Annotation"),
+        RestrictionContent::SimpleType(_) => unimplemented("SimpleType"),
         RestrictionContent::Facet(facet) => handle_facet(type_info, facet, regex_translator),
     }
 }
@@ -279,10 +280,10 @@ fn parse_restriction(
     regex_translator: &RegexTranslator,
 ) -> Result<(), XMLGeneratorError> {
     match content {
-        SimpleBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
+        SimpleBaseTypeContent::Annotation(_) => unimplemented("Annotation"),
         SimpleBaseTypeContent::Restriction(x) => get_restriction(type_info, x, regex_translator),
-        SimpleBaseTypeContent::List(_) => unimplemented!("List"),
-        SimpleBaseTypeContent::Union(_) => unimplemented!("Union"),
+        SimpleBaseTypeContent::List(_) => unimplemented("List"),
+        SimpleBaseTypeContent::Union(_) => unimplemented("Union"),
     }
 }
 

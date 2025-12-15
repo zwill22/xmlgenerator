@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
     use gag::Gag;
-    use std::any::Any;
     use std::fs::ReadDir;
     use std::path::PathBuf;
     use std::{fs, panic};
@@ -43,28 +42,10 @@ mod tests {
         }
     }
 
-    fn check_invalid_result(result: &Result<String, XMLGeneratorError>, expected_error: &String) {
-        match result {
-            Ok(_) => panic!("No error thrown for invalid result"),
-            Err(error) => check_error(error, expected_error),
-        }
-    }
-
-    fn check_invalid_panic(error: Box<dyn Any>, expected_error: &String) {
-        if let Some(s) = error.downcast_ref::<&str>() {
-            assert_eq!(s, expected_error);
-        } else if let Some(s) = error.downcast_ref::<String>() {
-            assert_eq!(s, expected_error);
-        } else {
-            panic!("Unknown error");
-        }
-    }
-
     fn test_xml(generator: &XMLGenerator, filepath: &PathBuf, expected: &String) {
-        let xml = panic::catch_unwind(|| generator.generate(filepath));
-        match xml {
-            Ok(result) => check_invalid_result(&result, expected),
-            Err(error) => check_invalid_panic(error, expected),
+        match generator.generate(filepath) {
+            Ok(_) => panic!("No error thrown for invalid result"),
+            Err(error) => check_error(&error, expected),
         }
     }
 
@@ -79,44 +60,13 @@ mod tests {
         }
     }
 
-    // More comprehensive validation tests performed in Python
-    fn check_result(result: &Result<String, XMLGeneratorError>) {
-        match result {
-            Ok(_) => {}
-            Err(err) => panic!("XMLGenerator error: {:?}", err),
-        }
-    }
-
-    fn check_error_string(string: &String) {
-        if string.is_empty() {
-            panic!("Unknown error");
-        }
-
-        if string.contains("not implemented") {
-            eprintln!("Implementation error: {}", string);
-            return;
-        } else {
-            panic!("Error: {}", string);
-        }
-    }
-
-    fn check_panic(error: Box<dyn Any>) {
-        if let Some(s) = error.downcast_ref::<&str>() {
-            check_error_string(&s.to_string());
-        } else if let Some(s) = error.downcast_ref::<String>() {
-            check_error_string(s)
-        } else {
-            panic!("Unknown error");
-        }
-    }
-
     fn run_generator(
         generator: &XMLGenerator,
         filepath: &PathBuf,
-    ) -> Result<Result<String, XMLGeneratorError>, Box<dyn Any + Send>> {
+    ) -> Result<String, XMLGeneratorError> {
         let _err_gag = Gag::stderr().unwrap();
 
-        panic::catch_unwind(|| generator.generate(&filepath))
+        generator.generate(&filepath)
     }
 
     #[test]
@@ -127,11 +77,9 @@ mod tests {
         for file in files {
             let filepath = file.unwrap().path();
 
-            let result = run_generator(&generator, &filepath);
-
-            match result {
-                Ok(result) => check_result(&result),
-                Err(error) => check_panic(error),
+            match run_generator(&generator, &filepath) {
+                Ok(_) => {}
+                Err(err) => panic!("XMLGenerator error: {:?}", err),
             }
         }
 

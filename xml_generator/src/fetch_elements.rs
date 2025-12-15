@@ -1,5 +1,6 @@
 use crate::XMLGeneratorError;
 use crate::element_generator::ElementGenerator;
+use crate::error::unimplemented;
 use crate::fetch_types::get_element_type;
 use regextranslator::RegexTranslator;
 use xsd_parser::Schemas;
@@ -10,19 +11,19 @@ fn fetch_element(
     regex_translator: &RegexTranslator,
 ) -> Option<Result<ElementGenerator, XMLGeneratorError>> {
     match content {
-        SchemaContent::Include(_) => unimplemented!("Include"),
-        SchemaContent::Import(_) => unimplemented!("Import"),
-        SchemaContent::Redefine(_) => unimplemented!("Redefine"),
-        SchemaContent::Override(_) => unimplemented!("Override"),
+        SchemaContent::Include(_) => Some(unimplemented("Include")),
+        SchemaContent::Import(_) => Some(unimplemented("Import")),
+        SchemaContent::Redefine(_) => Some(unimplemented("Redefine")),
+        SchemaContent::Override(_) => Some(unimplemented("Override")),
         SchemaContent::Annotation(_) => None,
-        SchemaContent::DefaultOpenContent(_) => unimplemented!("DefaultOpenContent"),
+        SchemaContent::DefaultOpenContent(_) => Some(unimplemented("DefaultOpenContent")),
         SchemaContent::SimpleType(_) => None,
         SchemaContent::ComplexType(_) => None,
-        SchemaContent::Group(_) => unimplemented!("Top-level group not supported"),
-        SchemaContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
+        SchemaContent::Group(_) => Some(unimplemented("Top-level group not supported")),
+        SchemaContent::AttributeGroup(_) => Some(unimplemented("AttributeGroup")),
         SchemaContent::Element(x) => Some(get_element_type(x, regex_translator)),
-        SchemaContent::Attribute(_) => unimplemented!("Attribute"),
-        SchemaContent::Notation(_) => unimplemented!("Notation"),
+        SchemaContent::Attribute(_) => Some(unimplemented("Attribute")),
+        SchemaContent::Notation(_) => Some(unimplemented("Notation")),
     }
 }
 

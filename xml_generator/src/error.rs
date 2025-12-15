@@ -87,3 +87,7 @@ impl From<XMLError> for XMLGeneratorError {
         }
     }
 }
+
+pub(crate) fn unimplemented<Type>(name: &str) -> Result<Type, XMLGeneratorError> {
+    Err(XMLGeneratorError::UnimplementedFeature(name.to_string()))
+}

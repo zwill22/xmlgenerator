@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use std::any::Any;
     use std::collections::{HashMap, HashSet};
     use std::path::PathBuf;
     use workspace_root::get_workspace_root;
@@ -49,8 +48,8 @@ mod tests {
             }
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
             XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
-            XMLGeneratorError::UnimplementedFeature(_) => {
-                increment(stats, "Unimplemented Features", &"".to_string());
+            XMLGeneratorError::UnimplementedFeature(e) => {
+                increment(stats, "Unimplemented Features", e);
             }
         }
     }
@@ -61,68 +60,26 @@ mod tests {
         }
     }
 
-    fn check_result(result: &Result<String, XMLGeneratorError>, stats: &mut HashMap<String, Stat>) {
-        match result {
-            Ok(str) => check_result_str(str),
-            Err(err) => check_error(err, stats),
-        }
-    }
-
-    fn check_error_string(string: &String, stats: &mut HashMap<String, Stat>) {
-        if string.is_empty() {
-            panic!("Unknown error");
-        }
-
-        if string.contains("not implemented") {
-            increment(stats, "Unimplemented", string);
-            return;
-        } else {
-            panic!("Error: {}", string);
-        }
-    }
-
-    fn check_panic(error: Box<dyn Any>, stats: &mut HashMap<String, Stat>) {
-        if let Some(s) = error.downcast_ref::<&str>() {
-            check_error_string(&s.to_string(), stats);
-        } else if let Some(s) = error.downcast_ref::<String>() {
-            check_error_string(s, stats);
-        } else {
-            panic!("Unknown error");
-        }
-    }
-
     fn run_generator(
         generator: &XMLGenerator,
         path: &PathBuf,
-    ) -> Result<Result<String, XMLGeneratorError>, Box<dyn Any + Send>> {
+    ) -> Result<String, XMLGeneratorError> {
         let _err_gag = Gag::stderr().unwrap();
 
-        panic::catch_unwind(|| generator.generate(&path))
+        generator.generate(&path)
     }
 
     fn test_file(generator: &XMLGenerator, path: &PathBuf, stats: &mut HashMap<String, Stat>) {
-        let result = run_generator(generator, path);
-
-        match result {
-            Ok(valid_result) => check_result(&valid_result, stats),
-            Err(error) => check_panic(error, stats),
+        match run_generator(generator, path) {
+            Ok(str) => check_result_str(&str),
+            Err(err) => check_error(&err, stats),
         }
     }
 
-    fn validate(
-        generator: &XMLGenerator,
-        filepath: &PathBuf,
-    ) -> Result<Result<(), XMLGeneratorError>, Box<dyn Any + Send>> {
+    fn validate(generator: &XMLGenerator, filepath: &PathBuf) -> Result<(), XMLGeneratorError> {
         let _err_gag = Gag::stderr().unwrap();
 
-        panic::catch_unwind(|| generator.validate(filepath))
-    }
-
-    fn check_validation_result(result: &Result<(), XMLGeneratorError>) -> bool {
-        match result {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        generator.validate(filepath)
     }
 
     fn validate_file(generator: &XMLGenerator, filepath: &PathBuf, valid: bool) -> bool {
@@ -131,7 +88,7 @@ mod tests {
         }
 
         match validate(generator, filepath) {
-            Ok(result) => check_validation_result(&result),
+            Ok(_) => true,
             Err(_) => false,
         }
     }
@@ -225,7 +182,6 @@ mod tests {
         let generator = XMLGenerator::new();
 
         let file = "sunData/ElemDecl/typeDef/typeDef00501m/typeDef00501m1.xsd";
-        //println!("File: {}", file);
 
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");

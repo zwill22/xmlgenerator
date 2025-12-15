@@ -1,6 +1,7 @@
 use crate::XMLGeneratorError;
 use crate::attribute_generator::AttributeGenerator;
 use crate::element_generator::ElementGenerator;
+use crate::error::unimplemented;
 use crate::group_generator::GroupGenerator;
 use crate::type_generator::TypeGenerator;
 use crate::type_info::{generate_type_info, get_qname};
@@ -19,11 +20,11 @@ fn get_simple_type(
     let mut generator = TypeGenerator::new();
     generator.name = simple.name.clone().unwrap_or("".to_string());
     if generator.name.is_empty() {
-        unimplemented!("Empty type");
+        return unimplemented("Empty type");
     }
 
     if simple.final_.is_some() {
-        unimplemented!("Final");
+        return unimplemented("Final");
     }
 
     let type_info = generate_type_info(&simple.content, regex_translator)?;
@@ -38,19 +39,19 @@ fn fetch_type(
     regex_translator: &RegexTranslator,
 ) -> Option<Result<TypeGenerator, XMLGeneratorError>> {
     match content {
-        SchemaContent::Include(_) => unimplemented!("Include"),
-        SchemaContent::Import(_) => unimplemented!("Import"),
-        SchemaContent::Redefine(_) => unimplemented!("Redefine"),
-        SchemaContent::Override(_) => unimplemented!("Override"),
+        SchemaContent::Include(_) => Some(unimplemented("Include")),
+        SchemaContent::Import(_) => Some(unimplemented("Import")),
+        SchemaContent::Redefine(_) => Some(unimplemented("Redefine")),
+        SchemaContent::Override(_) => Some(unimplemented("Override")),
         SchemaContent::Annotation(_) => None,
-        SchemaContent::DefaultOpenContent(_) => unimplemented!("DefaultOpenContent"),
+        SchemaContent::DefaultOpenContent(_) => Some(unimplemented("DefaultOpenContent")),
         SchemaContent::SimpleType(x) => Some(get_simple_type(x, regex_translator)),
         SchemaContent::ComplexType(x) => Some(get_complex_type(x, regex_translator)),
-        SchemaContent::Group(_) => unimplemented!("Top-level group not supported"),
-        SchemaContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
+        SchemaContent::Group(_) => Some(unimplemented("Top-level group not supported")),
+        SchemaContent::AttributeGroup(_) => Some(unimplemented("AttributeGroup")),
         SchemaContent::Element(_) => None,
-        SchemaContent::Attribute(_) => unimplemented!("Attribute"),
-        SchemaContent::Notation(_) => unimplemented!("Notation"),
+        SchemaContent::Attribute(_) => Some(unimplemented("Attribute")),
+        SchemaContent::Notation(_) => Some(unimplemented("Notation")),
     }
 }
 
@@ -59,13 +60,13 @@ fn get_element_content(
     regex_translator: &RegexTranslator,
 ) -> Result<TypeGenerator, XMLGeneratorError> {
     match content {
-        ElementTypeContent::Annotation(_) => unimplemented!("Annotation"),
+        ElementTypeContent::Annotation(_) => unimplemented("Annotation"),
         ElementTypeContent::SimpleType(x) => get_simple_type(x, regex_translator),
         ElementTypeContent::ComplexType(x) => get_complex_type(x, regex_translator),
-        ElementTypeContent::Alternative(_) => unimplemented!("Alternative"),
-        ElementTypeContent::Unique(_) => unimplemented!("Unique"),
-        ElementTypeContent::Key(_) => unimplemented!("Key"),
-        ElementTypeContent::Keyref(_) => unimplemented!("Keyref"),
+        ElementTypeContent::Alternative(_) => unimplemented("Alternative"),
+        ElementTypeContent::Unique(_) => unimplemented("Unique"),
+        ElementTypeContent::Key(_) => unimplemented("Key"),
+        ElementTypeContent::Keyref(_) => unimplemented("Keyref"),
     }
 }
 
@@ -88,7 +89,7 @@ pub(crate) fn get_element_type(
     }
 
     if element.substitution_group.is_some() {
-        unimplemented!("Element Substitution Groups");
+        return unimplemented("Element Substitution Groups");
     }
 
     generator.min = element.min_occurs;
@@ -99,35 +100,35 @@ pub(crate) fn get_element_type(
     };
 
     if element.default.is_some() {
-        unimplemented!("Default Element");
+        return unimplemented("Default Element");
     }
 
     if element.fixed.is_some() {
-        unimplemented!("Fixed elements");
+        return unimplemented("Fixed elements");
     }
 
     if element.nillable.is_some() {
-        unimplemented!("Nillable elements");
+        return unimplemented("Nillable elements");
     }
 
     if element.abstract_ {
-        unimplemented!("Abstract elements");
+        return unimplemented("Abstract elements");
     }
 
     if element.final_.is_some() {
-        unimplemented!("Final elements");
+        return unimplemented("Final elements");
     }
 
     if element.block.is_some() {
-        unimplemented!("Block elements");
+        return unimplemented("Block elements");
     }
 
     if element.form.is_some() {
-        unimplemented!("Form elements");
+        return unimplemented("Form elements");
     }
 
     if element.target_namespace.is_some() {
-        unimplemented!("Namespace elements");
+        return unimplemented("Namespace elements");
     }
 
     for content in &element.content {
@@ -143,13 +144,13 @@ fn get_group_content(
     regex_translator: &RegexTranslator,
 ) -> Result<ElementGenerator, XMLGeneratorError> {
     match content {
-        GroupTypeContent::Annotation(_) => unimplemented!("Annotation"),
+        GroupTypeContent::Annotation(_) => unimplemented("Annotation"),
         GroupTypeContent::Element(x) => get_element_type(x, regex_translator),
-        GroupTypeContent::Group(_) => unimplemented!("Embedded groups"),
-        GroupTypeContent::All(_) => unimplemented!("Embedded groups"),
-        GroupTypeContent::Choice(_) => unimplemented!("Embedded groups"),
-        GroupTypeContent::Sequence(_) => unimplemented!("Embedded groups"),
-        GroupTypeContent::Any(_) => unimplemented!("Any"),
+        GroupTypeContent::Group(_) => unimplemented("Embedded groups"),
+        GroupTypeContent::All(_) => unimplemented("Embedded groups"),
+        GroupTypeContent::Choice(_) => unimplemented("Embedded groups"),
+        GroupTypeContent::Sequence(_) => unimplemented("Embedded groups"),
+        GroupTypeContent::Any(_) => unimplemented("Any"),
     }
 }
 
@@ -160,11 +161,11 @@ fn get_group(
     let mut generator = GroupGenerator::new();
 
     if group.name.is_some() {
-        unimplemented!("Named groups");
+        return unimplemented("Named groups");
     }
 
     if group.ref_.is_some() {
-        unimplemented!("Group references");
+        return unimplemented("Group references");
     }
 
     generator.min = group.min_occurs;
@@ -187,22 +188,22 @@ fn get_complex_group(
     regex_translator: &RegexTranslator,
 ) -> Option<Result<GroupGenerator, XMLGeneratorError>> {
     match content {
-        ComplexBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
-        ComplexBaseTypeContent::SimpleContent(_) => unimplemented!("SimpleContent"),
-        ComplexBaseTypeContent::ComplexContent(_) => unimplemented!("ComplexContent"),
-        ComplexBaseTypeContent::OpenContent(_) => unimplemented!("OpenContent"),
+        ComplexBaseTypeContent::Annotation(_) => Some(unimplemented("Annotation")),
+        ComplexBaseTypeContent::SimpleContent(_) => Some(unimplemented("SimpleContent")),
+        ComplexBaseTypeContent::ComplexContent(_) => Some(unimplemented("ComplexContent")),
+        ComplexBaseTypeContent::OpenContent(_) => Some(unimplemented("OpenContent")),
         ComplexBaseTypeContent::Group(x) => Some(get_group(x, regex_translator)),
         ComplexBaseTypeContent::All(x) => Some(get_group(x, regex_translator)),
         ComplexBaseTypeContent::Choice(x) => Some(get_group(x, regex_translator)),
         ComplexBaseTypeContent::Sequence(x) => Some(get_group(x, regex_translator)),
         ComplexBaseTypeContent::Attribute(_) => None,
-        ComplexBaseTypeContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
-        ComplexBaseTypeContent::AnyAttribute(_) => unimplemented!("AnyAttribute"),
-        ComplexBaseTypeContent::Assert(_) => unimplemented!("Assert"),
+        ComplexBaseTypeContent::AttributeGroup(_) => Some(unimplemented("AttributeGroup")),
+        ComplexBaseTypeContent::AnyAttribute(_) => Some(unimplemented("AnyAttribute")),
+        ComplexBaseTypeContent::Assert(_) => Some(unimplemented("Assert")),
     }
 }
 
-fn get_attribute(attribute: &AttributeType) -> AttributeGenerator {
+fn get_attribute(attribute: &AttributeType) -> Result<AttributeGenerator, XMLGeneratorError> {
     let mut generator = AttributeGenerator::new();
     generator.name = attribute.name.clone().unwrap_or("".to_string());
 
@@ -213,54 +214,56 @@ fn get_attribute(attribute: &AttributeType) -> AttributeGenerator {
     generator.attribute_type = attribute.use_;
 
     if attribute.ref_.is_some() {
-        unimplemented!("Attribute references");
+        return unimplemented("Attribute references");
     }
 
     if attribute.default.is_some() {
-        unimplemented!("Default attribute");
+        return unimplemented("Default attribute");
     }
 
     if attribute.fixed.is_some() {
-        unimplemented!("Fixed attribute");
+        return unimplemented("Fixed attribute");
     }
 
     if attribute.form.is_some() {
-        unimplemented!("Form attribute");
+        return unimplemented("Form attribute");
     }
 
     if attribute.target_namespace.is_some() {
-        unimplemented!("Target namespace attribute");
+        return unimplemented("Target namespace attribute");
     }
 
     if attribute.inheritable.is_some() {
-        unimplemented!("Inheritable attribute");
+        return unimplemented("Inheritable attribute");
     }
 
     if attribute.annotation.is_some() {
-        unimplemented!("Annotation");
+        return unimplemented("Annotation");
     }
 
     if attribute.simple_type.is_some() {
-        unimplemented!("Simple type attribute");
+        return unimplemented("Simple type attribute");
     }
 
-    generator
+    Ok(generator)
 }
 
-fn get_complex_attributes(content: &ComplexBaseTypeContent) -> Option<AttributeGenerator> {
+fn get_complex_attributes(
+    content: &ComplexBaseTypeContent,
+) -> Option<Result<AttributeGenerator, XMLGeneratorError>> {
     match content {
-        ComplexBaseTypeContent::Annotation(_) => unimplemented!("Annotation"),
-        ComplexBaseTypeContent::SimpleContent(_) => unimplemented!("SimpleContent"),
-        ComplexBaseTypeContent::ComplexContent(_) => unimplemented!("ComplexContent"),
-        ComplexBaseTypeContent::OpenContent(_) => unimplemented!("OpenContent"),
+        ComplexBaseTypeContent::Annotation(_) => Some(unimplemented("Annotation")),
+        ComplexBaseTypeContent::SimpleContent(_) => Some(unimplemented("SimpleContent")),
+        ComplexBaseTypeContent::ComplexContent(_) => Some(unimplemented("ComplexContent")),
+        ComplexBaseTypeContent::OpenContent(_) => Some(unimplemented("OpenContent")),
         ComplexBaseTypeContent::Group(_) => None,
         ComplexBaseTypeContent::All(_) => None,
         ComplexBaseTypeContent::Choice(_) => None,
         ComplexBaseTypeContent::Sequence(_) => None,
         ComplexBaseTypeContent::Attribute(x) => Some(get_attribute(x)),
-        ComplexBaseTypeContent::AttributeGroup(_) => unimplemented!("AttributeGroup"),
-        ComplexBaseTypeContent::AnyAttribute(_) => unimplemented!("AnyAttribute"),
-        ComplexBaseTypeContent::Assert(_) => unimplemented!("Assert"),
+        ComplexBaseTypeContent::AttributeGroup(_) => Some(unimplemented("AttributeGroup")),
+        ComplexBaseTypeContent::AnyAttribute(_) => Some(unimplemented("AnyAttribute")),
+        ComplexBaseTypeContent::Assert(_) => Some(unimplemented("Assert")),
     }
 }
 
@@ -272,24 +275,24 @@ fn get_complex_type(
     generator.name = complex.name.clone().unwrap_or("".to_string());
 
     if complex.mixed.is_some() {
-        unimplemented!("Mixed types");
+        return unimplemented("Mixed types");
     }
 
     if complex.abstract_ {
-        unimplemented!("Abstract types");
+        return unimplemented("Abstract types");
     }
 
     if complex.final_.is_some() {
-        unimplemented!("Final types");
+        return unimplemented("Final types");
     }
 
     if complex.block.is_some() {
-        unimplemented!("Block types");
+        return unimplemented("Block types");
     }
 
     let default_attributes_apply = complex.default_attributes_apply;
     if !default_attributes_apply {
-        unimplemented!("Non-default attributes");
+        return unimplemented("Non-default attributes");
     }
 
     for content in &complex.content {
@@ -297,7 +300,7 @@ fn get_complex_type(
             generator.groups.push(group?);
         }
         if let Some(attribute) = get_complex_attributes(content) {
-            generator.attributes.push(attribute);
+            generator.attributes.push(attribute?);
         }
     }
 
