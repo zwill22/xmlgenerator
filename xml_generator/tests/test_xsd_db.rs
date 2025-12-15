@@ -139,6 +139,25 @@ mod tests {
         }
     }
 
+    // TODO Invalid XSD input error should be caught by XSDValidator
+    fn print_stats(stats: &HashMap<String, Stat>) {
+        println!();
+        println!("{:<32} \tTotal\tUnique", "Error type");
+        println!("------------------------------------------------------");
+        let mut total = 0;
+        let mut unique = 0;
+        for (name, val) in stats.iter() {
+            let u = val.types.len();
+
+            total += val.count;
+            unique += u;
+            println!("{:<32}:\t{:5}\t{:6}", name, val.count, u);
+        }
+        println!("======================================================");
+        println!("{:<32} \t{:5}\t{:6}", "Total", total, unique);
+        println!();
+    }
+
     #[test]
     fn test_xsd_db() {
         let generator = XMLGenerator::new();
@@ -159,23 +178,8 @@ mod tests {
             return;
         }
 
-        println!();
-        println!("{:<32} \tTotal\tUnique", "Error type");
-        println!("------------------------------------------------------");
-        let mut total = 0;
-        let mut unique = 0;
-        for (name, val) in stats.iter() {
-            let u = val.types.len();
-
-            total += val.count;
-            unique += u;
-            println!("{:<32}:\t{:5}\t{:6}", name, val.count, u);
-        }
-        println!("======================================================");
-        println!("{:<32} \t{:5}\t{:6}", "Total", total, unique);
-        println!();
+        print_stats(&stats);
     }
-    // TODO Invalid XSD input should be caught by XSDValidator
 
     #[test]
     fn test_one_file() {
