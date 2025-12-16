@@ -183,14 +183,26 @@ mod tests {
 
     #[test]
     fn test_one_file() {
+        // TODO Change into CLI
         let generator = XMLGenerator::new();
 
-        let file = "sunData/ElemDecl/typeDef/typeDef00501m/typeDef00501m1.xsd";
+        let file = "msData/schema/schF5_a.xsd";
 
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");
         let path = db_root.join(file);
 
-        test_file(&generator, &path, &mut HashMap::new());
+        let mut stats = HashMap::new();
+        test_file(&generator, &path, &mut stats);
+        if !stats.is_empty() {
+            for (name, stat) in stats.iter() {
+                eprintln!("Error:\t{}", name);
+                for error_type in &stat.types {
+                    eprintln!("Type:\t{}", error_type);
+                }
+            }
+
+            eprintln!("File:\t{}", path.display());
+        }
     }
 }
