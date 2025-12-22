@@ -31,7 +31,9 @@ mod tests {
             XMLGeneratorError::XSDParserError(e) => {
                 increment(stats, "XSD Parser Errors", e);
             }
-            XMLGeneratorError::DataTypesFormatError(e) => panic!("DataTypes format error: {}", e),
+            XMLGeneratorError::DataTypesFormatError(e) => {
+                increment(stats, "Data Types Format Error", e);
+            },
             XMLGeneratorError::XMLBuilderError(e) => panic!("XML builder error: {}", e),
             XMLGeneratorError::InvalidXSDVersionError(e) => {
                 increment(stats, "Invalid XSD Version", e);
@@ -156,6 +158,14 @@ mod tests {
         println!("======================================================");
         println!("{:<32} \t{:5}\t{:6}", "Total", total, unique);
         println!();
+
+        let format_errors = stats.get("Data Types Format Error").unwrap();
+        let mut vec = format_errors.types.iter().collect::<Vec<_>>();
+        vec.sort();
+        println!("Format errors:");
+        for v in &vec {
+            println!("{}", v);
+        }
     }
 
     #[test]

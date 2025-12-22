@@ -4,7 +4,7 @@ use crate::fetch_types::fetch_types;
 use crate::find_root::find_root_element;
 use crate::generate_output::generate_output;
 use crate::generate_schema::generate_schema;
-use crate::schema_version::fetch_schema_version;
+use crate::metadata::get_metadata;
 use regextranslator::RegexTranslator;
 use std::path::PathBuf;
 use xsdvalidator::XSDValidator;
@@ -20,7 +20,7 @@ mod generate_output;
 mod generate_schema;
 mod group_generator;
 mod recursion_tracker;
-mod schema_version;
+mod metadata;
 mod type_generator;
 mod type_info;
 
@@ -80,11 +80,11 @@ impl XMLGenerator {
         let schemas = generate_schema(xsd_path)?;
         self.validate(xsd_path)?;
 
-        let version = fetch_schema_version(&schemas)?;
+        let metadata = get_metadata(&schemas, xsd_path)?;
         let data_types = fetch_types(&schemas, &self.translator)?;
         let elements = fetch_elements(&schemas, &self.translator)?;
         let root_element = find_root_element(&elements)?;
 
-        generate_output(root_element, &data_types, &elements, version)
+        generate_output(root_element, &data_types, &elements, &metadata)
     }
 }

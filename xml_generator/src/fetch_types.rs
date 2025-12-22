@@ -40,7 +40,7 @@ fn fetch_type(
 ) -> Option<Result<TypeGenerator, XMLGeneratorError>> {
     match content {
         SchemaContent::Include(_) => Some(unimplemented("Include")),
-        SchemaContent::Import(_) => Some(unimplemented("Import")),
+        SchemaContent::Import(_) => None,
         SchemaContent::Redefine(_) => Some(unimplemented("Redefine")),
         SchemaContent::Override(_) => Some(unimplemented("Override")),
         SchemaContent::Annotation(_) => None,

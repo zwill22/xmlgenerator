@@ -12,7 +12,7 @@ fn fetch_element(
 ) -> Option<Result<ElementGenerator, XMLGeneratorError>> {
     match content {
         SchemaContent::Include(_) => Some(unimplemented("Include")),
-        SchemaContent::Import(_) => Some(unimplemented("Import")),
+        SchemaContent::Import(_) => None,
         SchemaContent::Redefine(_) => Some(unimplemented("Redefine")),
         SchemaContent::Override(_) => Some(unimplemented("Override")),
         SchemaContent::Annotation(_) => None,

@@ -1,25 +1,30 @@
 use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
+use crate::metadata::SchemaMetadata;
 use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
 use std::string::String;
-use xml_builder::{XMLBuilder, XMLVersion};
+use xml_builder::XMLBuilder;
 
 pub(crate) fn generate_output(
     generator: &ElementGenerator,
     data_types: &Vec<TypeGenerator>,
     elements: &Vec<ElementGenerator>,
-    version: XMLVersion,
+    metadata: &SchemaMetadata,
 ) -> Result<String, XMLGeneratorError> {
+    let schema_version = metadata.get_version()?;
+
     let mut xml = XMLBuilder::new()
-        .version(version)
+        .expand_empty_tags(true)
+        .version(schema_version)
         .encoding("UTF-8".into())
         .build();
 
     let mut tracker = RecursionTracker::new();
 
-    let root_element = generator.generate(&mut tracker, data_types, elements)?;
-
+    let mut root_element = generator.generate(&mut tracker, data_types, elements)?;
+    metadata.apply_to(&mut root_element)?;
+    
     let mut writer: Vec<u8> = Vec::new();
     xml.set_root_element(root_element);
     let result = xml.generate(&mut writer);
