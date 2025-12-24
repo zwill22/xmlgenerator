@@ -39,7 +39,7 @@ fn fetch_type(
     regex_translator: &RegexTranslator,
 ) -> Option<Result<TypeGenerator, XMLGeneratorError>> {
     match content {
-        SchemaContent::Include(_) => Some(unimplemented("Include")),
+        SchemaContent::Include(_) => None,
         SchemaContent::Import(_) => None,
         SchemaContent::Redefine(_) => Some(unimplemented("Redefine")),
         SchemaContent::Override(_) => Some(unimplemented("Override")),

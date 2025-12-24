@@ -1,4 +1,4 @@
-use crate::error::{XMLGeneratorError, unimplemented};
+use crate::error::XMLGeneratorError;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::str::from_utf8;
@@ -87,7 +87,8 @@ impl Namespaces {
     fn set_location(&mut self, import: &Import, location: &String) {
         match &import.namespace {
             None => {
-                self.locations.insert(location.to_string(), location.to_string());
+                self.locations
+                    .insert(location.to_string(), location.to_string());
             }
             Some(ns) => {
                 self.locations.insert(ns.to_string(), location.to_string());
@@ -106,7 +107,9 @@ impl Namespaces {
 
     fn get_info(&mut self, ns_info: &NamespaceInfo) -> Result<(), XMLGeneratorError> {
         if ns_info.module_name.is_some() {
-            return unimplemented("Modules names");
+            return Err(XMLGeneratorError::UnimplementedFeature(
+                "module_name".to_string(),
+            ));
         }
 
         if let Some(namespace) = &ns_info.namespace {
@@ -223,7 +226,6 @@ impl SchemaMetadata {
                 if let Some(target) = &self.namespaces.target_namespace {
                     if !namespaces.contains(target) {
                         element.add_attribute("targetNamespace", target.as_str());
-
                     }
                 }
 

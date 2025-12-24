@@ -161,14 +161,6 @@ mod tests {
         println!("======================================================");
         println!("{:<32} \t{:5}\t{:6}", "Total", total, unique);
         println!();
-
-        let format_errors = stats.get("Data Types Format Error").unwrap();
-        let mut vec = format_errors.types.iter().collect::<Vec<_>>();
-        vec.sort();
-        println!("Format errors:");
-        for v in &vec {
-            println!("{}", v);
-        }
     }
 
     #[test]
