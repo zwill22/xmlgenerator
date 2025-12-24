@@ -17,6 +17,7 @@ create_exception!(pyxmlgenerator, InvalidXSDVersionError, PyException);
 create_exception!(pyxmlgenerator, InfiniteRecursionError, PyException);
 create_exception!(pyxmlgenerator, NoElementsError, PyException);
 create_exception!(pyxmlgenerator, InvalidXSDError, PyException);
+create_exception!(pyxmlgenerator, NoIndependentElementsError, PyException);
 create_exception!(pyxmlgenerator, MultipleXSDRootsError, PyException);
 create_exception!(pyxmlgenerator, TypeGenerationError, PyException);
 create_exception!(pyxmlgenerator, ImplementationError, PyException);
@@ -36,6 +37,7 @@ fn handle_error(error: XMLGeneratorError) -> PyErr {
         }
         XMLGeneratorError::NoElementsError => NoElementsError::new_err("No elements found in XSD"),
         XMLGeneratorError::InvalidXSDError(e) => InvalidXSDError::new_err(e),
+        XMLGeneratorError::NoIndependentElementsError => NoIndependentElementsError::new_err("No Independent Elements found in XSD"),
         XMLGeneratorError::MultipleRootsError => MultipleXSDRootsError::new_err("Multiple Roots"),
         XMLGeneratorError::TypeGenerationError(e) => TypeGenerationError::new_err(e),
         XMLGeneratorError::RegexError(e) => RegexError::new_err(e),

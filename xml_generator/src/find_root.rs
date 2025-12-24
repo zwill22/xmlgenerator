@@ -79,9 +79,7 @@ pub(crate) fn find_root_element(
     }
 
     if independent_elements.is_empty() {
-        return Err(XMLGeneratorError::DataTypesFormatError(
-            "No independent elements found".to_string(),
-        ));
+        return Err(XMLGeneratorError::NoIndependentElementsError);
     }
 
     if independent_elements.len() > 1 {

@@ -45,6 +45,9 @@ mod tests {
                 increment(stats, "No Elements", &"".to_string());
             }
             XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
+            XMLGeneratorError::NoIndependentElementsError => {
+                increment(stats, "No Independent Elements", &"".to_string());
+            }
             XMLGeneratorError::MultipleRootsError => {
                 increment(stats, "Multiple Roots", &"".to_string());
             }
