@@ -5,7 +5,14 @@ use xsd_parser::{Parser, Schemas};
 
 pub(crate) fn generate_schema(path: &Path) -> Result<Schemas, XMLGeneratorError> {
     let wd = current_dir().expect("current_dir() failed");
-    let file_dir = path.parent().expect("Filepath has no parent");
+    let file_dir = match path.parent() {
+        Some(dir) => dir,
+        None => {
+            return Err(XMLGeneratorError::InvalidPathError(
+                path.to_str().unwrap().to_string(),
+            ));
+        }
+    };
 
     set_current_dir(file_dir).expect("set_current_dir() failed");
 

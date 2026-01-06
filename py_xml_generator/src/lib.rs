@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use xmlgenerator::XMLGenerator;
 use xmlgenerator::error::XMLGeneratorError;
 
+create_exception!(pyxmlgenerator, InvalidPathError, PyException);
 create_exception!(pyxmlgenerator, XSDValidatorError, PyException);
 create_exception!(pyxmlgenerator, DataTypeInformationError, PyException);
 create_exception!(pyxmlgenerator, DataTypeNotFoundError, PyException);
@@ -25,6 +26,7 @@ create_exception!(pyxmlgenerator, RegexError, PyException);
 
 fn handle_error(error: XMLGeneratorError) -> PyErr {
     match error {
+        XMLGeneratorError::InvalidPathError(e) => InvalidPathError::new_err(e),
         XMLGeneratorError::XSDValidatorError(e) => XSDValidatorError::new_err(e),
         XMLGeneratorError::DataTypeInformationError(e) => DataTypeInformationError::new_err(e),
         XMLGeneratorError::DataTypeNotFoundError(e) => DataTypeNotFoundError::new_err(e),
@@ -37,7 +39,9 @@ fn handle_error(error: XMLGeneratorError) -> PyErr {
         }
         XMLGeneratorError::NoElementsError => NoElementsError::new_err("No elements found in XSD"),
         XMLGeneratorError::InvalidXSDError(e) => InvalidXSDError::new_err(e),
-        XMLGeneratorError::NoIndependentElementsError => NoIndependentElementsError::new_err("No Independent Elements found in XSD"),
+        XMLGeneratorError::NoIndependentElementsError => {
+            NoIndependentElementsError::new_err("No Independent Elements found in XSD")
+        }
         XMLGeneratorError::MultipleRootsError => MultipleXSDRootsError::new_err("Multiple Roots"),
         XMLGeneratorError::TypeGenerationError(e) => TypeGenerationError::new_err(e),
         XMLGeneratorError::RegexError(e) => RegexError::new_err(e),
@@ -99,6 +103,7 @@ impl PyXMLGenerator {
 #[pymodule]
 fn pyxmlgenerator(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyXMLGenerator>()?;
+    m.add("InvalidPathError", _py.get_type::<InvalidPathError>())?;
     m.add("XSDValidatorError", _py.get_type::<XSDValidatorError>())?;
     m.add(
         "DataTypeInformationError",
@@ -124,7 +129,16 @@ fn pyxmlgenerator(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     )?;
     m.add("NoElementsError", _py.get_type::<NoElementsError>())?;
     m.add("InvalidXSDError", _py.get_type::<InvalidXSDError>())?;
+    m.add(
+        "NoIndependentElementsError",
+        _py.get_type::<NoIndependentElementsError>(),
+    )?;
+    m.add(
+        "MultipleXSDRootsError",
+        _py.get_type::<MultipleXSDRootsError>(),
+    )?;
     m.add("TypeGenerationError", _py.get_type::<TypeGenerationError>())?;
     m.add("ImplementationError", _py.get_type::<ImplementationError>())?;
+    m.add("RegexError", _py.get_type::<RegexError>())?;
     Ok(())
 }

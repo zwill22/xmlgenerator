@@ -7,6 +7,8 @@ use xsdvalidator::XSDValidationError;
 /// Struct which manages errors in the XMLGenerator crate
 #[derive(Debug)]
 pub enum XMLGeneratorError {
+    /// Error due to invalid input path
+    InvalidPathError(String),
     /// Error from XSDvalidator module
     XSDValidatorError(String),
     /// Data type Error
@@ -43,7 +45,7 @@ impl From<XSDValidationError> for XMLGeneratorError {
     fn from(value: XSDValidationError) -> Self {
         match value {
             XSDValidationError::PathError => {
-                XMLGeneratorError::XSDValidatorError("Cannot read path".to_string())
+                XMLGeneratorError::InvalidPathError("".to_string())
             }
             XSDValidationError::StringError => {
                 XMLGeneratorError::XSDValidatorError("Cannot read path string".to_string())

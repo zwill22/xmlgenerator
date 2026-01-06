@@ -21,6 +21,7 @@ mod tests {
 
     fn check_error(error: &XMLGeneratorError, expected_error: &String) {
         match error {
+            XMLGeneratorError::InvalidPathError(e) => panic!("Invalid path error: {}", e),
             XMLGeneratorError::XSDValidatorError(e) => panic!("XSD validator error: {}", e),
             XMLGeneratorError::DataTypeInformationError(e) => {
                 panic!("Data type information error: {}", e)

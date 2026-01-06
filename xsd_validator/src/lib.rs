@@ -56,7 +56,10 @@ impl XSDValidator {
 
     pub fn validate(&self, path: &PathBuf) -> Result<bool, XSDValidationError> {
         let wd = current_dir().expect("current_dir() failed");
-        let file_dir = path.parent().expect("Filepath has no parent");
+        let file_dir = match path.parent() {
+            Some(parent) => parent,
+            None => return Err(XSDValidationError::PathError),
+        };
 
         set_current_dir(file_dir).expect("set_current_dir() failed");
 

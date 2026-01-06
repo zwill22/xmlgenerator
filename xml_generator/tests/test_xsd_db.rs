@@ -23,6 +23,7 @@ mod tests {
 
     fn check_error(error: &XMLGeneratorError, stats: &mut HashMap<String, Stat>) {
         match error {
+            XMLGeneratorError::InvalidPathError(e) => panic!("Invalid path: {}", e),
             XMLGeneratorError::XSDValidatorError(e) => panic!("XSD validator error: {}", e),
             XMLGeneratorError::DataTypeInformationError(e) => {
                 panic!("Data type information error: {}", e)
