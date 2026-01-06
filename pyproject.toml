@@ -2,6 +2,7 @@
 name = "xmlgenerator"
 version = "0.1.0"
 requires-python = ">=3.10"
+dependencies = ["xmlgenerator", "pyxsdtestdata"]
 
 [tool.uv.sources]
 xmlgenerator = { workspace = true }

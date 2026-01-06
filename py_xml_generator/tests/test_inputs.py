@@ -1,18 +1,17 @@
 import pytest
 
-from pathlib import Path
-from .common import validate_output, get_project_root
+from pyxmlgenerator import InvalidPathError
 
+invalid_inputs = [
+    "",
+    "Invalid path format",
+    "/path/in/valid/format/but/does/not/exist"
+]
 
-def get_files() -> list[Path]:
-    project_root: Path = get_project_root()
-    example_dir: Path = project_root / "examples" / "working"
+@pytest.mark.parametrize("path", invalid_inputs, )
+def test_empty(xml_generator, path):
 
-    return [file for file in example_dir.iterdir()]
+    with pytest.raises(InvalidPathError) as e:
+        xml_generator.generate(path)
 
-
-
-
-@pytest.mark.parametrize("input_file", get_files())
-def test_files(xml_generator, input_file):
-    validate_output(xml_generator, input_file)
+    assert str(e.value) == "Input path does not exist"

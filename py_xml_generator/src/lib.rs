@@ -49,6 +49,23 @@ fn handle_error(error: XMLGeneratorError) -> PyErr {
     }
 }
 
+fn handle_input(input_string: String) -> PyResult<PathBuf> {
+    let path = PathBuf::from(input_string);
+
+    match path.try_exists() {
+        Ok(exists) => {
+            if exists {
+                Ok(path)
+            } else {
+                Err(InvalidPathError::new_err("Input path does not exist"))
+            }
+        }
+        Err(err) => {
+            Err(InvalidPathError::new_err(err))
+        }
+    }
+}
+
 fn handle_panic(error: Box<dyn Any>) -> PyErr {
     if let Some(s) = error.downcast_ref::<&str>() {
         let msg = format!("{}", s);
@@ -84,7 +101,7 @@ impl PyXMLGenerator {
     }
 
     fn validate(&self, filepath: String) -> PyResult<()> {
-        let path_buf = PathBuf::from(filepath);
+        let path_buf = handle_input(filepath)?;
         match panic::catch_unwind(|| self.inner.validate(&path_buf)) {
             Ok(result) => handle_result(result),
             Err(error) => Err(handle_panic(error)),
@@ -92,7 +109,7 @@ impl PyXMLGenerator {
     }
 
     fn generate(&self, filepath: String) -> PyResult<String> {
-        let path_buf = PathBuf::from(filepath);
+        let path_buf = handle_input(filepath)?;
         match panic::catch_unwind(|| self.inner.generate(&path_buf)) {
             Ok(result) => handle_result(result),
             Err(error) => Err(handle_panic(error)),

@@ -33,6 +33,14 @@ function build() {
 }
 
 function build_all() {
+    uv pip install pip &> /dev/null
+    code=$?
+
+    if [[ ${code} != 0 ]]; then
+      echo "Setting up virtual environment"
+      uv venv
+    fi
+
     echo "Install maturin"
     uv pip install maturin || return 1
 
