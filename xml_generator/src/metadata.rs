@@ -1,6 +1,5 @@
 use crate::error::XMLGeneratorError;
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
 use std::str::from_utf8;
 use xml_builder::{XMLElement, XMLVersion};
 use xsd_parser::Schemas;
@@ -141,9 +140,8 @@ impl Namespaces {
         }
 
         for content in &schema.content {
-            match content {
-                SchemaContent::Import(import) => self.get_imports(&import),
-                _ => {}
+            if let SchemaContent::Import(import) = content {
+                self.get_imports(import)
             }
         }
 
@@ -159,7 +157,7 @@ fn get_namespaces(schemas: &Schemas) -> Result<Namespaces, XMLGeneratorError> {
     }
 
     for (_schema_id, schema_info) in schemas.schemas() {
-        namespaces.get_schema_info(schemas, &schema_info)?;
+        namespaces.get_schema_info(schemas, schema_info)?;
     }
 
     Ok(namespaces)
@@ -168,27 +166,17 @@ fn get_namespaces(schemas: &Schemas) -> Result<Namespaces, XMLGeneratorError> {
 pub(crate) struct SchemaMetadata {
     version: String,
     namespaces: Namespaces,
-    filename: String,
 }
 
 impl SchemaMetadata {
-    fn new(schemas: &Schemas, xsd_path: &Path) -> Result<Self, XMLGeneratorError> {
+    fn new(schemas: &Schemas) -> Result<Self, XMLGeneratorError> {
         let version = fetch_schema_version(schemas)?;
 
-        let namespaces = get_namespaces(&schemas)?;
-
-        let filename = match xsd_path
-            .file_name()
-            .map(|name| name.to_string_lossy().to_string())
-        {
-            None => panic!("Invalid filename"),
-            Some(name) => name,
-        };
+        let namespaces = get_namespaces(schemas)?;
 
         let metadata = SchemaMetadata {
             version,
             namespaces,
-            filename,
         };
 
         Ok(metadata)
@@ -208,13 +196,6 @@ impl SchemaMetadata {
         }
     }
 
-    fn set_schema_location(&self, element: &mut XMLElement, location: &String) {
-        let schema_location = vec![location.to_string(), self.filename.clone()];
-
-        let location_str = schema_location.join(" ");
-        element.add_attribute("schemaLocation", location_str.as_str());
-    }
-
     pub(crate) fn apply_to(&self, element: &mut XMLElement) -> Result<(), XMLGeneratorError> {
         let mut namespaces = HashSet::new();
 
@@ -223,24 +204,17 @@ impl SchemaMetadata {
                 element.add_attribute("xmlns", ns.as_str());
                 namespaces.insert(ns);
 
-                if let Some(target) = &self.namespaces.target_namespace {
-                    if !namespaces.contains(target) {
-                        element.add_attribute("targetNamespace", target.as_str());
-                    }
+                if let Some(target) = &self.namespaces.target_namespace
+                    && !namespaces.contains(target)
+                {
+                    element.add_attribute("targetNamespace", target.as_str());
                 }
-
-                self.set_schema_location(element, ns);
             }
             None => match &self.namespaces.target_namespace {
-                None => {
-                    let file_string = self.filename.as_str();
-                    element.add_attribute("noNamespaceSchemaLocation", file_string);
-                }
+                None => {}
                 Some(target) => {
                     element.add_attribute("xmlns", target.as_str());
                     namespaces.insert(target);
-
-                    self.set_schema_location(element, target);
                 }
             },
         }
@@ -251,12 +225,10 @@ impl SchemaMetadata {
                 element.add_attribute("xmlns:xsi", value.as_str());
             } else if prefix == "xml" {
                 // ignore
-            } else {
-                if !namespaces.contains(namespace) {
-                    let name = "xmlns:".to_string() + prefix;
-                    element.add_attribute(name.as_str(), namespace.as_str());
-                    namespaces.insert(namespace);
-                }
+            } else if !namespaces.contains(namespace) {
+                let name = "xmlns:".to_string() + prefix;
+                element.add_attribute(name.as_str(), namespace.as_str());
+                namespaces.insert(namespace);
             }
         }
 
@@ -264,9 +236,6 @@ impl SchemaMetadata {
     }
 }
 
-pub(crate) fn get_metadata(
-    schemas: &Schemas,
-    xsd_path: &Path,
-) -> Result<SchemaMetadata, XMLGeneratorError> {
-    SchemaMetadata::new(schemas, xsd_path)
+pub(crate) fn get_metadata(schemas: &Schemas) -> Result<SchemaMetadata, XMLGeneratorError> {
+    SchemaMetadata::new(schemas)
 }

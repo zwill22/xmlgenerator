@@ -9,7 +9,7 @@ mod tests {
     use std::panic;
     use xmlgenerator::{XMLGenerator, XMLGeneratorError};
 
-    fn increment(stats: &mut HashMap<String, Stat>, name: &str, value: &String) {
+    fn increment(stats: &mut HashMap<String, Stat>, name: &str, value: &str) {
         match stats.get_mut(name) {
             None => {
                 let mut stat = Stat::new();
@@ -34,23 +34,23 @@ mod tests {
             }
             XMLGeneratorError::DataTypesFormatError(e) => {
                 increment(stats, "Data Types Format Error", e);
-            },
+            }
             XMLGeneratorError::XMLBuilderError(e) => panic!("XML builder error: {}", e),
             XMLGeneratorError::InvalidXSDVersionError(e) => {
                 increment(stats, "Invalid XSD Version", e);
             }
             XMLGeneratorError::InfiniteRecursionError => {
-                increment(stats, "Infinite Recursion", &"".to_string());
+                increment(stats, "Infinite Recursion", "");
             }
             XMLGeneratorError::NoElementsError => {
-                increment(stats, "No Elements", &"".to_string());
+                increment(stats, "No Elements", "");
             }
             XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
             XMLGeneratorError::NoIndependentElementsError => {
-                increment(stats, "No Independent Elements", &"".to_string());
+                increment(stats, "No Independent Elements", "");
             }
             XMLGeneratorError::MultipleRootsError => {
-                increment(stats, "Multiple Roots", &"".to_string());
+                increment(stats, "Multiple Roots", "");
             }
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
             XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
@@ -72,7 +72,7 @@ mod tests {
     ) -> Result<String, XMLGeneratorError> {
         let _err_gag = Gag::stderr().unwrap();
 
-        generator.generate(&path)
+        generator.generate(path)
     }
 
     fn test_file(generator: &XMLGenerator, path: &PathBuf, stats: &mut HashMap<String, Stat>) {
@@ -93,10 +93,7 @@ mod tests {
             return false;
         }
 
-        match validate(generator, filepath) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        validate(generator, filepath).is_ok()
     }
 
     fn get_valid_files(
@@ -120,18 +117,10 @@ mod tests {
         valid_files
     }
 
+    #[derive(Default)]
     struct Stat {
         count: usize,
         types: HashSet<String>,
-    }
-
-    impl Default for Stat {
-        fn default() -> Self {
-            Self {
-                count: 0,
-                types: HashSet::new(),
-            }
-        }
     }
 
     impl Stat {
@@ -187,16 +176,14 @@ mod tests {
         print_stats(&stats);
     }
 
-    #[test]
-    fn test_one_file() {
+    #[allow(unused)]
+    fn test_single_file(filepath: &str) {
         // TODO Change into CLI
         let generator = XMLGenerator::new();
 
-        let file = "msData/schema/schF5_a.xsd";
-
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");
-        let path = db_root.join(file);
+        let path = db_root.join(filepath);
 
         let mut stats = HashMap::new();
         test_file(&generator, &path, &mut stats);
