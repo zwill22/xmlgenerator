@@ -161,6 +161,86 @@ fn generate_regex(pattern: &regex::Regex) -> Option<String> {
     samples.first().map(|s| s.to_string())
 }
 
+fn sample_output(
+    output: &str,
+    pattern: &regex::Regex,
+    name: &String,
+    depth: u16,
+) -> Option<String> {
+    let limit = 100; // TODO make an option
+    if depth >= limit {
+        return generate_regex(pattern);
+    }
+
+    match pattern.find(output) {
+        None => {
+            let next_output = generate_type(name).expect("No type generated");
+            sample_output(&next_output, pattern, name, depth + 1)
+        }
+        Some(mat) => {
+            Some(mat.as_str().to_string())
+        }
+    }
+}
+
+fn get_ignore_types() -> Vec<String> {
+    let strs = vec![
+        // numeric types
+        "byte",
+        "decimal",
+        "int",
+        "integer",
+        "long",
+        "negativeInteger",
+        "nonNegativeInteger",
+        "nonPositiveInteger",
+        "positiveInteger",
+        "short",
+        "unsignedLong",
+        "unsignedInt",
+        "unsignedShort",
+        "unsignedByte",
+
+        "ENTITIES",
+        "ENTITY",
+        "ID",
+        "IDREF",
+        "language",
+        "Name",
+        "NCName",
+        "NMTOKEN",
+        "normalizedString",
+        "QName",
+        "string",
+        "token",
+        "NOTATION",
+        "anyType",
+        "anySimpleType",
+    ];
+
+    let mut ignore_types = Vec::new();
+    for str in strs {
+        ignore_types.push(str.to_string());
+    }
+
+    ignore_types
+}
+
+fn generate_pattern(pattern: &regex::Regex, name: &String) -> Option<String> {
+    let ignore_types = get_ignore_types();
+
+    match generate_type(name) {
+        Some(output) => {
+            if ignore_types.contains(name) {
+                generate_regex(pattern)
+            } else {
+                sample_output(&output, pattern, name, 0)
+            }
+        }
+        None => generate_regex(pattern),
+    }
+}
+
 fn handle_enumeration(
     type_info: &mut TypeInfo,
     enumeration: &FacetType,
@@ -193,6 +273,12 @@ fn handle_regex_pattern(
 
     match regex::Regex::new(pattern) {
         Ok(regex) => {
+            // Generalise `\d` pattern to equal `[0-9]`
+            if pattern.contains(r"\d") {
+                let new_pattern = pattern.replace(r"\d", r"[0-9]");
+                return handle_regex_pattern(type_info, &new_pattern, translator)
+            }
+
             type_info.pattern = Some(regex);
             Ok(())
         }
@@ -315,6 +401,7 @@ impl TypeInfo {
     }
 
     pub(crate) fn generate(&self) -> Option<String> {
+        let name = &self.name;
         if !self.enumerations.is_empty() {
             if self.pattern.is_some() {
                 panic!("Type info includes enumeration and pattern data");
@@ -324,10 +411,10 @@ impl TypeInfo {
         }
 
         if let Some(pattern) = &self.pattern {
-            return generate_regex(pattern);
+            return generate_pattern(pattern, name);
         }
 
-        generate_type(&self.name)
+        generate_type(name)
     }
 }
 
