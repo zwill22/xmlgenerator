@@ -73,11 +73,11 @@ impl Namespaces {
     }
 
     fn find_target_namespace(&self, location: &str) -> Option<String> {
-        if let Some(default_ns) = &self.default_namespace {
-            if default_ns.eq(&location) {
-                // Target namespace is the default namespace, no need to add prefix
-                return None;
-            }
+        if let Some(default_ns) = &self.default_namespace
+            && default_ns.eq(&location)
+        {
+            // Target namespace is the default namespace, no need to add prefix
+            return None;
         }
 
         for (k, v) in self.other_namespaces.iter() {
@@ -119,6 +119,12 @@ impl Namespaces {
     }
 
     fn add_target_namespace(&mut self, ns: String) -> Result<(), XMLGeneratorError> {
+        if let Some(default_ns) = &self.default_namespace
+            && default_ns.eq(&ns)
+        {
+            return Ok(());
+        }
+
         match &self.target_namespace {
             None => self.set_target_namespace(ns)?,
             Some(target) => self.check_target_namespace(ns, target)?,
