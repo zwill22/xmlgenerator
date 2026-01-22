@@ -181,10 +181,13 @@ impl Namespaces {
         &mut self,
         schemas: &Schemas,
         schema_info: &SchemaInfo,
+        root: bool,
     ) -> Result<(), XMLGeneratorError> {
         let schema = &schema_info.schema;
 
-        if let Some(ns) = &schema.target_namespace {
+        if let Some(ns) = &schema.target_namespace
+            && root
+        {
             check_namespace(ns, schemas)?;
             self.add_target_namespace(ns.to_string())?;
         }
@@ -206,8 +209,10 @@ fn get_namespaces(schemas: &Schemas) -> Result<Namespaces, XMLGeneratorError> {
         namespaces.get_info(ns_info)?;
     }
 
-    for (_schema_id, schema_info) in schemas.schemas() {
-        namespaces.get_schema_info(schemas, schema_info)?;
+    let mut root = true;
+    for (_, schema_info) in schemas.schemas() {
+        namespaces.get_schema_info(schemas, schema_info, root)?;
+        root = false;
     }
 
     Ok(namespaces)
