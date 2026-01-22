@@ -61,11 +61,7 @@ impl TypeGenerator {
         }
 
         for group in self.groups.iter() {
-            for element in group.elements.iter() {
-                let child = element.generate(data_tracker, data_types, elements)?;
-
-                xml_element.add_child(child)?;
-            }
+            group.generate(xml_element, data_tracker, data_types, elements)?;
         }
 
         for attribute in self.attributes.iter() {
