@@ -3,6 +3,7 @@ use crate::attribute_generator::AttributeGenerator;
 use crate::element_generator::ElementGenerator;
 use crate::error::unimplemented;
 use crate::group_generator::GroupGenerator;
+use crate::metadata::SchemaMetadata;
 use crate::type_generator::TypeGenerator;
 use crate::type_info::{generate_type_info, get_qname};
 use regextranslator::RegexTranslator;
@@ -37,6 +38,7 @@ fn get_simple_type(
 fn fetch_type(
     content: &SchemaContent,
     regex_translator: &RegexTranslator,
+    metadata: &SchemaMetadata,
 ) -> Option<Result<TypeGenerator, XMLGeneratorError>> {
     match content {
         SchemaContent::Include(_) => None,
@@ -46,7 +48,7 @@ fn fetch_type(
         SchemaContent::Annotation(_) => None,
         SchemaContent::DefaultOpenContent(_) => Some(unimplemented("DefaultOpenContent")),
         SchemaContent::SimpleType(x) => Some(get_simple_type(x, regex_translator)),
-        SchemaContent::ComplexType(x) => Some(get_complex_type(x, regex_translator)),
+        SchemaContent::ComplexType(x) => Some(get_complex_type(x, regex_translator, metadata)),
         SchemaContent::Group(_) => Some(unimplemented("Top-level group not supported")),
         SchemaContent::AttributeGroup(_) => Some(unimplemented("AttributeGroup")),
         SchemaContent::Element(_) => None,
@@ -58,11 +60,12 @@ fn fetch_type(
 fn get_element_content(
     content: &ElementTypeContent,
     regex_translator: &RegexTranslator,
+    metadata: &SchemaMetadata,
 ) -> Result<TypeGenerator, XMLGeneratorError> {
     match content {
         ElementTypeContent::Annotation(_) => unimplemented("Annotation"),
         ElementTypeContent::SimpleType(x) => get_simple_type(x, regex_translator),
-        ElementTypeContent::ComplexType(x) => get_complex_type(x, regex_translator),
+        ElementTypeContent::ComplexType(x) => get_complex_type(x, regex_translator, metadata),
         ElementTypeContent::Alternative(_) => unimplemented("Alternative"),
         ElementTypeContent::Unique(_) => unimplemented("Unique"),
         ElementTypeContent::Key(_) => unimplemented("Key"),
@@ -73,6 +76,7 @@ fn get_element_content(
 pub(crate) fn get_element_type(
     element: &ElementType,
     regex_translator: &RegexTranslator,
+    metadata: &SchemaMetadata,
 ) -> Result<ElementGenerator, XMLGeneratorError> {
     let mut generator = ElementGenerator::new();
 
@@ -128,11 +132,15 @@ pub(crate) fn get_element_type(
     }
 
     if element.target_namespace.is_some() {
-        return unimplemented("Namespace elements");
+        return unimplemented("Embedded target namespace");
+    }
+
+    if let Some(target_namespace) = metadata.get_target_namespace() {
+        generator.namespace = Some(target_namespace);
     }
 
     for content in &element.content {
-        let result = get_element_content(content, regex_translator)?;
+        let result = get_element_content(content, regex_translator, metadata)?;
         generator.contents.push(result);
     }
 
@@ -142,10 +150,11 @@ pub(crate) fn get_element_type(
 fn get_group_content(
     content: &GroupTypeContent,
     regex_translator: &RegexTranslator,
+    metadata: &SchemaMetadata,
 ) -> Result<ElementGenerator, XMLGeneratorError> {
     match content {
         GroupTypeContent::Annotation(_) => unimplemented("Annotation"),
-        GroupTypeContent::Element(x) => get_element_type(x, regex_translator),
+        GroupTypeContent::Element(x) => get_element_type(x, regex_translator, metadata),
         GroupTypeContent::Group(_) => unimplemented("Embedded groups"),
         GroupTypeContent::All(_) => unimplemented("Embedded groups"),
         GroupTypeContent::Choice(_) => unimplemented("Embedded groups"),
@@ -157,6 +166,7 @@ fn get_group_content(
 fn get_group(
     group: &GroupType,
     regex_translator: &RegexTranslator,
+    metadata: &SchemaMetadata,
 ) -> Result<GroupGenerator, XMLGeneratorError> {
     let mut generator = GroupGenerator::new();
 
@@ -176,7 +186,7 @@ fn get_group(
     };
 
     for content in &group.content {
-        let element = get_group_content(content, regex_translator)?;
+        let element = get_group_content(content, regex_translator, metadata)?;
         generator.elements.push(element);
     }
 
@@ -186,16 +196,17 @@ fn get_group(
 fn get_complex_group(
     content: &ComplexBaseTypeContent,
     regex_translator: &RegexTranslator,
+    metadata: &SchemaMetadata,
 ) -> Option<Result<GroupGenerator, XMLGeneratorError>> {
     match content {
         ComplexBaseTypeContent::Annotation(_) => Some(unimplemented("Annotation")),
         ComplexBaseTypeContent::SimpleContent(_) => Some(unimplemented("SimpleContent")),
         ComplexBaseTypeContent::ComplexContent(_) => Some(unimplemented("ComplexContent")),
         ComplexBaseTypeContent::OpenContent(_) => Some(unimplemented("OpenContent")),
-        ComplexBaseTypeContent::Group(x) => Some(get_group(x, regex_translator)),
-        ComplexBaseTypeContent::All(x) => Some(get_group(x, regex_translator)),
-        ComplexBaseTypeContent::Choice(x) => Some(get_group(x, regex_translator)),
-        ComplexBaseTypeContent::Sequence(x) => Some(get_group(x, regex_translator)),
+        ComplexBaseTypeContent::Group(x) => Some(get_group(x, regex_translator, metadata)),
+        ComplexBaseTypeContent::All(x) => Some(get_group(x, regex_translator, metadata)),
+        ComplexBaseTypeContent::Choice(x) => Some(get_group(x, regex_translator, metadata)),
+        ComplexBaseTypeContent::Sequence(x) => Some(get_group(x, regex_translator, metadata)),
         ComplexBaseTypeContent::Attribute(_) => None,
         ComplexBaseTypeContent::AttributeGroup(_) => Some(unimplemented("AttributeGroup")),
         ComplexBaseTypeContent::AnyAttribute(_) => Some(unimplemented("AnyAttribute")),
@@ -203,7 +214,10 @@ fn get_complex_group(
     }
 }
 
-fn get_attribute(attribute: &AttributeType) -> Result<AttributeGenerator, XMLGeneratorError> {
+fn get_attribute(
+    attribute: &AttributeType,
+    metadata: &SchemaMetadata,
+) -> Result<AttributeGenerator, XMLGeneratorError> {
     let mut generator = AttributeGenerator::new();
     generator.name = attribute.name.clone().unwrap_or("".to_string());
 
@@ -233,6 +247,10 @@ fn get_attribute(attribute: &AttributeType) -> Result<AttributeGenerator, XMLGen
         return unimplemented("Target namespace attribute");
     }
 
+    if let Some(ns) = metadata.get_target_namespace() {
+        generator.namespace = Some(ns)
+    }
+
     if attribute.inheritable.is_some() {
         return unimplemented("Inheritable attribute");
     }
@@ -250,6 +268,7 @@ fn get_attribute(attribute: &AttributeType) -> Result<AttributeGenerator, XMLGen
 
 fn get_complex_attributes(
     content: &ComplexBaseTypeContent,
+    metadata: &SchemaMetadata,
 ) -> Option<Result<AttributeGenerator, XMLGeneratorError>> {
     match content {
         ComplexBaseTypeContent::Annotation(_) => Some(unimplemented("Annotation")),
@@ -260,7 +279,7 @@ fn get_complex_attributes(
         ComplexBaseTypeContent::All(_) => None,
         ComplexBaseTypeContent::Choice(_) => None,
         ComplexBaseTypeContent::Sequence(_) => None,
-        ComplexBaseTypeContent::Attribute(x) => Some(get_attribute(x)),
+        ComplexBaseTypeContent::Attribute(x) => Some(get_attribute(x, metadata)),
         ComplexBaseTypeContent::AttributeGroup(_) => Some(unimplemented("AttributeGroup")),
         ComplexBaseTypeContent::AnyAttribute(_) => Some(unimplemented("AnyAttribute")),
         ComplexBaseTypeContent::Assert(_) => Some(unimplemented("Assert")),
@@ -270,6 +289,7 @@ fn get_complex_attributes(
 fn get_complex_type(
     complex: &ComplexBaseType,
     regex_translator: &RegexTranslator,
+    metadata: &SchemaMetadata,
 ) -> Result<TypeGenerator, XMLGeneratorError> {
     let mut generator = TypeGenerator::new();
     generator.name = complex.name.clone().unwrap_or("".to_string());
@@ -296,10 +316,10 @@ fn get_complex_type(
     }
 
     for content in &complex.content {
-        if let Some(group) = get_complex_group(content, regex_translator) {
+        if let Some(group) = get_complex_group(content, regex_translator, metadata) {
             generator.groups.push(group?);
         }
-        if let Some(attribute) = get_complex_attributes(content) {
+        if let Some(attribute) = get_complex_attributes(content, metadata) {
             generator.attributes.push(attribute?);
         }
     }
@@ -310,12 +330,13 @@ fn get_complex_type(
 pub(crate) fn fetch_types(
     schemas: &Schemas,
     regex_translator: &RegexTranslator,
+    metadata: &SchemaMetadata,
 ) -> Result<Vec<TypeGenerator>, XMLGeneratorError> {
     let mut types = vec![];
     for (_schema_id, schema_info) in schemas.schemas() {
         let schema = &schema_info.schema;
         for content in &schema.content {
-            if let Some(data_type) = fetch_type(content, regex_translator) {
+            if let Some(data_type) = fetch_type(content, regex_translator, metadata) {
                 types.push(data_type?);
             }
         }

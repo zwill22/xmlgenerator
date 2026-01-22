@@ -23,7 +23,7 @@ pub(crate) fn generate_output(
     let mut tracker = RecursionTracker::new();
 
     let mut root_element = generator.generate(&mut tracker, data_types, elements)?;
-    metadata.apply_to(&mut root_element)?;
+    metadata.apply_to(&mut root_element);
     
     let mut writer: Vec<u8> = Vec::new();
     xml.set_root_element(root_element);

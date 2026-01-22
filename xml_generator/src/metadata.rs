@@ -1,5 +1,5 @@
 use crate::error::XMLGeneratorError;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::str::from_utf8;
 use xml_builder::{XMLElement, XMLVersion};
 use xsd_parser::Schemas;
@@ -72,12 +72,56 @@ impl Namespaces {
         Ok(())
     }
 
-    fn add_target_namespace(&mut self, ns: String) -> Result<(), XMLGeneratorError> {
-        match self.target_namespace {
-            None => self.target_namespace = Some(ns),
-            Some(_) => {
-                self.other_namespaces.insert(ns.to_string(), ns);
+    fn find_target_namespace(&self, location: &str) -> Option<String> {
+        if let Some(default_ns) = &self.default_namespace {
+            if default_ns.eq(&location) {
+                // Target namespace is the default namespace, no need to add prefix
+                return None;
             }
+        }
+
+        for (k, v) in self.other_namespaces.iter() {
+            if v.eq(&location) {
+                return Some(k.clone());
+            }
+        }
+
+        None
+    }
+
+    fn set_target_namespace(&mut self, target_location: String) -> Result<(), XMLGeneratorError> {
+        // A target namespace is provided but does not match any given namespace
+        // There are two options here:
+        // 1. Throw an error, do not accept an unnamed target namespace (easy, but may not be standard)
+        // 2. Assign target namespace a random name and prefix all elements with this prefix
+        // TODO Consider the above
+        match self.find_target_namespace(&target_location) {
+            None => Err(XMLGeneratorError::DataTypesFormatError(
+                "No target namespace found.".to_string(),
+            )),
+            Some(ns) => {
+                self.target_namespace = Some(ns);
+                Ok(())
+            }
+        }
+    }
+
+    fn check_target_namespace(&self, ns: String, target: &String) -> Result<(), XMLGeneratorError> {
+        if let Some(new_target) = self.find_target_namespace(&ns)
+            && new_target != *target
+        {
+            return Err(XMLGeneratorError::DataTypesFormatError(
+                "Multiple target namespaces found.".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn add_target_namespace(&mut self, ns: String) -> Result<(), XMLGeneratorError> {
+        match &self.target_namespace {
+            None => self.set_target_namespace(ns)?,
+            Some(target) => self.check_target_namespace(ns, target)?,
         }
 
         Ok(())
@@ -196,43 +240,28 @@ impl SchemaMetadata {
         }
     }
 
-    pub(crate) fn apply_to(&self, element: &mut XMLElement) -> Result<(), XMLGeneratorError> {
-        let mut namespaces = HashSet::new();
-
-        match &self.namespaces.default_namespace {
-            Some(ns) => {
-                element.add_attribute("xmlns", ns.as_str());
-                namespaces.insert(ns);
-
-                if let Some(target) = &self.namespaces.target_namespace
-                    && !namespaces.contains(target)
-                {
-                    element.add_attribute("targetNamespace", target.as_str());
-                }
-            }
-            None => match &self.namespaces.target_namespace {
-                None => {}
-                Some(target) => {
-                    element.add_attribute("xmlns", target.as_str());
-                    namespaces.insert(target);
-                }
-            },
+    pub(crate) fn apply_to(&self, element: &mut XMLElement) {
+        if let Some(location) = &self.namespaces.default_namespace {
+            let name = "xmlns";
+            element.add_attribute(name, location);
         }
 
-        for (prefix, namespace) in &self.namespaces.other_namespaces {
+        for (prefix, location) in &self.namespaces.other_namespaces {
             if prefix == "xs" {
-                let value = namespace.to_string() + "-instance";
-                element.add_attribute("xmlns:xsi", value.as_str());
+                let name = "xmlns:xsi";
+                let value = location.to_string() + "-instance";
+                element.add_attribute(name, value.as_str());
             } else if prefix == "xml" {
                 // ignore
-            } else if !namespaces.contains(namespace) {
+            } else {
                 let name = "xmlns:".to_string() + prefix;
-                element.add_attribute(name.as_str(), namespace.as_str());
-                namespaces.insert(namespace);
+                element.add_attribute(name.as_str(), location);
             }
         }
+    }
 
-        Ok(())
+    pub(crate) fn get_target_namespace(&self) -> Option<String> {
+        self.namespaces.target_namespace.clone()
     }
 }
 

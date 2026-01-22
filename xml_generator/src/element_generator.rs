@@ -7,6 +7,7 @@ use xml_builder::XMLElement;
 
 pub(crate) struct ElementGenerator {
     pub(crate) name: Option<String>,
+    pub(crate) namespace: Option<String>,
     pub(crate) contents: Vec<TypeGenerator>,
     pub(crate) type_info: Option<String>,
     pub(crate) reference: Option<String>,
@@ -19,6 +20,7 @@ impl ElementGenerator {
     pub(crate) fn new() -> Self {
         ElementGenerator {
             name: None,
+            namespace: None,
             contents: vec![],
             type_info: None,
             reference: None,
@@ -28,18 +30,30 @@ impl ElementGenerator {
         }
     }
 
-    pub(crate) fn get_name(&self) -> Result<&String, XMLGeneratorError> {
+    fn get_suffix(&self) -> Result<String, XMLGeneratorError> {
         if let Some(name) = &self.name {
-            return Ok(name);
+            return Ok(name.clone());
         }
 
         if let Some(reference) = &self.reference {
-            return Ok(reference);
+            return Ok(reference.clone());
         }
 
         Err(XMLGeneratorError::DataTypesFormatError(
             "Element does not have a name or a reference".to_string(),
         ))
+    }
+    
+    pub(crate) fn get_name(&self) -> Result<String, XMLGeneratorError> {
+        let suffix = self.get_suffix()?;
+        
+        match &self.namespace {
+            None => { Ok(suffix) }
+            Some(ns) => {
+                let output = ns.clone() + ":" + &suffix;
+                Ok(output)
+            }
+        }
     }
 
     pub(crate) fn generate(
@@ -65,7 +79,7 @@ impl ElementGenerator {
 
         let name = self.get_name()?;
         data_tracker.add(self)?;
-        let mut root_element = XMLElement::new(name);
+        let mut root_element = XMLElement::new(&name);
 
         if self.type_info.is_some() {
             if !self.contents.is_empty() {

@@ -81,8 +81,8 @@ impl XMLGenerator {
         self.validate(xsd_path)?;
 
         let metadata = get_metadata(&schemas)?;
-        let data_types = fetch_types(&schemas, &self.translator)?;
-        let elements = fetch_elements(&schemas, &self.translator)?;
+        let data_types = fetch_types(&schemas, &self.translator, &metadata)?;
+        let elements = fetch_elements(&schemas, &self.translator, &metadata)?;
         let root_element = find_root_element(&elements)?;
 
         generate_output(root_element, &data_types, &elements, &metadata)
