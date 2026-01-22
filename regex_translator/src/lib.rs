@@ -202,12 +202,14 @@ fn get_xml_mappings() -> HashMap<String, String> {
     let mut mappings = HashMap::new();
     let i = r"\i".to_string();
     let i_set = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
+    let i_ascii = r"[:A-Z_a-z]";
 
     let c = r"\c".to_string();
     let c_set = r"[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
+    let c_ascii = r"[-.0-9:A-Z_a-z]";
 
-    mappings.insert(i, i_set.to_string());
-    mappings.insert(c, c_set.to_string());
+    mappings.insert(i, i_ascii.to_string());
+    mappings.insert(c, c_ascii.to_string());
 
     let neg_i = r"\I".to_string();
     let neg_i_set = format!(r"[^{}]", i_set);
