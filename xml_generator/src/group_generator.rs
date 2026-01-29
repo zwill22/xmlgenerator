@@ -1,9 +1,9 @@
-use std::cmp::{max, min};
 use crate::XMLGeneratorError;
 use crate::element_generator::ElementGenerator;
 use crate::recursion_tracker::RecursionTracker;
-use crate::type_generator::TypeGenerator;
+use crate::xsd::XSD;
 use rand::Rng;
+use std::cmp::{max, min};
 use xml_builder::XMLElement;
 
 pub struct GroupGenerator {
@@ -43,14 +43,13 @@ impl GroupGenerator {
         &self,
         xml_element: &mut XMLElement,
         data_tracker: &mut RecursionTracker,
-        data_types: &Vec<TypeGenerator>,
-        elements: &Vec<ElementGenerator>,
+        xsd: &XSD,
     ) -> Result<(), XMLGeneratorError> {
         let n = self.get_occurrences();
 
         for _ in 0..n {
             for element in self.elements.iter() {
-                let child = element.generate(data_tracker, data_types, elements)?;
+                let child = element.generate(data_tracker, xsd)?;
 
                 xml_element.add_child(child)?;
             }

@@ -224,7 +224,7 @@ pub(crate) struct SchemaMetadata {
 }
 
 impl SchemaMetadata {
-    fn new(schemas: &Schemas) -> Result<Self, XMLGeneratorError> {
+    pub fn new(schemas: &Schemas) -> Result<Self, XMLGeneratorError> {
         let version = fetch_schema_version(schemas)?;
 
         let namespaces = get_namespaces(schemas)?;
@@ -274,8 +274,4 @@ impl SchemaMetadata {
     pub(crate) fn get_target_namespace(&self) -> Option<String> {
         self.namespaces.target_namespace.clone()
     }
-}
-
-pub(crate) fn get_metadata(schemas: &Schemas) -> Result<SchemaMetadata, XMLGeneratorError> {
-    SchemaMetadata::new(schemas)
 }

@@ -1,6 +1,7 @@
 use crate::error::XMLGeneratorError;
 use crate::type_generator::TypeGenerator;
 use crate::type_info::{TypeInfo, generate_type};
+use crate::xsd::XSD;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::AttributeUseType;
 
@@ -88,7 +89,7 @@ impl AttributeGenerator {
     pub(crate) fn generate(
         &self,
         xml_element: &mut XMLElement,
-        data_types: &Vec<TypeGenerator>,
+        xsd: &XSD,
     ) -> Result<(), XMLGeneratorError> {
         let mut generated = false;
         if self.name.is_empty() {
@@ -107,7 +108,7 @@ impl AttributeGenerator {
             generated = true;
         }
 
-        for type_generator in data_types {
+        for type_generator in xsd.types() {
             if type_generator.name.eq(&self.type_name) {
                 generate_attribute_from_type(xml_element, type_generator, &name)?;
                 generated = true;

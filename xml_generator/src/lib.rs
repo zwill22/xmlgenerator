@@ -1,10 +1,7 @@
 pub use crate::error::XMLGeneratorError;
-use crate::fetch_elements::fetch_elements;
-use crate::fetch_types::fetch_types;
-use crate::find_root::find_root_element;
 use crate::generate_output::generate_output;
 use crate::generate_schema::generate_schema;
-use crate::metadata::get_metadata;
+use crate::xsd::XSD;
 use regextranslator::RegexTranslator;
 use std::path::PathBuf;
 use xsdvalidator::XSDValidator;
@@ -18,9 +15,10 @@ mod find_root;
 mod generate;
 mod generate_output;
 mod generate_schema;
+mod xsd;
 mod group_generator;
-mod recursion_tracker;
 mod metadata;
+mod recursion_tracker;
 mod type_generator;
 mod type_info;
 
@@ -66,7 +64,7 @@ impl XMLGenerator {
     /// The function uses the `xsd_parser` crate to parse the input. If this library returns
     /// en error, then the function returns an `XMLGeneratorError::XMLParserError`.
     /// This crate generates a `data_types` object which the XMLGenerator uses th
-    /// generate the output xml.
+    /// generate the output XML.
     ///
     /// If the `data_types` contains data which is not in the required format, then an
     /// `XMLGeneratorError::DataTypeFormatError` is returned. This includes cases
@@ -74,17 +72,14 @@ impl XMLGenerator {
     ///
     /// The function sorts the data into a dependency tree and uses this to generate an
     /// `XMLBuilder` object using the `xml_builder` crate. If the `XMLBuilder` returns
-    /// an error when generating the output xml, then an `XMLGeneratorError::XMLBuilderError`
+    /// an error when generating the output XML, then an `XMLGeneratorError::XMLBuilderError`
     /// is returned.
     pub fn generate(&self, xsd_path: &PathBuf) -> Result<String, XMLGeneratorError> {
         let schemas = generate_schema(xsd_path)?;
         self.validate(xsd_path)?;
 
-        let metadata = get_metadata(&schemas)?;
-        let data_types = fetch_types(&schemas, &self.translator, &metadata)?;
-        let elements = fetch_elements(&schemas, &self.translator, &metadata)?;
-        let root_element = find_root_element(&elements)?;
+        let data = XSD::new(&schemas, &self.translator)?;
 
-        generate_output(root_element, &data_types, &elements, &metadata)
+        generate_output(&data)
     }
 }

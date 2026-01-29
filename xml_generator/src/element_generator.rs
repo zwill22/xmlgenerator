@@ -1,7 +1,9 @@
 use crate::error::XMLGeneratorError;
 use crate::generate;
+use crate::generate::generate_type_output;
 use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
+use crate::xsd::XSD;
 use uuid::Uuid;
 use xml_builder::XMLElement;
 
@@ -43,12 +45,12 @@ impl ElementGenerator {
             "Element does not have a name or a reference".to_string(),
         ))
     }
-    
+
     pub(crate) fn get_name(&self) -> Result<String, XMLGeneratorError> {
         let suffix = self.get_suffix()?;
-        
+
         match &self.namespace {
-            None => { Ok(suffix) }
+            None => Ok(suffix),
             Some(ns) => {
                 let output = ns.clone() + ":" + &suffix;
                 Ok(output)
@@ -58,9 +60,8 @@ impl ElementGenerator {
 
     pub(crate) fn generate(
         &self,
-        data_tracker: &mut RecursionTracker,
-        data_types: &Vec<TypeGenerator>,
-        elements: &Vec<ElementGenerator>,
+        tracker: &mut RecursionTracker,
+        xsd: &XSD,
     ) -> Result<XMLElement, XMLGeneratorError> {
         if let Some(reference) = &self.reference {
             if self.type_info.is_some() {
@@ -74,36 +75,31 @@ impl ElementGenerator {
                 ));
             }
 
-            return generate::generate_reference(data_tracker, reference, data_types, elements);
+            return generate::generate_reference(tracker, xsd, reference);
         }
 
         let name = self.get_name()?;
-        data_tracker.add(self)?;
+        tracker.add(self)?;
         let mut root_element = XMLElement::new(&name);
 
-        if self.type_info.is_some() {
-            if !self.contents.is_empty() {
-                return Err(XMLGeneratorError::DataTypesFormatError(
-                    "Data has a type and contains type elements".to_string(),
-                ));
+        match self.type_info {
+            Some(ref type_info) => {
+                if !self.contents.is_empty() {
+                    return Err(XMLGeneratorError::DataTypesFormatError(
+                        "Data has a type and contains type elements".to_string(),
+                    ));
+                }
+
+                generate_type_output(&mut root_element, tracker, xsd, type_info)?;
             }
-
-            let type_info = self.type_info.as_ref().unwrap();
-
-            generate::generate_type_output(
-                &mut root_element,
-                data_tracker,
-                type_info,
-                data_types,
-                elements,
-            )?;
-        } else {
-            for content in self.contents.iter() {
-                content.generate(&mut root_element, data_tracker, data_types, elements)?;
+            None => {
+                for content in self.contents.iter() {
+                    content.generate(&mut root_element, tracker, xsd)?;
+                }
             }
         }
 
-        data_tracker.remove(self);
+        tracker.remove(self);
 
         Ok(root_element)
     }
