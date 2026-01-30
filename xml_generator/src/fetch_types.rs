@@ -5,7 +5,7 @@ use crate::error::unimplemented;
 use crate::group_generator::GroupGenerator;
 use crate::metadata::SchemaMetadata;
 use crate::type_generator::TypeGenerator;
-use crate::type_info::{generate_type_info, get_qname};
+use crate::type_info::{TypeInfo, get_qname};
 use regextranslator::RegexTranslator;
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::MaxOccurs;
@@ -28,7 +28,7 @@ fn get_simple_type(
         return unimplemented("Final");
     }
 
-    let type_info = generate_type_info(&simple.content, regex_translator)?;
+    let type_info = TypeInfo::new(&simple.content, regex_translator)?;
 
     generator.type_info = Some(type_info);
 
@@ -218,52 +218,7 @@ fn get_attribute(
     attribute: &AttributeType,
     metadata: &SchemaMetadata,
 ) -> Result<AttributeGenerator, XMLGeneratorError> {
-    let mut generator = AttributeGenerator::new();
-    generator.name = attribute.name.clone().unwrap_or("".to_string());
-
-    if let Some(attribute_type) = &attribute.type_ {
-        generator.type_name = get_qname(attribute_type);
-    }
-
-    generator.attribute_type = attribute.use_;
-
-    if attribute.ref_.is_some() {
-        return unimplemented("Attribute references");
-    }
-
-    if attribute.default.is_some() {
-        return unimplemented("Default attribute");
-    }
-
-    if attribute.fixed.is_some() {
-        return unimplemented("Fixed attribute");
-    }
-
-    if attribute.form.is_some() {
-        return unimplemented("Form attribute");
-    }
-
-    if attribute.target_namespace.is_some() {
-        return unimplemented("Target namespace attribute");
-    }
-
-    if let Some(ns) = metadata.get_target_namespace() {
-        generator.namespace = Some(ns)
-    }
-
-    if attribute.inheritable.is_some() {
-        return unimplemented("Inheritable attribute");
-    }
-
-    if attribute.annotation.is_some() {
-        return unimplemented("Annotation");
-    }
-
-    if attribute.simple_type.is_some() {
-        return unimplemented("Simple type attribute");
-    }
-
-    Ok(generator)
+    AttributeGenerator::new(attribute, metadata)
 }
 
 fn get_complex_attributes(

@@ -177,9 +177,7 @@ fn sample_output(
             let next_output = generate_type(name).expect("No type generated");
             sample_output(&next_output, pattern, name, depth + 1)
         }
-        Some(mat) => {
-            Some(mat.as_str().to_string())
-        }
+        Some(mat) => Some(mat.as_str().to_string()),
     }
 }
 
@@ -200,7 +198,6 @@ fn get_ignore_types() -> Vec<String> {
         "unsignedInt",
         "unsignedShort",
         "unsignedByte",
-
         "ENTITIES",
         "ENTITY",
         "ID",
@@ -276,7 +273,7 @@ fn handle_regex_pattern(
             // Generalise `\d` pattern to equal `[0-9]`
             if pattern.contains(r"\d") {
                 let new_pattern = pattern.replace(r"\d", r"[0-9]");
-                return handle_regex_pattern(type_info, &new_pattern, translator)
+                return handle_regex_pattern(type_info, &new_pattern, translator);
             }
 
             type_info.pattern = Some(regex);
@@ -373,18 +370,7 @@ fn parse_restriction(
     }
 }
 
-pub(crate) fn generate_type_info(
-    content: &Vec<SimpleBaseTypeContent>,
-    regex_translator: &RegexTranslator,
-) -> Result<TypeInfo, XMLGeneratorError> {
-    let mut type_info = TypeInfo::new();
-    for item in content {
-        parse_restriction(&mut type_info, item, regex_translator)?;
-    }
-
-    Ok(type_info)
-}
-
+#[derive(Default)]
 pub(crate) struct TypeInfo {
     pub(crate) name: String,
     pub(crate) pattern: Option<regex::Regex>,
@@ -392,12 +378,16 @@ pub(crate) struct TypeInfo {
 }
 
 impl TypeInfo {
-    pub(crate) fn new() -> Self {
-        TypeInfo {
-            name: String::new(),
-            pattern: None,
-            enumerations: Vec::new(),
+    pub(crate) fn new(
+        content: &Vec<SimpleBaseTypeContent>,
+        regex_translator: &RegexTranslator,
+    ) -> Result<TypeInfo, XMLGeneratorError> {
+        let mut type_info = TypeInfo::default();
+        for item in content {
+            parse_restriction(&mut type_info, item, regex_translator)?;
         }
+
+        Ok(type_info)
     }
 
     pub(crate) fn generate(&self) -> Option<String> {

@@ -1,11 +1,32 @@
 use crate::error::XMLGeneratorError;
-use crate::generate;
-use crate::generate::generate_type_output;
 use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
+use crate::type_info::generate_type;
 use crate::xsd::XSD;
 use uuid::Uuid;
 use xml_builder::XMLElement;
+
+fn generate_type_output(
+    xml_element: &mut XMLElement,
+    tracker: &mut RecursionTracker,
+    xsd: &XSD,
+    type_name: &String,
+) -> Result<(), XMLGeneratorError> {
+    if let Some(output) = generate_type(type_name) {
+        return match xml_element.add_text(output) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(XMLGeneratorError::XMLBuilderError(err.to_string())),
+        };
+    }
+
+    for data_type in xsd.types() {
+        if data_type.name.eq(type_name) {
+            return data_type.generate(xml_element, tracker, xsd);
+        }
+    }
+
+    Err(XMLGeneratorError::DataTypeNotFoundError(type_name.clone()))
+}
 
 pub(crate) struct ElementGenerator {
     pub(crate) name: Option<String>,
@@ -58,26 +79,11 @@ impl ElementGenerator {
         }
     }
 
-    pub(crate) fn generate(
+    fn generate_type_from_name(
         &self,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<XMLElement, XMLGeneratorError> {
-        if let Some(reference) = &self.reference {
-            if self.type_info.is_some() {
-                return Err(XMLGeneratorError::DataTypesFormatError(
-                    "Element is a reference and a type".to_string(),
-                ));
-            }
-            if !self.contents.is_empty() {
-                return Err(XMLGeneratorError::DataTypesFormatError(
-                    "Element references another element an contains content".to_string(),
-                ));
-            }
-
-            return generate::generate_reference(tracker, xsd, reference);
-        }
-
         let name = self.get_name()?;
         tracker.add(self)?;
         let mut root_element = XMLElement::new(&name);
@@ -102,6 +108,46 @@ impl ElementGenerator {
         tracker.remove(self);
 
         Ok(root_element)
+    }
+
+    fn generate_reference(
+        &self,
+        tracker: &mut RecursionTracker,
+        xsd: &XSD,
+        reference: &String,
+    ) -> Result<XMLElement, XMLGeneratorError> {
+        if self.type_info.is_some() {
+            return Err(XMLGeneratorError::DataTypesFormatError(
+                "Element is a reference and a type".to_string(),
+            ));
+        }
+        if !self.contents.is_empty() {
+            return Err(XMLGeneratorError::DataTypesFormatError(
+                "Element references another element an contains content".to_string(),
+            ));
+        }
+
+        for element in xsd.elements() {
+            let name = element.get_name()?;
+            if name.eq(reference) {
+                return element.generate(tracker, xsd);
+            }
+        }
+
+        Err(XMLGeneratorError::XMLBuilderError(
+            "Reference not found".to_string(),
+        ))
+    }
+
+    pub(crate) fn generate(
+        &self,
+        tracker: &mut RecursionTracker,
+        xsd: &XSD,
+    ) -> Result<XMLElement, XMLGeneratorError> {
+        match &self.reference {
+            None => self.generate_type_from_name(tracker, xsd),
+            Some(reference) => self.generate_reference(tracker, xsd, reference),
+        }
     }
 
     pub(crate) fn get_id(&self) -> String {

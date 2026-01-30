@@ -1,6 +1,5 @@
 pub use crate::error::XMLGeneratorError;
-use crate::generate_output::generate_output;
-use crate::generate_schema::generate_schema;
+use crate::schemas::build_schemas;
 use crate::xsd::XSD;
 use regextranslator::RegexTranslator;
 use std::path::PathBuf;
@@ -12,15 +11,14 @@ pub mod error;
 mod fetch_elements;
 mod fetch_types;
 mod find_root;
-mod generate;
-mod generate_output;
-mod generate_schema;
-mod xsd;
 mod group_generator;
 mod metadata;
+mod namespaces;
 mod recursion_tracker;
+mod schemas;
 mod type_generator;
 mod type_info;
+mod xsd;
 
 pub struct XMLGenerator {
     validator: XSDValidator,
@@ -75,11 +73,11 @@ impl XMLGenerator {
     /// an error when generating the output XML, then an `XMLGeneratorError::XMLBuilderError`
     /// is returned.
     pub fn generate(&self, xsd_path: &PathBuf) -> Result<String, XMLGeneratorError> {
-        let schemas = generate_schema(xsd_path)?;
+        let schemas = build_schemas(xsd_path)?;
         self.validate(xsd_path)?;
 
-        let data = XSD::new(&schemas, &self.translator)?;
+        let xsd = XSD::new(&schemas, &self.translator)?;
 
-        generate_output(&data)
+        xsd.generate_xml()
     }
 }

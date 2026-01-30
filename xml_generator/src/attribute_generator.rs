@@ -1,9 +1,10 @@
-use crate::error::XMLGeneratorError;
+use crate::error::{XMLGeneratorError, unimplemented};
+use crate::metadata::SchemaMetadata;
 use crate::type_generator::TypeGenerator;
-use crate::type_info::{TypeInfo, generate_type};
+use crate::type_info::{TypeInfo, generate_type, get_qname};
 use crate::xsd::XSD;
 use xml_builder::XMLElement;
-use xsd_parser::models::schema::xs::AttributeUseType;
+use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
 
 fn generate_attribute_from_type(
     xml_element: &mut XMLElement,
@@ -46,7 +47,7 @@ fn generate_attribute_from_type(
     )))
 }
 
-pub struct AttributeGenerator {
+pub(crate) struct AttributeGenerator {
     pub(crate) name: String,
     pub(crate) namespace: Option<String>,
     pub(crate) attribute_type: AttributeUseType,
@@ -55,14 +56,63 @@ pub struct AttributeGenerator {
 }
 
 impl AttributeGenerator {
-    pub(crate) fn new() -> Self {
-        AttributeGenerator {
+    pub(crate) fn new(
+        attribute: &AttributeType,
+        metadata: &SchemaMetadata,
+    ) -> Result<Self, XMLGeneratorError> {
+        let mut generator = AttributeGenerator {
             name: String::new(),
             namespace: None,
             attribute_type: AttributeUseType::Required,
             type_name: String::new(),
             type_info: None,
+        };
+
+        generator.name = attribute.name.clone().unwrap_or("".to_string());
+
+        if let Some(attribute_type) = &attribute.type_ {
+            generator.type_name = get_qname(attribute_type);
         }
+
+        generator.attribute_type = attribute.use_;
+
+        if attribute.ref_.is_some() {
+            return unimplemented("Attribute references");
+        }
+
+        if attribute.default.is_some() {
+            return unimplemented("Default attribute");
+        }
+
+        if attribute.fixed.is_some() {
+            return unimplemented("Fixed attribute");
+        }
+
+        if attribute.form.is_some() {
+            return unimplemented("Form attribute");
+        }
+
+        if attribute.target_namespace.is_some() {
+            return unimplemented("Target namespace attribute");
+        }
+
+        if let Some(ns) = metadata.get_target_namespace() {
+            generator.namespace = Some(ns)
+        }
+
+        if attribute.inheritable.is_some() {
+            return unimplemented("Inheritable attribute");
+        }
+
+        if attribute.annotation.is_some() {
+            return unimplemented("Annotation");
+        }
+
+        if attribute.simple_type.is_some() {
+            return unimplemented("Simple type attribute");
+        }
+
+        Ok(generator)
     }
 
     fn get_name(&self) -> String {
