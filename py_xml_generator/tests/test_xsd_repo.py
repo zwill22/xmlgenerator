@@ -6,7 +6,7 @@ from pathlib import Path
 import pyxmlgenerator
 from pyxsdtestdata import get_xsd_test_data
 
-from .common import validate_output, get_project_root
+from .common import validate_output, get_project_root, identity
 
 
 def fetch_xsd_files(xsd_root_path: Path, archive_path: Path, include_extras: bool) -> List[Path]:
@@ -37,21 +37,13 @@ archive_filepath = root / archive_filename
 valid_data = fetch_xsd_files(xsd_filepath, archive_filepath, extras)
 
 
-def id_fn(file: Path) -> str:
-    full_path = str(file)
-    root_path = str(xsd_filepath)
-
-    out = full_path.replace(root_path, "")
-
-    if out.startswith("/"):
-        return out[1:]
-
-    return out
-
-
 def validate_schema(xml_generator, xsd_file: Path):
     filepath = str(xsd_file)
     xml_generator.validate(filepath)
+
+
+def id_fn(file: Path) -> str:
+    return identity(file, xsd_filepath)
 
 
 @pytest.mark.parametrize("file", valid_data, ids=id_fn)

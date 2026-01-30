@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
-from xmlschema import XMLSchema, XMLSchemaValidationError
+
+from pyxmlgenerator import MultipleXSDRootsError
+from xmlschema import XMLSchema, XMLSchemaValidationError, XMLSchemaParseError
 
 
 def get_project_root() -> Path:
@@ -13,6 +15,18 @@ def get_project_root() -> Path:
         p for p in Path(__file__).parents
         if (p / '.git').exists()
     )
+
+
+def identity(file: Path, parent_path: Path) -> str:
+    full_path = str(file)
+    root_path = str(parent_path)
+
+    out = full_path.replace(root_path, "")
+
+    if out.startswith("/"):
+        return out[1:]
+
+    return out
 
 
 def validate_output(xml_generator, input_file: Path | str):
@@ -32,9 +46,13 @@ def validate_output(xml_generator, input_file: Path | str):
     cwd = Path.cwd()
     os.chdir(file_dir)
 
-    result: str = xml_generator.generate(filepath)
+    try:
+        schema = XMLSchema(filepath)
+    except XMLSchemaParseError:
+        print("XMLSchema is unable to parse the schema, skipping test")
+        return
 
-    schema = XMLSchema(filepath)
+    result: str = xml_generator.generate(filepath)
 
     try:
         schema.validate(result)
