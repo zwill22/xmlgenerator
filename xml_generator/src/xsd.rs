@@ -1,20 +1,22 @@
 use crate::XMLGeneratorError;
 use crate::element_generator::ElementGenerator;
-use crate::fetch_elements::fetch_elements;
-use crate::fetch_types::fetch_types;
+use crate::error::unimplemented;
 use crate::find_root::find_root_element;
-use crate::metadata::SchemaMetadata;
+use crate::namespaces::Namespaces;
 use crate::recursion_tracker::RecursionTracker;
+use crate::schema_version::SchemaVersion;
 use crate::type_generator::TypeGenerator;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::Schemas;
+use xsd_parser::models::schema::xs::SchemaContent;
 
 pub(crate) struct XSD {
-    schema_metadata: SchemaMetadata,
+    version: SchemaVersion,
     type_generators: Vec<TypeGenerator>,
     element_generators: Vec<ElementGenerator>,
+    namespaces: Namespaces,
 }
 
 impl XSD {
@@ -22,29 +24,70 @@ impl XSD {
         schemas: &Schemas,
         translator: &RegexTranslator,
     ) -> Result<Self, XMLGeneratorError> {
-        let metadata = SchemaMetadata::new(&schemas)?;
-        let types = fetch_types(&schemas, translator, &metadata)?;
-        let elements = fetch_elements(&schemas, translator, &metadata)?;
+        let v = SchemaVersion::new(schemas)?;
+        let ns = Namespaces::new(schemas)?;
+
+        let mut types = vec![];
+        let mut elements = vec![];
+        for (_schema_id, schema_info) in schemas.schemas() {
+            let schema = &schema_info.schema;
+            for content in &schema.content {
+                match content {
+                    SchemaContent::Element(element) => {
+                        let element = ElementGenerator::new(&element, &translator, &schema_info)?;
+                        elements.push(element);
+                    }
+                    SchemaContent::Import(_) => {}
+                    SchemaContent::Annotation(_) => {}
+                    SchemaContent::SimpleType(simple) => {
+                        let simple_type = TypeGenerator::simple_type(simple, translator)?;
+                        types.push(simple_type);
+                    }
+                    SchemaContent::ComplexType(complex) => {
+                        let complex_type = TypeGenerator::complex_type(complex, translator, schema_info)?;
+                        types.push(complex_type);
+                    }
+                    _ => return unimplemented("Unimplemented schema content type"),
+                }
+            }
+        }
 
         let data = XSD {
-            schema_metadata: metadata,
+            version: v,
             type_generators: types,
             element_generators: elements,
+            namespaces: ns,
         };
 
         Ok(data)
     }
 
+    pub(crate) fn apply_metadata_to(&self, element: &mut XMLElement) {
+        if let Some(location) = &self.namespaces.get_default_namespace() {
+            let name = "xmlns";
+            element.add_attribute(name, location);
+        }
+
+        for (prefix, location) in self.namespaces.get_other_namespaces() {
+            if prefix == "xs" {
+                let name = "xmlns:xsi";
+                let value = location.to_string() + "-instance";
+                element.add_attribute(name, value.as_str());
+            } else if prefix == "xml" {
+                // ignore
+            } else {
+                let name = "xmlns:".to_string() + prefix;
+                element.add_attribute(name.as_str(), location);
+            }
+        }
+    }
+
     pub(crate) fn get_version(&self) -> Result<XMLVersion, XMLGeneratorError> {
-        self.schema_metadata.get_version()
+        self.version.get_version()
     }
 
     pub(crate) fn find_root(&self) -> Result<&ElementGenerator, XMLGeneratorError> {
         find_root_element(&self.element_generators)
-    }
-
-    pub(crate) fn apply_metadata_to(&self, element: &mut XMLElement) {
-        self.schema_metadata.apply_to(element);
     }
 
     pub(crate) fn elements(&self) -> Iter<'_, ElementGenerator> {

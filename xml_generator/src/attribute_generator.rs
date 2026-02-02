@@ -1,9 +1,9 @@
 use crate::error::{XMLGeneratorError, unimplemented};
-use crate::metadata::SchemaMetadata;
 use crate::type_generator::TypeGenerator;
 use crate::type_info::{TypeInfo, generate_type, get_qname};
 use crate::xsd::XSD;
 use xml_builder::XMLElement;
+use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
 
 fn generate_attribute_from_type(
@@ -58,7 +58,7 @@ pub(crate) struct AttributeGenerator {
 impl AttributeGenerator {
     pub(crate) fn new(
         attribute: &AttributeType,
-        metadata: &SchemaMetadata,
+        schema_info: &SchemaInfo,
     ) -> Result<Self, XMLGeneratorError> {
         let mut generator = AttributeGenerator {
             name: String::new(),
@@ -96,8 +96,8 @@ impl AttributeGenerator {
             return unimplemented("Target namespace attribute");
         }
 
-        if let Some(ns) = metadata.get_target_namespace() {
-            generator.namespace = Some(ns)
+        if let Some(ns) = &schema_info.schema.target_namespace {
+            generator.namespace = Some(ns.clone())
         }
 
         if attribute.inheritable.is_some() {

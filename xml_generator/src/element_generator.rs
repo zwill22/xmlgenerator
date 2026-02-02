@@ -1,10 +1,13 @@
-use crate::error::XMLGeneratorError;
+use crate::error::{XMLGeneratorError, unimplemented};
 use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
-use crate::type_info::generate_type;
+use crate::type_info::{generate_type, get_qname};
 use crate::xsd::XSD;
+use regextranslator::RegexTranslator;
 use uuid::Uuid;
 use xml_builder::XMLElement;
+use xsd_parser::models::schema::xs::{ElementType, ElementTypeContent};
+use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
 
 fn generate_type_output(
     xml_element: &mut XMLElement,
@@ -28,10 +31,11 @@ fn generate_type_output(
     Err(XMLGeneratorError::DataTypeNotFoundError(type_name.clone()))
 }
 
+#[derive(Default)]
 pub(crate) struct ElementGenerator {
     pub(crate) name: Option<String>,
     pub(crate) namespace: Option<String>,
-    pub(crate) contents: Vec<TypeGenerator>,
+    pub(crate) types: Vec<TypeGenerator>,
     pub(crate) type_info: Option<String>,
     pub(crate) reference: Option<String>,
     pub(crate) min: usize,
@@ -40,17 +44,88 @@ pub(crate) struct ElementGenerator {
 }
 
 impl ElementGenerator {
-    pub(crate) fn new() -> Self {
-        ElementGenerator {
-            name: None,
-            namespace: None,
-            contents: vec![],
-            type_info: None,
-            reference: None,
-            min: 1,
-            max: None,
-            id: Uuid::new_v4(),
+    pub(crate) fn new(
+        element: &ElementType,
+        translator: &RegexTranslator,
+        schema: &SchemaInfo,
+    ) -> Result<Self, XMLGeneratorError> {
+        let mut generator = ElementGenerator::default();
+        generator.name = element.name.clone();
+
+        if let Some(element_ref) = &element.ref_ {
+            let reference = get_qname(element_ref);
+            generator.reference = Some(reference);
         }
+
+        if let Some(element_type) = &element.type_ {
+            let type_info = get_qname(element_type);
+            generator.type_info = Some(type_info);
+        }
+
+        if element.substitution_group.is_some() {
+            return unimplemented("Element Substitution Groups");
+        }
+
+        generator.min = element.min_occurs;
+
+        generator.max = match element.max_occurs {
+            MaxOccurs::Unbounded => None,
+            MaxOccurs::Bounded(x) => Some(x),
+        };
+
+        if element.default.is_some() {
+            return unimplemented("Default Element");
+        }
+
+        if element.fixed.is_some() {
+            return unimplemented("Fixed elements");
+        }
+
+        if element.nillable.is_some() {
+            return unimplemented("Nillable elements");
+        }
+
+        if element.abstract_ {
+            return unimplemented("Abstract elements");
+        }
+
+        if element.final_.is_some() {
+            return unimplemented("Final elements");
+        }
+
+        if element.block.is_some() {
+            return unimplemented("Block elements");
+        }
+
+        if element.form.is_some() {
+            return unimplemented("Form elements");
+        }
+
+        if element.target_namespace.is_some() {
+            return unimplemented("Embedded target namespace");
+        }
+
+        if let Some(target_namespace) = &schema.schema.target_namespace {
+            generator.namespace = Some(target_namespace.clone());
+        }
+
+        for content in &element.content {
+            match content {
+                ElementTypeContent::SimpleType(simple_type) => {
+                    let simple = TypeGenerator::simple_type(simple_type, translator)?;
+                    generator.types.push(simple);
+                }
+                ElementTypeContent::ComplexType(complex_type) => {
+                    let complex = TypeGenerator::complex_type(complex_type, translator, schema)?;
+                    generator.types.push(complex);
+                }
+                _ => return unimplemented("Element content type"),
+            }
+        }
+
+        generator.id = Uuid::new_v4();
+
+        Ok(generator)
     }
 
     fn get_suffix(&self) -> Result<String, XMLGeneratorError> {
@@ -88,9 +163,9 @@ impl ElementGenerator {
         tracker.add(self)?;
         let mut root_element = XMLElement::new(&name);
 
-        match self.type_info {
-            Some(ref type_info) => {
-                if !self.contents.is_empty() {
+        match &self.type_info {
+            Some(type_info) => {
+                if !self.types.is_empty() {
                     return Err(XMLGeneratorError::DataTypesFormatError(
                         "Data has a type and contains type elements".to_string(),
                     ));
@@ -99,7 +174,7 @@ impl ElementGenerator {
                 generate_type_output(&mut root_element, tracker, xsd, type_info)?;
             }
             None => {
-                for content in self.contents.iter() {
+                for content in self.types.iter() {
                     content.generate(&mut root_element, tracker, xsd)?;
                 }
             }
@@ -121,7 +196,7 @@ impl ElementGenerator {
                 "Element is a reference and a type".to_string(),
             ));
         }
-        if !self.contents.is_empty() {
+        if !self.types.is_empty() {
             return Err(XMLGeneratorError::DataTypesFormatError(
                 "Element references another element an contains content".to_string(),
             ));
@@ -164,16 +239,16 @@ impl PartialEq for ElementGenerator {
             return false;
         }
 
-        if self.contents.len() != other.contents.len() {
+        if self.types.len() != other.types.len() {
             return false;
         }
 
-        if !self.contents.eq(&other.contents) {
+        if !self.types.eq(&other.types) {
             return false;
         }
 
-        for i in 0..self.contents.len() {
-            if !self.contents[i].eq(&other.contents[i]) {
+        for i in 0..self.types.len() {
+            if !self.types[i].eq(&other.types[i]) {
                 return false;
             }
         }

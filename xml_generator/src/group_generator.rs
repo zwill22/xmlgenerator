@@ -1,11 +1,16 @@
 use crate::XMLGeneratorError;
 use crate::element_generator::ElementGenerator;
+use crate::error::unimplemented;
 use crate::recursion_tracker::RecursionTracker;
 use crate::xsd::XSD;
 use rand::Rng;
+use regextranslator::RegexTranslator;
 use std::cmp::{max, min};
 use xml_builder::XMLElement;
+use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
+use xsd_parser::models::schema::xs::{GroupType, GroupTypeContent};
 
+#[derive(Default)]
 pub struct GroupGenerator {
     pub(crate) elements: Vec<ElementGenerator>,
     pub(crate) min: usize,
@@ -13,12 +18,39 @@ pub struct GroupGenerator {
 }
 
 impl GroupGenerator {
-    pub(crate) fn new() -> GroupGenerator {
-        GroupGenerator {
-            elements: vec![],
-            min: 0,
-            max: None,
+    pub(crate) fn new(
+        group: &GroupType,
+        translator: &RegexTranslator,
+        schema_info: &SchemaInfo
+    ) -> Result<GroupGenerator, XMLGeneratorError> {
+        let mut generator = GroupGenerator::default();
+
+        if group.name.is_some() {
+            return unimplemented("Named groups");
         }
+
+        if group.ref_.is_some() {
+            return unimplemented("Group references");
+        }
+
+        generator.min = group.min_occurs;
+
+        generator.max = match group.max_occurs {
+            MaxOccurs::Unbounded => None,
+            MaxOccurs::Bounded(x) => Some(x),
+        };
+
+        for content in &group.content {
+            match content {
+                GroupTypeContent::Element(element_type) => {
+                    let element = ElementGenerator::new(element_type, translator, &schema_info)?;
+                    generator.elements.push(element)
+                }
+                _ => return unimplemented("Group type content"),
+            }
+        }
+
+        Ok(generator)
     }
 
     fn get_occurrences(&self) -> usize {

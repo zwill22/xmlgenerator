@@ -106,7 +106,7 @@ impl Namespaces {
         Ok(())
     }
 
-    fn add_target_namespace(&mut self, ns: String) -> Result<(), XMLGeneratorError> {
+    pub(crate) fn add_target_namespace(&mut self, ns: String) -> Result<(), XMLGeneratorError> {
         if let Some(default_ns) = &self.default_namespace
             && default_ns.eq(&ns)
         {
@@ -192,12 +192,8 @@ impl Namespaces {
     pub(crate) fn get_default_namespace(&self) -> Option<String> {
         self.default_namespace.clone()
     }
-    
+
     pub(crate) fn get_other_namespaces(&self) -> &HashMap<String, String> {
         &self.other_namespaces
-    }
-    
-    pub(crate) fn get_target_namespace(&self) -> Option<String> {
-        self.target_namespace.clone()
     }
 }

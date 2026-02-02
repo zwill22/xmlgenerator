@@ -53,7 +53,7 @@ pub(crate) fn find_root_element(
             all_types.push(type_info);
         }
 
-        for content in generator.contents.iter() {
+        for content in generator.types.iter() {
             let content_list = get_content_list(content)?;
             for item in content_list {
                 all_fields.push(item);
