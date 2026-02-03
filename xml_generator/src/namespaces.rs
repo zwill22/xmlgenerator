@@ -60,7 +60,7 @@ impl Namespaces {
         Ok(())
     }
 
-    fn find_target_namespace(&self, location: &str) -> Option<String> {
+    fn find_target_namespace(&self, location: &str) -> Option<&String> {
         if let Some(default_ns) = &self.default_namespace
             && default_ns.eq(&location)
         {
@@ -70,6 +70,22 @@ impl Namespaces {
 
         for (k, v) in self.other_namespaces.iter() {
             if v.eq(&location) {
+                return Some(k);
+            }
+        }
+
+        None
+    }
+
+    pub(crate) fn find(&self, location: &str) -> Option<String> {
+        if let Some(default_ns) = &self.default_namespace {
+            if default_ns.eq(location) {
+                return Some(default_ns.clone());
+            }
+        }
+
+        for (k, v) in self.other_namespaces.iter() {
+            if v.eq(location) {
                 return Some(k.clone());
             }
         }
@@ -88,7 +104,7 @@ impl Namespaces {
                 "No target namespace found.".to_string(),
             )),
             Some(ns) => {
-                self.target_namespace = Some(ns);
+                self.target_namespace = Some(ns.clone());
                 Ok(())
             }
         }
@@ -96,7 +112,7 @@ impl Namespaces {
 
     fn check_target_namespace(&self, ns: String, target: &String) -> Result<(), XMLGeneratorError> {
         if let Some(new_target) = self.find_target_namespace(&ns)
-            && new_target != *target
+            && new_target.eq(target)
         {
             return Err(XMLGeneratorError::DataTypesFormatError(
                 "Multiple target namespaces found.".to_string(),
@@ -157,7 +173,8 @@ impl Namespaces {
                     self.add_default_namespace(ns)?;
                 }
                 Some(prefix) => {
-                    self.other_namespaces.insert(prefix.to_string(), ns);
+                    let prefix_str = prefix.to_string();
+                    self.other_namespaces.insert(prefix_str, ns);
                 }
             }
         }

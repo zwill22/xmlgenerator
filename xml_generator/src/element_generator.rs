@@ -1,4 +1,6 @@
 use crate::error::{XMLGeneratorError, unimplemented};
+use crate::name::Name;
+use crate::namespaces::Namespaces;
 use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
 use crate::type_info::{generate_type, get_qname};
@@ -31,13 +33,28 @@ fn generate_type_output(
     Err(XMLGeneratorError::DataTypeNotFoundError(type_name.clone()))
 }
 
+fn get_name(element: &ElementType, schema: &SchemaInfo, namespaces: &Namespaces) -> Option<Name> {
+    match &schema.schema.target_namespace {
+        None => match &element.name {
+            None => None,
+            Some(name) => Some(Name::new(name.clone(), None)),
+        },
+        Some(ns) => match &element.name {
+            None => None,
+            Some(name) => match namespaces.find(ns) {
+                None => None,
+                Some(ns_prefix) => Some(Name::new(name.clone(), Some(ns_prefix))),
+            },
+        },
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct ElementGenerator {
-    pub(crate) name: Option<String>,
-    pub(crate) namespace: Option<String>,
+    pub(crate) name: Option<Name>,
     pub(crate) types: Vec<TypeGenerator>,
     pub(crate) type_info: Option<String>,
-    pub(crate) reference: Option<String>,
+    pub(crate) reference: Option<Name>,
     pub(crate) min: usize,
     pub(crate) max: Option<usize>,
     id: Uuid,
@@ -48,12 +65,12 @@ impl ElementGenerator {
         element: &ElementType,
         translator: &RegexTranslator,
         schema: &SchemaInfo,
+        namespaces: &Namespaces,
     ) -> Result<Self, XMLGeneratorError> {
         let mut generator = ElementGenerator::default();
-        generator.name = element.name.clone();
 
         if let Some(element_ref) = &element.ref_ {
-            let reference = get_qname(element_ref);
+            let reference = Name::from_qname(element_ref, namespaces);
             generator.reference = Some(reference);
         }
 
@@ -105,9 +122,7 @@ impl ElementGenerator {
             return unimplemented("Embedded target namespace");
         }
 
-        if let Some(target_namespace) = &schema.schema.target_namespace {
-            generator.namespace = Some(target_namespace.clone());
-        }
+        generator.name = get_name(element, schema, namespaces);
 
         for content in &element.content {
             match content {
@@ -116,7 +131,8 @@ impl ElementGenerator {
                     generator.types.push(simple);
                 }
                 ElementTypeContent::ComplexType(complex_type) => {
-                    let complex = TypeGenerator::complex_type(complex_type, translator, schema)?;
+                    let complex =
+                        TypeGenerator::complex_type(complex_type, translator, schema, namespaces)?;
                     generator.types.push(complex);
                 }
                 _ => return unimplemented("Element content type"),
@@ -128,29 +144,15 @@ impl ElementGenerator {
         Ok(generator)
     }
 
-    fn get_suffix(&self) -> Result<String, XMLGeneratorError> {
-        if let Some(name) = &self.name {
-            return Ok(name.clone());
-        }
-
-        if let Some(reference) = &self.reference {
-            return Ok(reference.clone());
-        }
-
-        Err(XMLGeneratorError::DataTypesFormatError(
-            "Element does not have a name or a reference".to_string(),
-        ))
-    }
-
     pub(crate) fn get_name(&self) -> Result<String, XMLGeneratorError> {
-        let suffix = self.get_suffix()?;
-
-        match &self.namespace {
-            None => Ok(suffix),
-            Some(ns) => {
-                let output = ns.clone() + ":" + &suffix;
-                Ok(output)
-            }
+        match &self.name {
+            None => match &self.reference {
+                None => Err(XMLGeneratorError::DataTypesFormatError(
+                    "Element does not have a name or reference".to_string(),
+                )),
+                Some(reference) => reference.get_name(),
+            },
+            Some(name) => name.get_name(),
         }
     }
 
@@ -189,7 +191,7 @@ impl ElementGenerator {
         &self,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
-        reference: &String,
+        reference: &Name,
     ) -> Result<XMLElement, XMLGeneratorError> {
         if self.type_info.is_some() {
             return Err(XMLGeneratorError::DataTypesFormatError(
@@ -203,9 +205,10 @@ impl ElementGenerator {
         }
 
         for element in xsd.elements() {
-            let name = element.get_name()?;
-            if name.eq(reference) {
-                return element.generate(tracker, xsd);
+            if let Some(name) = &element.name {
+                if name.eq(reference) {
+                    return element.generate(tracker, xsd);
+                }
             }
         }
 

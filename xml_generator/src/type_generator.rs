@@ -2,6 +2,7 @@ use crate::attribute_generator::AttributeGenerator;
 use crate::element_generator::ElementGenerator;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::group_generator::GroupGenerator;
+use crate::namespaces::Namespaces;
 use crate::recursion_tracker::RecursionTracker;
 use crate::type_info::TypeInfo;
 use crate::xsd::XSD;
@@ -49,6 +50,7 @@ impl TypeGenerator {
         complex: &ComplexBaseType,
         translator: &RegexTranslator,
         schema_info: &SchemaInfo,
+        namespaces: &Namespaces,
     ) -> Result<Self, XMLGeneratorError> {
         let mut generator = Self::default();
 
@@ -78,19 +80,23 @@ impl TypeGenerator {
         for content in &complex.content {
             match content {
                 ComplexBaseTypeContent::Group(group_type) => {
-                    let group = GroupGenerator::new(group_type, translator, &schema_info)?;
+                    let group =
+                        GroupGenerator::new(group_type, translator, schema_info, namespaces)?;
                     generator.groups.push(group);
                 }
                 ComplexBaseTypeContent::All(group_type) => {
-                    let group = GroupGenerator::new(group_type, translator, &schema_info)?;
+                    let group =
+                        GroupGenerator::new(group_type, translator, schema_info, namespaces)?;
                     generator.groups.push(group);
                 }
                 ComplexBaseTypeContent::Choice(group_type) => {
-                    let group = GroupGenerator::new(group_type, translator, &schema_info)?;
+                    let group =
+                        GroupGenerator::new(group_type, translator, schema_info, namespaces)?;
                     generator.groups.push(group);
                 }
                 ComplexBaseTypeContent::Sequence(group_type) => {
-                    let group = GroupGenerator::new(group_type, translator, &schema_info)?;
+                    let group =
+                        GroupGenerator::new(group_type, translator, schema_info, namespaces)?;
                     generator.groups.push(group);
                 }
                 ComplexBaseTypeContent::Attribute(attribute_type) => {

@@ -24,19 +24,19 @@ fn get_field_struct<'a>(
     field: &String,
 ) -> Option<&'a ElementGenerator> {
     for generator in generators.iter() {
-        if let Some(name) = &generator.name
-            && name.eq(field)
-        {
-            return Option::from(generator);
+        if let Ok(name) = generator.get_name() {
+            if name.eq(field) {
+                return Some(generator);
+            }
         }
     }
 
     None
 }
 
-pub(crate) fn find_root_element(
+pub(crate) fn find_root_elements(
     generators: &[ElementGenerator],
-) -> Result<&ElementGenerator, XMLGeneratorError> {
+) -> Result<Vec<&ElementGenerator>, XMLGeneratorError> {
     if generators.is_empty() {
         return Err(XMLGeneratorError::NoElementsError);
     }
@@ -45,7 +45,7 @@ pub(crate) fn find_root_element(
     let mut all_types = vec![];
     for generator in generators.iter() {
         if let Some(reference) = &generator.reference {
-            all_fields.push(reference.clone());
+            all_fields.push(reference.get_name()?);
         }
         if let Some(type_info) = &generator.type_info
             && !type_info.is_empty()
@@ -80,15 +80,12 @@ pub(crate) fn find_root_element(
         return Err(XMLGeneratorError::NoIndependentElementsError);
     }
 
-    if independent_elements.len() > 1 {
-        return Err(XMLGeneratorError::MultipleRootsError);
-    }
-
+    let mut roots = vec![];
     for generator in generators.iter() {
         if independent_elements.contains(&generator) {
-            return Ok(generator);
+            roots.push(generator);
         }
     }
 
-    unreachable!();
+    Ok(roots)
 }

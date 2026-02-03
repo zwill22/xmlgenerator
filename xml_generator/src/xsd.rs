@@ -1,7 +1,7 @@
 use crate::XMLGeneratorError;
 use crate::element_generator::ElementGenerator;
 use crate::error::unimplemented;
-use crate::find_root::find_root_element;
+use crate::find_root::find_root_elements;
 use crate::namespaces::Namespaces;
 use crate::recursion_tracker::RecursionTracker;
 use crate::schema_version::SchemaVersion;
@@ -34,7 +34,8 @@ impl XSD {
             for content in &schema.content {
                 match content {
                     SchemaContent::Element(element) => {
-                        let element = ElementGenerator::new(&element, &translator, &schema_info)?;
+                        let element =
+                            ElementGenerator::new(&element, &translator, schema_info, &ns)?;
                         elements.push(element);
                     }
                     SchemaContent::Import(_) => {}
@@ -44,7 +45,8 @@ impl XSD {
                         types.push(simple_type);
                     }
                     SchemaContent::ComplexType(complex) => {
-                        let complex_type = TypeGenerator::complex_type(complex, translator, schema_info)?;
+                        let complex_type =
+                            TypeGenerator::complex_type(complex, translator, schema_info, &ns)?;
                         types.push(complex_type);
                     }
                     _ => return unimplemented("Unimplemented schema content type"),
@@ -86,8 +88,8 @@ impl XSD {
         self.version.get_version()
     }
 
-    pub(crate) fn find_root(&self) -> Result<&ElementGenerator, XMLGeneratorError> {
-        find_root_element(&self.element_generators)
+    pub(crate) fn find_roots(&self) -> Result<Vec<&ElementGenerator>, XMLGeneratorError> {
+        find_root_elements(&self.element_generators)
     }
 
     pub(crate) fn elements(&self) -> Iter<'_, ElementGenerator> {
@@ -98,18 +100,23 @@ impl XSD {
         self.type_generators.iter()
     }
 
-    fn build_xml(&self) -> Result<XMLElement, XMLGeneratorError> {
-        let root = self.find_root()?;
+    fn build_xml(&self) -> Result<Vec<XMLElement>, XMLGeneratorError> {
+        let roots = self.find_roots()?;
 
-        let mut tracker = RecursionTracker::new();
+        let mut output = vec![];
+        for root in roots {
+            let mut tracker = RecursionTracker::new();
 
-        let mut root_element = root.generate(&mut tracker, self)?;
-        self.apply_metadata_to(&mut root_element);
+            let mut root_element = root.generate(&mut tracker, self)?;
+            self.apply_metadata_to(&mut root_element);
 
-        Ok(root_element)
+            output.push(root_element);
+        }
+
+        Ok(output)
     }
 
-    pub(crate) fn generate_xml(&self) -> Result<String, XMLGeneratorError> {
+    fn generate_root(&self, root_element: XMLElement) -> Result<String, XMLGeneratorError> {
         let schema_version = self.get_version()?;
 
         let mut xml = XMLBuilder::new()
@@ -118,7 +125,6 @@ impl XSD {
             .encoding("UTF-8".into())
             .build();
 
-        let root_element = self.build_xml()?;
         xml.set_root_element(root_element);
 
         let mut writer: Vec<u8> = Vec::new();
@@ -127,5 +133,26 @@ impl XSD {
             Ok(_) => Ok(String::from_utf8(writer).expect("Invalid UTF-8 sequence")),
             Err(e) => Err(XMLGeneratorError::XMLBuilderError(e.to_string())),
         }
+    }
+
+    pub(crate) fn generate_xml(&self) -> Result<String, XMLGeneratorError> {
+        let root_elements = self.build_xml()?;
+
+        let mut out = String::new();
+
+        for element in root_elements {
+            let output = self.generate_root(element)?;
+            if out.is_empty() {
+                out.push_str(&output);
+            } else {
+                let lines = output.split("\n").collect::<Vec<&str>>();
+                for line in &lines[1..] {
+                    out.push_str("\n");
+                    out.push_str(line);
+                }
+            }
+        }
+
+        Ok(out)
     }
 }

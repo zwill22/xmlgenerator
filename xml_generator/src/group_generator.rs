@@ -1,14 +1,15 @@
 use crate::XMLGeneratorError;
 use crate::element_generator::ElementGenerator;
 use crate::error::unimplemented;
+use crate::namespaces::Namespaces;
 use crate::recursion_tracker::RecursionTracker;
 use crate::xsd::XSD;
 use rand::Rng;
 use regextranslator::RegexTranslator;
 use std::cmp::{max, min};
 use xml_builder::XMLElement;
-use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
 use xsd_parser::models::schema::xs::{GroupType, GroupTypeContent};
+use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
 
 #[derive(Default)]
 pub struct GroupGenerator {
@@ -21,7 +22,8 @@ impl GroupGenerator {
     pub(crate) fn new(
         group: &GroupType,
         translator: &RegexTranslator,
-        schema_info: &SchemaInfo
+        schema_info: &SchemaInfo,
+        namespaces: &Namespaces,
     ) -> Result<GroupGenerator, XMLGeneratorError> {
         let mut generator = GroupGenerator::default();
 
@@ -43,7 +45,8 @@ impl GroupGenerator {
         for content in &group.content {
             match content {
                 GroupTypeContent::Element(element_type) => {
-                    let element = ElementGenerator::new(element_type, translator, &schema_info)?;
+                    let element =
+                        ElementGenerator::new(element_type, translator, schema_info, namespaces)?;
                     generator.elements.push(element)
                 }
                 _ => return unimplemented("Group type content"),
