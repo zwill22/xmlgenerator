@@ -100,15 +100,28 @@ impl XSD {
         self.type_generators.iter()
     }
 
+    fn generate_root(&self, root: &ElementGenerator, tracker: &mut RecursionTracker) -> Result<XMLElement, XMLGeneratorError> {
+        let root_elements = root.generate(tracker, self)?;
+
+        if root_elements.len() > 1 {
+            return Err(XMLGeneratorError::MultipleRootsError);
+        }
+
+        for mut root_element in root_elements {
+            self.apply_metadata_to(&mut root_element);
+
+            return Ok(root_element);
+        }
+
+        Err(XMLGeneratorError::TypeGenerationError("No root elements generated".to_string()))
+    }
+
     fn build_xml(&self) -> Result<XMLElement, XMLGeneratorError> {
         let root = self.find_root()?;
 
         let mut tracker = RecursionTracker::new();
 
-        let mut root_element = root.generate(&mut tracker, self)?;
-        self.apply_metadata_to(&mut root_element);
-
-        Ok(root_element)
+        self.generate_root(root, &mut tracker)
     }
 
     pub(crate) fn generate_xml(&self) -> Result<String, XMLGeneratorError> {

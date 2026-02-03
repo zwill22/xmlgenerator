@@ -5,7 +5,9 @@ use crate::recursion_tracker::RecursionTracker;
 use crate::type_generator::TypeGenerator;
 use crate::type_info::{generate_type, get_qname};
 use crate::xsd::XSD;
+use rand::Rng;
 use regextranslator::RegexTranslator;
+use std::cmp::{max, min};
 use uuid::Uuid;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{ElementType, ElementTypeContent};
@@ -144,6 +146,24 @@ impl ElementGenerator {
         Ok(generator)
     }
 
+    fn get_occurrences(&self) -> usize {
+        let mut rng = rand::rng();
+
+        let max_range = 10;
+        let max_val = match self.max {
+            None => self.min + max_range,
+            Some(m) => min(m, self.min + max_range),
+        };
+
+        if self.min == max_val {
+            return max_val;
+        }
+
+        let min_val = max(1, self.min);
+
+        rng.random_range(min_val..=max_val)
+    }
+
     pub(crate) fn get_name(&self) -> Result<String, XMLGeneratorError> {
         match &self.name {
             None => match &self.reference {
@@ -161,6 +181,7 @@ impl ElementGenerator {
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<XMLElement, XMLGeneratorError> {
+
         let name = self.get_name()?;
         tracker.add(self)?;
         let mut root_element = XMLElement::new(&name);
@@ -187,12 +208,24 @@ impl ElementGenerator {
         Ok(root_element)
     }
 
+    fn generate_element(&self, tracker: &mut RecursionTracker, xsd: &XSD) -> Result<Vec<XMLElement>, XMLGeneratorError> {
+        let n = self.get_occurrences();
+
+        let mut elements = vec![];
+        for _ in 0..n {
+            let element = self.generate_type_from_name(tracker, xsd)?;
+            elements.push(element);
+        }
+
+        Ok(elements)
+    }
+
     fn generate_reference(
         &self,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
         reference: &Name,
-    ) -> Result<XMLElement, XMLGeneratorError> {
+    ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         if self.type_info.is_some() {
             return Err(XMLGeneratorError::DataTypesFormatError(
                 "Element is a reference and a type".to_string(),
@@ -221,9 +254,9 @@ impl ElementGenerator {
         &self,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
-    ) -> Result<XMLElement, XMLGeneratorError> {
+    ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
-            None => self.generate_type_from_name(tracker, xsd),
+            None => self.generate_element(tracker, xsd),
             Some(reference) => self.generate_reference(tracker, xsd, reference),
         }
     }

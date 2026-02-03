@@ -146,9 +146,10 @@ impl TypeGenerator {
         }
 
         for element in self.elements.iter() {
-            let child = element.generate(data_tracker, xsd)?;
-
-            xml_element.add_child(child)?;
+            let children = element.generate(data_tracker, xsd)?;
+            for child in children {
+                xml_element.add_child(child)?;
+            }
         }
 
         for group in self.groups.iter() {

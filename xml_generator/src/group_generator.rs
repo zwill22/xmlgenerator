@@ -4,9 +4,7 @@ use crate::error::unimplemented;
 use crate::namespaces::Namespaces;
 use crate::recursion_tracker::RecursionTracker;
 use crate::xsd::XSD;
-use rand::Rng;
 use regextranslator::RegexTranslator;
-use std::cmp::{max, min};
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{GroupType, GroupTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
@@ -56,40 +54,20 @@ impl GroupGenerator {
         Ok(generator)
     }
 
-    fn get_occurrences(&self) -> usize {
-        let mut rng = rand::rng();
-
-        let max_range = 10;
-        let max_val = match self.max {
-            None => self.min + max_range,
-            Some(m) => min(m, self.min + max_range),
-        };
-
-        if self.min == max_val {
-            return max_val;
-        }
-
-        let min_val = max(1, self.min);
-
-        rng.random_range(min_val..=max_val)
-    }
-
     pub(crate) fn generate(
         &self,
         xml_element: &mut XMLElement,
         data_tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<(), XMLGeneratorError> {
-        let n = self.get_occurrences();
-
-        for _ in 0..n {
-            for element in self.elements.iter() {
-                let child = element.generate(data_tracker, xsd)?;
-
+        for element in self.elements.iter() {
+            let children = element.generate(data_tracker, xsd)?;
+            
+            for child in children {
                 xml_element.add_child(child)?;
             }
         }
-
+    
         Ok(())
     }
 }
