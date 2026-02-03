@@ -7,6 +7,7 @@ use num_traits::Signed;
 use rand::seq::IndexedRandom;
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
+use regex::Regex;
 use regextranslator::RegexTranslator;
 use time::{Date, Time, format_description};
 use xsd_parser::models::schema::QName;
@@ -15,7 +16,31 @@ use xsd_parser::models::schema::xs::{
 };
 
 fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
-    Option::from(Faker.fake::<Output>().to_string())
+    Some(Faker.fake::<Output>().to_string())
+}
+
+fn generate_regex(pattern: &Regex) -> Option<String> {
+    let seed = 42;
+    let mut rng = XorShiftRng::seed_from_u64(seed);
+
+    let regex = match rand_regex::Regex::compile(pattern.as_str(), 100) {
+        Ok(regex) => regex,
+        Err(_) => return None,
+    };
+
+    let mut samples = (&mut rng)
+        .sample_iter(&regex)
+        .take(1000)
+        .collect::<Vec<String>>();
+
+    samples.sort();
+
+    samples.first().map(|s| s.to_string())
+}
+
+fn make_fake_string(pattern: &str) -> Option<String> {
+    let regex = Regex::new(pattern).unwrap();
+    generate_regex(&regex)
 }
 
 fn make_fake_signed<Output: fake::Dummy<Faker> + ToString + Signed>(
@@ -26,12 +51,12 @@ fn make_fake_signed<Output: fake::Dummy<Faker> + ToString + Signed>(
     let abs_val = val.abs();
 
     if positive {
-        return Option::from(abs_val.to_string());
+        return Some(abs_val.to_string());
     }
 
     let negative_val = abs_val.neg();
 
-    Option::from(negative_val.to_string())
+    Some(negative_val.to_string())
 }
 
 fn fake_date() -> Date {
@@ -91,7 +116,7 @@ pub(crate) fn generate_type(type_name: &str) -> Option<String> {
         "ID" => make_fake::<String>(),               // A string that represents the ID attribute
         "IDREF" => make_fake::<String>(),            // A string that represents the IDREF attribute
         "language" => make_fake::<String>(),         // A string that contains a valid language id
-        "Name" => make_fake::<String>(),             // A string that contains a valid XML name
+        "Name" => make_fake_string(r"[:A-Z_a-z][-.0-9:A-Z_a-z]*"), // A string that contains a valid XML name r"\i\c*"
         "NCName" => make_fake::<String>(),           // NCName
         "NMTOKEN" => make_fake::<String>(), // A string that represents the NMTOKEN attribute
         "normalizedString" => make_fake::<String>(), // A string that does not contain line feeds, carriage returns, or tabs
@@ -142,28 +167,9 @@ fn generate_enumeration(enumerations: &[String]) -> Option<String> {
     enumerations.choose(&mut rng).cloned()
 }
 
-fn generate_regex(pattern: &regex::Regex) -> Option<String> {
-    let seed = 42;
-    let mut rng = XorShiftRng::seed_from_u64(seed);
-
-    let regex = match rand_regex::Regex::compile(pattern.as_str(), 100) {
-        Ok(regex) => regex,
-        Err(_) => return None,
-    };
-
-    let mut samples = (&mut rng)
-        .sample_iter(&regex)
-        .take(1000)
-        .collect::<Vec<String>>();
-
-    samples.sort();
-
-    samples.first().map(|s| s.to_string())
-}
-
 fn sample_output(
     output: &str,
-    pattern: &regex::Regex,
+    pattern: &Regex,
     name: &String,
     depth: u16,
 ) -> Option<String> {
@@ -223,7 +229,7 @@ fn get_ignore_types() -> Vec<String> {
     ignore_types
 }
 
-fn generate_pattern(pattern: &regex::Regex, name: &String) -> Option<String> {
+fn generate_pattern(pattern: &Regex, name: &String) -> Option<String> {
     let ignore_types = get_ignore_types();
 
     match generate_type(name) {

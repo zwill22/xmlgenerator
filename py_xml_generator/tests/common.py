@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from pyxmlgenerator import MultipleXSDRootsError
+import pytest
 from xmlschema import XMLSchema, XMLSchemaValidationError, XMLSchemaParseError
 
 
@@ -29,6 +29,7 @@ def identity(file: Path, parent_path: Path) -> str:
     return out
 
 
+@pytest.mark.xfail(raises=XMLSchemaParseError)
 def validate_output(xml_generator, input_file: Path | str):
     """
     Validate whether py-xmlgenerator generates output that matches the input schema
@@ -46,11 +47,8 @@ def validate_output(xml_generator, input_file: Path | str):
     cwd = Path.cwd()
     os.chdir(file_dir)
 
-    try:
-        schema = XMLSchema(filepath)
-    except XMLSchemaParseError:
-        print("XMLSchema is unable to parse the schema, skipping test")
-        return
+    schema = XMLSchema(filepath)
+
 
     result: str = xml_generator.generate(filepath)
 
