@@ -49,6 +49,9 @@ mod tests {
             XMLGeneratorError::NoIndependentElementsError => {
                 increment(stats, "No Independent Elements", "");
             }
+            XMLGeneratorError::MultipleRootsError => {
+                increment(stats, "Multiple Roots", "");
+            }
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
             XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
             XMLGeneratorError::UnimplementedFeature(e) => {
@@ -188,6 +191,9 @@ mod tests {
             for (name, stat) in stats.iter() {
                 eprintln!("Error:\t{}", name);
                 for error_type in &stat.types {
+                    if error_type.is_empty() {
+                        continue;
+                    }
                     eprintln!("Type:\t{}", error_type);
                 }
             }

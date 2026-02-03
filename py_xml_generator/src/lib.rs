@@ -42,6 +42,7 @@ fn handle_error(error: XMLGeneratorError) -> PyErr {
         XMLGeneratorError::NoIndependentElementsError => {
             NoIndependentElementsError::new_err("No Independent Elements found in XSD")
         }
+        XMLGeneratorError::MultipleRootsError => MultipleXSDRootsError::new_err("Multiple Roots"),
         XMLGeneratorError::TypeGenerationError(e) => TypeGenerationError::new_err(e),
         XMLGeneratorError::RegexError(e) => RegexError::new_err(e),
         XMLGeneratorError::UnimplementedFeature(e) => ImplementationError::new_err(e),

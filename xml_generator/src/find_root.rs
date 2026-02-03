@@ -34,9 +34,9 @@ fn get_field_struct<'a>(
     None
 }
 
-pub(crate) fn find_root_elements(
+pub(crate) fn find_root_element(
     generators: &[ElementGenerator],
-) -> Result<Vec<&ElementGenerator>, XMLGeneratorError> {
+) -> Result<&ElementGenerator, XMLGeneratorError> {
     if generators.is_empty() {
         return Err(XMLGeneratorError::NoElementsError);
     }
@@ -80,12 +80,15 @@ pub(crate) fn find_root_elements(
         return Err(XMLGeneratorError::NoIndependentElementsError);
     }
 
-    let mut roots = vec![];
+    if independent_elements.len() > 1 {
+        return Err(XMLGeneratorError::MultipleRootsError);
+    }
+
     for generator in generators.iter() {
         if independent_elements.contains(&generator) {
-            roots.push(generator);
+            return Ok(generator);
         }
     }
 
-    Ok(roots)
+    unreachable!();
 }
