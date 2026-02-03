@@ -49,9 +49,6 @@ mod tests {
             XMLGeneratorError::NoIndependentElementsError => {
                 increment(stats, "No Independent Elements", "");
             }
-            XMLGeneratorError::MultipleRootsError => {
-                increment(stats, "Multiple Roots", "");
-            }
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
             XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
             XMLGeneratorError::UnimplementedFeature(e) => {

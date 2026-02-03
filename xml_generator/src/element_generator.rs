@@ -42,8 +42,8 @@ fn get_name(element: &ElementType, schema: &SchemaInfo, namespaces: &Namespaces)
         Some(ns) => match &element.name {
             None => None,
             Some(name) => match namespaces.find(ns) {
-                None => None,
-                Some(ns_prefix) => Some(Name::new(name.clone(), Some(ns_prefix))),
+                None => Some(Name::new(name.clone(), None)),
+                Some(ns_prefix) => Some(Name::new(name.clone(), Some(ns_prefix.clone()))),
             },
         },
     }

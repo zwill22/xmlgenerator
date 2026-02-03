@@ -60,33 +60,17 @@ impl Namespaces {
         Ok(())
     }
 
-    fn find_target_namespace(&self, location: &str) -> Option<&String> {
-        if let Some(default_ns) = &self.default_namespace
-            && default_ns.eq(&location)
-        {
-            // Target namespace is the default namespace, no need to add prefix
-            return None;
-        }
-
-        for (k, v) in self.other_namespaces.iter() {
-            if v.eq(&location) {
-                return Some(k);
-            }
-        }
-
-        None
-    }
-
-    pub(crate) fn find(&self, location: &str) -> Option<String> {
+    pub(crate) fn find(&self, location: &str) -> Option<&String> {
         if let Some(default_ns) = &self.default_namespace {
             if default_ns.eq(location) {
-                return Some(default_ns.clone());
+                // If namespace is default namespace, no need to include prefix
+                return None;
             }
         }
 
         for (k, v) in self.other_namespaces.iter() {
             if v.eq(location) {
-                return Some(k.clone());
+                return Some(k);
             }
         }
 
@@ -99,7 +83,7 @@ impl Namespaces {
         // 1. Throw an error, do not accept an unnamed target namespace (easy, but may not be standard)
         // 2. Assign target namespace a random name and prefix all elements with this prefix
         // TODO Consider the above
-        match self.find_target_namespace(&target_location) {
+        match self.find(&target_location) {
             None => Err(XMLGeneratorError::DataTypesFormatError(
                 "No target namespace found.".to_string(),
             )),
@@ -111,7 +95,7 @@ impl Namespaces {
     }
 
     fn check_target_namespace(&self, ns: String, target: &String) -> Result<(), XMLGeneratorError> {
-        if let Some(new_target) = self.find_target_namespace(&ns)
+        if let Some(new_target) = self.find(&ns)
             && new_target.eq(target)
         {
             return Err(XMLGeneratorError::DataTypesFormatError(
