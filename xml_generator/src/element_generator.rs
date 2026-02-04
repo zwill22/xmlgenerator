@@ -35,22 +35,6 @@ fn generate_type_output(
     Err(XMLGeneratorError::DataTypeNotFoundError(type_name.clone()))
 }
 
-fn get_name(element: &ElementType, schema: &SchemaInfo, namespaces: &Namespaces) -> Option<Name> {
-    match &schema.schema.target_namespace {
-        None => match &element.name {
-            None => None,
-            Some(name) => Some(Name::new(name.clone(), None)),
-        },
-        Some(ns) => match &element.name {
-            None => None,
-            Some(name) => match namespaces.find(ns) {
-                None => Some(Name::new(name.clone(), None)),
-                Some(ns_prefix) => Some(Name::new(name.clone(), Some(ns_prefix.clone()))),
-            },
-        },
-    }
-}
-
 #[derive(Default)]
 pub(crate) struct ElementGenerator {
     pub(crate) name: Option<Name>,
@@ -124,7 +108,7 @@ impl ElementGenerator {
             return unimplemented("Embedded target namespace");
         }
 
-        generator.name = get_name(element, schema, namespaces);
+        generator.name = Name::from_name(&element.name, schema, namespaces);
 
         for content in &element.content {
             match content {

@@ -1,11 +1,13 @@
 use crate::XMLGeneratorError;
+use crate::regex_generator::generate_regex;
+use regex::Regex;
 use std::collections::HashMap;
 use std::str::from_utf8;
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::{Import, SchemaContent};
 use xsd_parser::models::schema::{NamespaceInfo, SchemaInfo};
 
-pub(crate) fn check_namespace(ns: &String, schemas: &Schemas) -> Result<(), XMLGeneratorError> {
+fn check_namespace_exists(ns: &String, schemas: &Schemas) -> Result<(), XMLGeneratorError> {
     for (_ns_id, ns_info) in schemas.namespaces() {
         if let Some(namespace) = &ns_info.namespace {
             let ns_name = match from_utf8(namespace) {
@@ -24,6 +26,28 @@ pub(crate) fn check_namespace(ns: &String, schemas: &Schemas) -> Result<(), XMLG
     )))
 }
 
+fn check_namespace_is_valid(ns: &String) -> bool {
+    let re = r"^[A-Z_a-z][-.0-9A-Z_a-z]*$";
+    let regex = Regex::new(re).unwrap();
+
+    regex.is_match(ns)
+}
+
+fn generate_valid_name(schemas: &Schemas) -> Result<String, XMLGeneratorError> {
+    let pattern = r"[A-Za-z]{2}";
+    let regex = Regex::new(pattern).unwrap();
+
+    match generate_regex(&regex) {
+        Some(output) => match check_namespace_exists(&output, schemas) {
+            Ok(_) => generate_valid_name(schemas),
+            Err(_) => Ok(output),
+        },
+        None => Err(XMLGeneratorError::RegexError(
+            "Unable to generate regex".to_string(),
+        )),
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Namespaces {
     default_namespace: Option<String>,
@@ -37,7 +61,7 @@ impl Namespaces {
         let mut namespaces = Namespaces::default();
 
         for (_ns_id, ns_info) in schemas.namespaces() {
-            namespaces.get_info(ns_info)?;
+            namespaces.get_info(ns_info, schemas)?;
         }
 
         let mut root = true;
@@ -49,11 +73,29 @@ impl Namespaces {
         Ok(namespaces)
     }
 
-    fn add_default_namespace(&mut self, ns: String) -> Result<(), XMLGeneratorError> {
+    fn add_default_namespace(
+        &mut self,
+        ns: String,
+        schemas: &Schemas,
+    ) -> Result<(), XMLGeneratorError> {
+        let valid = check_namespace_is_valid(&ns);
+        let valid_name = generate_valid_name(schemas)?;
+
         match self.default_namespace {
-            None => self.default_namespace = Some(ns),
+            None => {
+                if valid {
+                    self.default_namespace = Some(ns)
+                } else {
+                    self.default_namespace = Some(valid_name.clone());
+                    self.other_namespaces.insert(valid_name, ns);
+                }
+            }
             Some(_) => {
-                self.other_namespaces.insert(ns.to_string(), ns);
+                if valid {
+                    self.other_namespaces.insert(ns.to_string(), ns);
+                } else {
+                    self.other_namespaces.insert(valid_name, ns);
+                }
             }
         }
 
@@ -142,7 +184,11 @@ impl Namespaces {
         };
     }
 
-    fn get_info(&mut self, ns_info: &NamespaceInfo) -> Result<(), XMLGeneratorError> {
+    fn get_info(
+        &mut self,
+        ns_info: &NamespaceInfo,
+        schemas: &Schemas,
+    ) -> Result<(), XMLGeneratorError> {
         if ns_info.module_name.is_some() {
             return Err(XMLGeneratorError::UnimplementedFeature(
                 "module_name".to_string(),
@@ -154,7 +200,7 @@ impl Namespaces {
 
             match &ns_info.prefix {
                 None => {
-                    self.add_default_namespace(ns)?;
+                    self.add_default_namespace(ns, schemas)?;
                 }
                 Some(prefix) => {
                     let prefix_str = prefix.to_string();
@@ -177,7 +223,7 @@ impl Namespaces {
         if let Some(ns) = &schema.target_namespace
             && root
         {
-            check_namespace(ns, schemas)?;
+            check_namespace_exists(ns, schemas)?;
             self.add_target_namespace(ns.to_string())?;
         }
 

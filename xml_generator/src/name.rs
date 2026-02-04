@@ -1,5 +1,5 @@
 use crate::XMLGeneratorError;
-use xsd_parser::models::schema::QName;
+use xsd_parser::models::schema::{QName, SchemaInfo};
 use crate::namespaces::Namespaces;
 
 #[derive(Default)]
@@ -29,6 +29,22 @@ impl Name {
         Self::new(name, ns)
     }
 
+    pub(crate) fn from_name(name: &Option<String>, schema: &SchemaInfo, namespaces: &Namespaces) -> Option<Name> {
+        match &schema.schema.target_namespace {
+            None => match name {
+                None => None,
+                Some(name) => Some(Name::new(name.clone(), None)),
+            },
+            Some(ns) => match name{
+                None => None,
+                Some(name) => match namespaces.find(ns) {
+                    None => Some(Name::new(name.clone(), None)),
+                    Some(ns_prefix) => Some(Name::new(name.clone(), Some(ns_prefix.clone()))),
+                },
+            },
+        }
+    }
+    
     pub(crate) fn get_suffix(&self) -> Result<String, XMLGeneratorError> {
         if self.name.is_empty() {
             return Err(XMLGeneratorError::DataTypesFormatError(

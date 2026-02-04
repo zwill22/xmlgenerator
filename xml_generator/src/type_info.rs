@@ -1,12 +1,12 @@
 use crate::XMLGeneratorError;
 use crate::error::unimplemented;
+use crate::regex_generator::generate_regex;
 use chrono::Duration;
 use fake::faker;
 use fake::{Fake, Faker};
 use num_traits::Signed;
+use rand::Rng;
 use rand::seq::IndexedRandom;
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
 use regex::Regex;
 use regextranslator::RegexTranslator;
 use time::{Date, Time, format_description};
@@ -18,26 +18,6 @@ use xsd_parser::models::schema::xs::{
 fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<String> {
     Some(Faker.fake::<Output>().to_string())
 }
-
-fn generate_regex(pattern: &Regex) -> Option<String> {
-    let seed = 42;
-    let mut rng = XorShiftRng::seed_from_u64(seed);
-
-    let regex = match rand_regex::Regex::compile(pattern.as_str(), 100) {
-        Ok(regex) => regex,
-        Err(_) => return None,
-    };
-
-    let mut samples = (&mut rng)
-        .sample_iter(&regex)
-        .take(1000)
-        .collect::<Vec<String>>();
-
-    samples.sort();
-
-    samples.first().map(|s| s.to_string())
-}
-
 fn make_fake_string(pattern: &str) -> Option<String> {
     let regex = Regex::new(pattern).unwrap();
     generate_regex(&regex)
@@ -111,13 +91,13 @@ pub(crate) fn generate_type(type_name: &str) -> Option<String> {
 
         // String data types
         // TODO Add patterns for string types
-        "ENTITIES" => make_fake::<String>(),         // ENTITIES
-        "ENTITY" => make_fake::<String>(),           // ENTITY
-        "ID" => make_fake::<String>(),               // A string that represents the ID attribute
-        "IDREF" => make_fake::<String>(),            // A string that represents the IDREF attribute
-        "language" => make_fake::<String>(),         // A string that contains a valid language id
+        "ENTITIES" => make_fake::<String>(), // ENTITIES
+        "ENTITY" => make_fake::<String>(),   // ENTITY
+        "ID" => make_fake::<String>(),       // A string that represents the ID attribute
+        "IDREF" => make_fake::<String>(),    // A string that represents the IDREF attribute
+        "language" => make_fake::<String>(), // A string that contains a valid language id
         "Name" => make_fake_string(r"[:A-Z_a-z][-.0-9:A-Z_a-z]*"), // A string that contains a valid XML name r"\i\c*"
-        "NCName" => make_fake::<String>(),           // NCName
+        "NCName" => make_fake_string(r"[A-Z_a-z][-.0-9A-Z_a-z]*"), // NCName
         "NMTOKEN" => make_fake::<String>(), // A string that represents the NMTOKEN attribute
         "normalizedString" => make_fake::<String>(), // A string that does not contain line feeds, carriage returns, or tabs
         "QName" => make_fake::<String>(),            // QName
@@ -167,12 +147,7 @@ fn generate_enumeration(enumerations: &[String]) -> Option<String> {
     enumerations.choose(&mut rng).cloned()
 }
 
-fn sample_output(
-    output: &str,
-    pattern: &Regex,
-    name: &String,
-    depth: u16,
-) -> Option<String> {
+fn sample_output(output: &str, pattern: &Regex, name: &String, depth: u16) -> Option<String> {
     let limit = 100; // TODO make an option
     if depth >= limit {
         return generate_regex(pattern);
@@ -274,7 +249,7 @@ fn handle_regex_pattern(
 ) -> Result<(), XMLGeneratorError> {
     check_carriage_returns(pattern)?;
 
-    match regex::Regex::new(pattern) {
+    match Regex::new(pattern) {
         Ok(regex) => {
             // Generalise `\d` pattern to equal `[0-9]`
             if pattern.contains(r"\d") {
@@ -379,7 +354,7 @@ fn parse_restriction(
 #[derive(Default)]
 pub(crate) struct TypeInfo {
     pub(crate) name: String,
-    pub(crate) pattern: Option<regex::Regex>,
+    pub(crate) pattern: Option<Regex>,
     pub(crate) enumerations: Vec<String>,
 }
 

@@ -18,6 +18,7 @@ mod type_generator;
 mod type_info;
 mod xsd;
 mod name;
+mod regex_generator;
 
 pub struct XMLGenerator {
     validator: XSDValidator,

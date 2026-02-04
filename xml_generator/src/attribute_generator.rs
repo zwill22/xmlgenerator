@@ -1,4 +1,6 @@
 use crate::error::{XMLGeneratorError, unimplemented};
+use crate::name::Name;
+use crate::namespaces::Namespaces;
 use crate::type_generator::TypeGenerator;
 use crate::type_info::{TypeInfo, generate_type, get_qname};
 use crate::xsd::XSD;
@@ -48,8 +50,7 @@ fn generate_attribute_from_type(
 }
 
 pub(crate) struct AttributeGenerator {
-    pub(crate) name: String,
-    pub(crate) namespace: Option<String>,
+    pub(crate) name: Option<Name>,
     pub(crate) attribute_type: AttributeUseType,
     pub(crate) type_name: String,
     pub(crate) type_info: Option<TypeInfo>,
@@ -59,16 +60,16 @@ impl AttributeGenerator {
     pub(crate) fn new(
         attribute: &AttributeType,
         schema_info: &SchemaInfo,
+        namespaces: &Namespaces,
     ) -> Result<Self, XMLGeneratorError> {
         let mut generator = AttributeGenerator {
-            name: String::new(),
-            namespace: None,
+            name: None,
             attribute_type: AttributeUseType::Required,
             type_name: String::new(),
             type_info: None,
         };
 
-        generator.name = attribute.name.clone().unwrap_or("".to_string());
+        generator.name = Name::from_name(&attribute.name, schema_info, namespaces);
 
         if let Some(attribute_type) = &attribute.type_ {
             generator.type_name = get_qname(attribute_type);
@@ -96,10 +97,6 @@ impl AttributeGenerator {
             return unimplemented("Target namespace attribute");
         }
 
-        if let Some(ns) = &schema_info.schema.target_namespace {
-            generator.namespace = Some(ns.clone())
-        }
-
         if attribute.inheritable.is_some() {
             return unimplemented("Inheritable attribute");
         }
@@ -115,15 +112,6 @@ impl AttributeGenerator {
         Ok(generator)
     }
 
-    fn get_name(&self) -> String {
-        let name = &self.name;
-        if let Some(ns) = &self.namespace {
-            return format!("{}:{}", ns, name);
-        }
-
-        name.clone()
-    }
-
     fn get_attribute(&self) -> Option<String> {
         if let Some(type_info) = &self.type_info {
             if let Some(value) = type_info.generate() {
@@ -136,23 +124,27 @@ impl AttributeGenerator {
         None
     }
 
+    fn get_name(&self) -> Result<String, XMLGeneratorError> {
+        match &self.name {
+            None => Err(XMLGeneratorError::DataTypesFormatError(
+                "Attribute Name is empty".to_string(),
+            )),
+            Some(name) => name.get_name(),
+        }
+    }
+
     pub(crate) fn generate(
         &self,
         xml_element: &mut XMLElement,
         xsd: &XSD,
     ) -> Result<(), XMLGeneratorError> {
         let mut generated = false;
-        if self.name.is_empty() {
-            return Err(XMLGeneratorError::DataTypesFormatError(
-                "Attribute Name is empty".to_string(),
-            ));
-        }
 
         if self.attribute_type == AttributeUseType::Prohibited {
             return Ok(());
         }
 
-        let name = self.get_name();
+        let name = self.get_name()?;
         if let Some(attribute) = self.get_attribute() {
             xml_element.add_attribute(name.as_str(), attribute.as_str());
             generated = true;

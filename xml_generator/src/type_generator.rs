@@ -100,7 +100,7 @@ impl TypeGenerator {
                     generator.groups.push(group);
                 }
                 ComplexBaseTypeContent::Attribute(attribute_type) => {
-                    let attribute = AttributeGenerator::new(attribute_type, schema_info)?;
+                    let attribute = AttributeGenerator::new(attribute_type, schema_info, namespaces)?;
                     generator.attributes.push(attribute);
                 }
                 _ => return unimplemented("Complex base type"),
