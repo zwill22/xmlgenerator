@@ -1,6 +1,6 @@
 use crate::XMLGeneratorError;
 use crate::error::unimplemented;
-use crate::regex_generator::generate_regex;
+use crate::regex::generate_regex;
 use chrono::Duration;
 use fake::faker;
 use fake::{Fake, Faker};
@@ -358,9 +358,9 @@ fn parse_restriction(
 
 #[derive(Default)]
 pub(crate) struct TypeInfo {
-    pub(crate) name: String,
-    pub(crate) pattern: Option<Regex>,
-    pub(crate) enumerations: Vec<String>,
+    name: String,
+    pattern: Option<Regex>,
+    enumerations: Vec<String>,
 }
 
 impl TypeInfo {
@@ -391,6 +391,10 @@ impl TypeInfo {
         }
 
         generate_type(name)
+    }
+
+    pub(crate) fn get_name(&self) -> String {
+        self.name.clone()
     }
 }
 

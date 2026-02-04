@@ -7,67 +7,67 @@ use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
 
-pub(crate) struct AttributeGenerator {
+pub(crate) struct Attribute {
     name: Option<Name>,
     attribute_type: AttributeUseType,
     type_name: String,
     type_info: Option<TypeInfo>,
 }
 
-impl AttributeGenerator {
+impl Attribute {
     pub(crate) fn new(
-        attribute: &AttributeType,
+        attribute_type: &AttributeType,
         schema_info: &SchemaInfo,
         namespaces: &Namespaces,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut generator = AttributeGenerator {
+        let mut attribute = Attribute {
             name: None,
             attribute_type: AttributeUseType::Required,
             type_name: String::new(),
             type_info: None,
         };
 
-        generator.name = Name::from_name(&attribute.name, schema_info, namespaces);
+        attribute.name = Name::from_name(&attribute_type.name, schema_info, namespaces);
 
-        if let Some(attribute_type) = &attribute.type_ {
-            generator.type_name = get_qname(attribute_type);
+        if let Some(attribute_type) = &attribute_type.type_ {
+            attribute.type_name = get_qname(attribute_type);
         }
 
-        generator.attribute_type = attribute.use_;
+        attribute.attribute_type = attribute_type.use_;
 
-        if attribute.ref_.is_some() {
+        if attribute_type.ref_.is_some() {
             return unimplemented("Attribute references");
         }
 
-        if attribute.default.is_some() {
+        if attribute_type.default.is_some() {
             return unimplemented("Default attribute");
         }
 
-        if attribute.fixed.is_some() {
+        if attribute_type.fixed.is_some() {
             return unimplemented("Fixed attribute");
         }
 
-        if attribute.form.is_some() {
+        if attribute_type.form.is_some() {
             return unimplemented("Form attribute");
         }
 
-        if attribute.target_namespace.is_some() {
+        if attribute_type.target_namespace.is_some() {
             return unimplemented("Target namespace attribute");
         }
 
-        if attribute.inheritable.is_some() {
+        if attribute_type.inheritable.is_some() {
             return unimplemented("Inheritable attribute");
         }
 
-        if attribute.annotation.is_some() {
+        if attribute_type.annotation.is_some() {
             return unimplemented("Annotation");
         }
 
-        if attribute.simple_type.is_some() {
+        if attribute_type.simple_type.is_some() {
             return unimplemented("Simple type attribute");
         }
 
-        Ok(generator)
+        Ok(attribute)
     }
 
     fn get_attribute(&self) -> Option<String> {
@@ -130,7 +130,7 @@ impl AttributeGenerator {
     }
 }
 
-impl PartialEq for AttributeGenerator {
+impl PartialEq for Attribute {
     fn eq(&self, other: &Self) -> bool {
         if self.name != other.name {
             return false;

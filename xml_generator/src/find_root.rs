@@ -1,10 +1,7 @@
-use crate::element_generator::ElementGenerator;
+use crate::element::Element;
 use crate::error::XMLGeneratorError;
 
-fn get_field_struct<'a>(
-    generators: &'a [ElementGenerator],
-    field: &String,
-) -> Option<&'a ElementGenerator> {
+fn get_field_struct<'a>(generators: &'a [Element], field: &String) -> Option<&'a Element> {
     for generator in generators.iter() {
         if let Ok(name) = generator.get_name() {
             if name.eq(field) {
@@ -16,9 +13,7 @@ fn get_field_struct<'a>(
     None
 }
 
-pub(crate) fn find_root_element(
-    generators: &[ElementGenerator],
-) -> Result<&ElementGenerator, XMLGeneratorError> {
+pub(crate) fn find_root_element(generators: &[Element]) -> Result<&Element, XMLGeneratorError> {
     if generators.is_empty() {
         return Err(XMLGeneratorError::NoElementsError);
     }

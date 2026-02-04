@@ -1,8 +1,8 @@
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::recursion_tracker::RecursionTracker;
-use crate::type_generator::TypeGenerator;
+use crate::tracker::RecursionTracker;
+use crate::data_type::DataType;
 use crate::type_info::{generate_type, get_qname};
 use crate::xsd::XSD;
 use rand::Rng;
@@ -19,6 +19,7 @@ fn generate_type_output(
     xsd: &XSD,
     type_name: &String,
 ) -> Result<(), XMLGeneratorError> {
+    // TODO TypeGenerator?
     if let Some(output) = generate_type(type_name) {
         return match xml_element.add_text(output) {
             Ok(_) => Ok(()),
@@ -62,98 +63,99 @@ pub(crate) trait Occurrence {
 }
 
 #[derive(Default)]
-pub(crate) struct ElementGenerator {
+pub(crate) struct Element {
     name: Option<Name>,
-    types: Vec<TypeGenerator>,
-    type_info: Option<String>,
+    data_types: Vec<DataType>,
+    type_name: Option<String>,
     reference: Option<Name>,
     min: usize,
     max: Option<usize>,
     id: Uuid,
 }
 
-impl ElementGenerator {
+impl Element {
     pub(crate) fn new(
-        element: &ElementType,
+        element_type: &ElementType,
         translator: &RegexTranslator,
         schema: &SchemaInfo,
         namespaces: &Namespaces,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut generator = ElementGenerator::default();
+        let mut element = Element::default();
 
-        if let Some(element_ref) = &element.ref_ {
+        if let Some(element_ref) = &element_type.ref_ {
             let reference = Name::from_qname(element_ref, namespaces);
-            generator.reference = Some(reference);
+            element.reference = Some(reference);
         }
 
-        if let Some(element_type) = &element.type_ {
+        if let Some(element_type) = &element_type.type_ {
             let type_info = get_qname(element_type);
-            generator.type_info = Some(type_info);
+            element.type_name = Some(type_info);
         }
 
-        if element.substitution_group.is_some() {
+        if element_type.substitution_group.is_some() {
             return unimplemented("Element Substitution Groups");
         }
 
-        generator.min = element.min_occurs;
+        element.min = element_type.min_occurs;
 
-        generator.max = match element.max_occurs {
+        element.max = match element_type.max_occurs {
             MaxOccurs::Unbounded => None,
             MaxOccurs::Bounded(x) => Some(x),
         };
 
-        if element.default.is_some() {
+        if element_type.default.is_some() {
             return unimplemented("Default Element");
         }
 
-        if element.fixed.is_some() {
+        if element_type.fixed.is_some() {
             return unimplemented("Fixed elements");
         }
 
-        if element.nillable.is_some() {
+        if element_type.nillable.is_some() {
             return unimplemented("Nillable elements");
         }
 
-        if element.abstract_ {
+        if element_type.abstract_ {
             return unimplemented("Abstract elements");
         }
 
-        if element.final_.is_some() {
+        if element_type.final_.is_some() {
             return unimplemented("Final elements");
         }
 
-        if element.block.is_some() {
+        if element_type.block.is_some() {
             return unimplemented("Block elements");
         }
 
-        if element.form.is_some() {
+        if element_type.form.is_some() {
             return unimplemented("Form elements");
         }
 
-        if element.target_namespace.is_some() {
+        if element_type.target_namespace.is_some() {
             return unimplemented("Embedded target namespace");
         }
 
-        generator.name = Name::from_name(&element.name, schema, namespaces);
+        element.name = Name::from_name(&element_type.name, schema, namespaces);
 
-        for content in &element.content {
+        for content in &element_type.content {
             match content {
                 ElementTypeContent::SimpleType(simple_type) => {
-                    let simple = TypeGenerator::simple_type(simple_type, translator)?;
-                    generator.types.push(simple);
+                    let simple = Type::simple_type(simple_type, translator)?;
+                    element.types.push(simple);
+                    element.data_types.push(simple);
                 }
                 ElementTypeContent::ComplexType(complex_type) => {
-                    let complex =
-                        TypeGenerator::complex_type(complex_type, translator, schema, namespaces)?;
-                    generator.types.push(complex);
+                    let complex = Type::complex_type(complex_type, translator, schema, namespaces)?;
+                    element.types.push(complex);
+                    element.data_types.push(complex);
                 }
                 _ => return unimplemented("Element content type"),
             }
         }
 
-        generator.id = Uuid::new_v4();
+        element.id = Uuid::new_v4();
 
-        Ok(generator)
+        Ok(element)
     }
 
     pub(crate) fn get_content(
@@ -164,13 +166,13 @@ impl ElementGenerator {
         if let Some(reference) = &self.reference {
             fields.push(reference.get_name()?);
         }
-        if let Some(type_info) = &self.type_info
+        if let Some(type_info) = &self.type_name
             && !type_info.is_empty()
         {
             types.push(type_info.to_string());
         }
 
-        for type_generator in self.types.iter() {
+        for type_generator in self.data_types.iter() {
             type_generator.get_content(fields)?;
         }
 
@@ -198,9 +200,9 @@ impl ElementGenerator {
         tracker.add(self)?;
         let mut root_element = XMLElement::new(&name);
 
-        match &self.type_info {
+        match &self.type_name {
             Some(type_info) => {
-                if !self.types.is_empty() {
+                if !self.data_types.is_empty() {
                     return Err(XMLGeneratorError::DataTypesFormatError(
                         "Data has a type and contains type elements".to_string(),
                     ));
@@ -209,7 +211,7 @@ impl ElementGenerator {
                 generate_type_output(&mut root_element, tracker, xsd, type_info)?;
             }
             None => {
-                for content in self.types.iter() {
+                for content in self.data_types.iter() {
                     content.generate(&mut root_element, tracker, xsd)?;
                 }
             }
@@ -242,12 +244,12 @@ impl ElementGenerator {
         xsd: &XSD,
         reference: &Name,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
-        if self.type_info.is_some() {
+        if self.type_name.is_some() {
             return Err(XMLGeneratorError::DataTypesFormatError(
                 "Element is a reference and a type".to_string(),
             ));
         }
-        if !self.types.is_empty() {
+        if !self.data_types.is_empty() {
             return Err(XMLGeneratorError::DataTypesFormatError(
                 "Element references another element an contains content".to_string(),
             ));
@@ -282,7 +284,7 @@ impl ElementGenerator {
     }
 }
 
-impl Occurrence for ElementGenerator {
+impl Occurrence for Element {
     fn get_min(&self) -> usize {
         self.min
     }
@@ -292,25 +294,25 @@ impl Occurrence for ElementGenerator {
     }
 }
 
-impl PartialEq for ElementGenerator {
+impl PartialEq for Element {
     fn eq(&self, other: &Self) -> bool {
         if !self.name.eq(&other.name) {
             return false;
         }
-        if !self.type_info.eq(&other.type_info) {
+        if !self.type_name.eq(&other.type_name) {
             return false;
         }
 
-        if self.types.len() != other.types.len() {
+        if self.data_types.len() != other.data_types.len() {
             return false;
         }
 
-        if !self.types.eq(&other.types) {
+        if !self.data_types.eq(&other.data_types) {
             return false;
         }
 
-        for i in 0..self.types.len() {
-            if !self.types[i].eq(&other.types[i]) {
+        for i in 0..self.data_types.len() {
+            if !self.data_types[i].eq(&other.data_types[i]) {
                 return false;
             }
         }

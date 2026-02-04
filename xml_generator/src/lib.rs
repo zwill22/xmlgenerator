@@ -5,20 +5,21 @@ use regextranslator::RegexTranslator;
 use std::path::PathBuf;
 use xsdvalidator::XSDValidator;
 
-mod attribute_generator;
-mod element_generator;
+mod attribute;
+mod element;
 pub mod error;
 mod find_root;
-mod group_generator;
+mod group;
+mod name;
 mod namespaces;
-mod recursion_tracker;
+mod regex;
 mod schema_version;
 mod schemas;
-mod type_generator;
+mod tracker;
+mod r#type;
+mod data_type;
 mod type_info;
 mod xsd;
-mod name;
-mod regex_generator;
 
 pub struct XMLGenerator {
     validator: XSDValidator,

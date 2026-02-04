@@ -1,4 +1,4 @@
-use crate::element_generator::ElementGenerator;
+use crate::element::Element;
 use crate::error::XMLGeneratorError;
 use std::collections::HashSet;
 use std::string::String;
@@ -14,12 +14,12 @@ impl RecursionTracker {
         }
     }
 
-    fn includes(&self, generator: &ElementGenerator) -> bool {
+    fn includes(&self, generator: &Element) -> bool {
         let id = generator.get_id();
         self.values.contains(&id)
     }
 
-    pub(crate) fn add(&mut self, generator: &ElementGenerator) -> Result<(), XMLGeneratorError> {
+    pub(crate) fn add(&mut self, generator: &Element) -> Result<(), XMLGeneratorError> {
         if self.includes(generator) {
             return Err(XMLGeneratorError::InfiniteRecursionError);
         }
@@ -30,7 +30,7 @@ impl RecursionTracker {
         Ok(())
     }
 
-    pub(crate) fn remove(&mut self, generator: &ElementGenerator) {
+    pub(crate) fn remove(&mut self, generator: &Element) {
         let id = generator.get_id();
         let result = self.values.remove(&id);
         if !result {

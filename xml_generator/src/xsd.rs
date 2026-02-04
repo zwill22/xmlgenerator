@@ -1,12 +1,13 @@
 use crate::XMLGeneratorError;
-use crate::element_generator::ElementGenerator;
+use crate::element::Element;
 use crate::error::unimplemented;
 use crate::find_root::find_root_element;
 use crate::namespaces::Namespaces;
-use crate::recursion_tracker::RecursionTracker;
 use crate::schema_version::SchemaVersion;
-use crate::type_generator::TypeGenerator;
+use crate::tracker::RecursionTracker;
+use crate::r#type::Type;
 use regextranslator::RegexTranslator;
+use crate::data_type::DataType;
 use std::slice::Iter;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::Schemas;
@@ -14,8 +15,8 @@ use xsd_parser::models::schema::xs::SchemaContent;
 
 pub(crate) struct XSD {
     version: SchemaVersion,
-    type_generators: Vec<TypeGenerator>,
-    element_generators: Vec<ElementGenerator>,
+    data_types: Vec<DataType>,
+    elements: Vec<Element>,
     namespaces: Namespaces,
 }
 
@@ -34,20 +35,19 @@ impl XSD {
             for content in &schema.content {
                 match content {
                     SchemaContent::Element(element) => {
-                        let element =
-                            ElementGenerator::new(&element, &translator, schema_info, &ns)?;
+                        let element = Element::new(&element, &translator, schema_info, &ns)?;
                         elements.push(element);
                     }
                     SchemaContent::Import(_) => {}
                     SchemaContent::Annotation(_) => {}
                     SchemaContent::SimpleType(simple) => {
-                        let simple_type = TypeGenerator::simple_type(simple, translator)?;
-                        types.push(simple_type);
+                        let simple_type = DataType::simple_type(simple, translator)?;
+                        data_types.push(simple_type);
                     }
                     SchemaContent::ComplexType(complex) => {
                         let complex_type =
-                            TypeGenerator::complex_type(complex, translator, schema_info, &ns)?;
-                        types.push(complex_type);
+                            DataType::complex_type(complex, translator, schema_info, &namespaces)?;
+                        data_types.push(complex_type);
                     }
                     _ => return unimplemented("Unimplemented schema content type"),
                 }
@@ -56,9 +56,10 @@ impl XSD {
 
         let data = XSD {
             version: v,
-            type_generators: types,
-            element_generators: elements,
+            types: types,
+            elements: elements,
             namespaces: ns,
+            data_types,
         };
 
         Ok(data)
@@ -88,19 +89,23 @@ impl XSD {
         self.version.get_version()
     }
 
-    pub(crate) fn find_root(&self) -> Result<&ElementGenerator, XMLGeneratorError> {
-        find_root_element(&self.element_generators)
+    pub(crate) fn find_root(&self) -> Result<&Element, XMLGeneratorError> {
+        find_root_element(&self.elements)
     }
 
-    pub(crate) fn elements(&self) -> Iter<'_, ElementGenerator> {
-        self.element_generators.iter()
+    pub(crate) fn elements(&self) -> Iter<'_, Element> {
+        self.elements.iter()
     }
 
-    pub(crate) fn types(&self) -> Iter<'_, TypeGenerator> {
-        self.type_generators.iter()
+    pub(crate) fn types(&self) -> Iter<'_, DataType> {
+        self.data_types.iter()
     }
 
-    fn generate_root(&self, root: &ElementGenerator, tracker: &mut RecursionTracker) -> Result<XMLElement, XMLGeneratorError> {
+    fn generate_root(
+        &self,
+        root: &Element,
+        tracker: &mut RecursionTracker,
+    ) -> Result<XMLElement, XMLGeneratorError> {
         let root_elements = root.generate(tracker, self)?;
 
         if root_elements.len() > 1 {
@@ -113,7 +118,9 @@ impl XSD {
             return Ok(root_element);
         }
 
-        Err(XMLGeneratorError::TypeGenerationError("No root elements generated".to_string()))
+        Err(XMLGeneratorError::TypeGenerationError(
+            "No root elements generated".to_string(),
+        ))
     }
 
     fn build_xml(&self) -> Result<XMLElement, XMLGeneratorError> {

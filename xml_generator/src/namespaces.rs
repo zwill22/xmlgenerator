@@ -1,5 +1,5 @@
 use crate::XMLGeneratorError;
-use crate::regex_generator::generate_regex;
+use crate::regex::generate_regex;
 use regex::Regex;
 use std::collections::HashMap;
 use std::str::from_utf8;
@@ -78,7 +78,6 @@ impl Namespaces {
         ns: String,
         schemas: &Schemas,
     ) -> Result<(), XMLGeneratorError> {
-
         match self.default_namespace {
             None => {
                 self.default_namespace = Some(ns);
