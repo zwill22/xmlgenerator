@@ -132,8 +132,8 @@ impl TypeGenerator {
     pub(crate) fn generate_attribute(
         &self,
         xml_element: &mut XMLElement,
+        name: &String,
     ) -> Result<(), XMLGeneratorError> {
-        let name = &self.name;
         if !self.elements.is_empty() {
             return Err(XMLGeneratorError::DataTypesFormatError(
                 "Attributes can contain complex elements".to_string(),

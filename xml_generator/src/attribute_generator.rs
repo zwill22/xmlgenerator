@@ -8,10 +8,10 @@ use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
 
 pub(crate) struct AttributeGenerator {
-    pub(crate) name: Option<Name>,
-    pub(crate) attribute_type: AttributeUseType,
-    pub(crate) type_name: String,
-    pub(crate) type_info: Option<TypeInfo>,
+    name: Option<Name>,
+    attribute_type: AttributeUseType,
+    type_name: String,
+    type_info: Option<TypeInfo>,
 }
 
 impl AttributeGenerator {
@@ -110,7 +110,7 @@ impl AttributeGenerator {
 
         for type_generator in xsd.types() {
             if type_generator.name_equals(&self.type_name) {
-                type_generator.generate_attribute(xml_element)?;
+                type_generator.generate_attribute(xml_element, &name)?;
                 generated = true;
             }
         }
