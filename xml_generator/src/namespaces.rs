@@ -78,22 +78,16 @@ impl Namespaces {
         ns: String,
         schemas: &Schemas,
     ) -> Result<(), XMLGeneratorError> {
-        let valid = check_namespace_is_valid(&ns);
-        let valid_name = generate_valid_name(schemas)?;
 
         match self.default_namespace {
             None => {
-                if valid {
-                    self.default_namespace = Some(ns)
-                } else {
-                    self.default_namespace = Some(valid_name.clone());
-                    self.other_namespaces.insert(valid_name, ns);
-                }
+                self.default_namespace = Some(ns);
             }
             Some(_) => {
-                if valid {
+                if check_namespace_is_valid(&ns) {
                     self.other_namespaces.insert(ns.to_string(), ns);
                 } else {
+                    let valid_name = generate_valid_name(schemas)?;
                     self.other_namespaces.insert(valid_name, ns);
                 }
             }
