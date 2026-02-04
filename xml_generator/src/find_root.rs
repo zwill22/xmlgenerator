@@ -1,23 +1,5 @@
 use crate::element_generator::ElementGenerator;
 use crate::error::XMLGeneratorError;
-use crate::type_generator::TypeGenerator;
-
-fn get_content_list(generator: &TypeGenerator) -> Result<Vec<String>, XMLGeneratorError> {
-    let mut output = vec![];
-    for element in generator.elements.iter() {
-        let name = element.get_name()?;
-        output.push(name);
-    }
-
-    for group in generator.groups.iter() {
-        for element in group.elements.iter() {
-            let name = element.get_name()?;
-            output.push(name);
-        }
-    }
-
-    Ok(output)
-}
 
 fn get_field_struct<'a>(
     generators: &'a [ElementGenerator],
@@ -44,21 +26,7 @@ pub(crate) fn find_root_element(
     let mut all_fields = vec![];
     let mut all_types = vec![];
     for generator in generators.iter() {
-        if let Some(reference) = &generator.reference {
-            all_fields.push(reference.get_name()?);
-        }
-        if let Some(type_info) = &generator.type_info
-            && !type_info.is_empty()
-        {
-            all_types.push(type_info);
-        }
-
-        for content in generator.types.iter() {
-            let content_list = get_content_list(content)?;
-            for item in content_list {
-                all_fields.push(item);
-            }
-        }
+        generator.get_content(&mut all_fields, &mut all_types)?;
     }
 
     let mut dependent_elements = vec![];

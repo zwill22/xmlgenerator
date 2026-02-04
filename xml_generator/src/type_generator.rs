@@ -14,13 +14,11 @@ use xsd_parser::models::schema::xs::{ComplexBaseType, ComplexBaseTypeContent, Si
 
 #[derive(Default)]
 pub(crate) struct TypeGenerator {
-    pub(crate) name: String,
-    pub(crate) type_info: Option<TypeInfo>,
-    pub(crate) elements: Vec<ElementGenerator>,
-    pub(crate) groups: Vec<GroupGenerator>,
-    pub(crate) attributes: Vec<AttributeGenerator>,
-    pub(crate) min: u32,
-    pub(crate) max: Option<u32>,
+    name: String,
+    type_info: Option<TypeInfo>,
+    elements: Vec<ElementGenerator>,
+    groups: Vec<GroupGenerator>,
+    attributes: Vec<AttributeGenerator>,
 }
 
 impl TypeGenerator {
@@ -100,7 +98,8 @@ impl TypeGenerator {
                     generator.groups.push(group);
                 }
                 ComplexBaseTypeContent::Attribute(attribute_type) => {
-                    let attribute = AttributeGenerator::new(attribute_type, schema_info, namespaces)?;
+                    let attribute =
+                        AttributeGenerator::new(attribute_type, schema_info, namespaces)?;
                     generator.attributes.push(attribute);
                 }
                 _ => return unimplemented("Complex base type"),
@@ -108,6 +107,67 @@ impl TypeGenerator {
         }
 
         Ok(generator)
+    }
+
+    pub(crate) fn get_content(
+        &self,
+        content: &mut Vec<String>,
+    ) -> Result<(), XMLGeneratorError> {
+        for element in self.elements.iter() {
+            let name = element.get_name()?;
+            content.push(name);
+        }
+
+        for group in self.groups.iter() {
+            group.get_content(content)?;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn name_equals(&self, name: &String) -> bool {
+        self.name.eq(name)
+    }
+
+    pub(crate) fn generate_attribute(
+        &self,
+        xml_element: &mut XMLElement,
+    ) -> Result<(), XMLGeneratorError> {
+        let name = &self.name;
+        if !self.elements.is_empty() {
+            return Err(XMLGeneratorError::DataTypesFormatError(
+                "Attributes can contain complex elements".to_string(),
+            ));
+        }
+
+        if !self.groups.is_empty() {
+            return Err(XMLGeneratorError::DataTypesFormatError(
+                "Attributes cannot include groups".to_string(),
+            ));
+        }
+
+        if !self.attributes.is_empty() {
+            return Err(XMLGeneratorError::DataTypesFormatError(
+                "Attributes cannot have their own attributes".to_string(),
+            ));
+        }
+
+        if let Some(type_info) = &self.type_info {
+            return match type_info.generate() {
+                Some(value) => {
+                    xml_element.add_attribute(name.as_str(), value.as_str());
+                    Ok(())
+                }
+                None => Err(XMLGeneratorError::DataTypeNotFoundError(
+                    type_info.name.clone(),
+                )),
+            };
+        }
+
+        Err(XMLGeneratorError::DataTypeInformationError(format!(
+            "No type information found for type: {}",
+            name
+        )))
     }
 
     pub(crate) fn generate(
@@ -181,14 +241,8 @@ impl PartialEq for TypeGenerator {
         if !self.groups.deref().iter().eq(&other.groups) {
             return false;
         }
-        if !self.attributes.eq(&other.attributes) {
-            return false;
-        }
-        if self.min != other.min {
-            return false;
-        }
 
-        if self.max != other.max {
+        if !self.attributes.eq(&other.attributes) {
             return false;
         }
 

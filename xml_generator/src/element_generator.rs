@@ -27,7 +27,7 @@ fn generate_type_output(
     }
 
     for data_type in xsd.types() {
-        if data_type.name.eq(type_name) {
+        if data_type.name_equals(type_name) {
             return data_type.generate(xml_element, tracker, xsd);
         }
     }
@@ -37,12 +37,12 @@ fn generate_type_output(
 
 #[derive(Default)]
 pub(crate) struct ElementGenerator {
-    pub(crate) name: Option<Name>,
-    pub(crate) types: Vec<TypeGenerator>,
-    pub(crate) type_info: Option<String>,
-    pub(crate) reference: Option<Name>,
-    pub(crate) min: usize,
-    pub(crate) max: Option<usize>,
+    name: Option<Name>,
+    types: Vec<TypeGenerator>,
+    type_info: Option<String>,
+    reference: Option<Name>,
+    min: usize,
+    max: Option<usize>,
     id: Uuid,
 }
 
@@ -148,6 +148,27 @@ impl ElementGenerator {
         rng.random_range(min_val..=max_val)
     }
 
+    pub(crate) fn get_content(
+        &self,
+        fields: &mut Vec<String>,
+        types: &mut Vec<String>,
+    ) -> Result<(), XMLGeneratorError> {
+        if let Some(reference) = &self.reference {
+            fields.push(reference.get_name()?);
+        }
+        if let Some(type_info) = &self.type_info
+            && !type_info.is_empty()
+        {
+            types.push(type_info.to_string());
+        }
+
+        for type_generator in self.types.iter() {
+            type_generator.get_content(fields)?;
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn get_name(&self) -> Result<String, XMLGeneratorError> {
         match &self.name {
             None => match &self.reference {
@@ -165,7 +186,6 @@ impl ElementGenerator {
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<XMLElement, XMLGeneratorError> {
-
         let name = self.get_name()?;
         tracker.add(self)?;
         let mut root_element = XMLElement::new(&name);
@@ -192,7 +212,11 @@ impl ElementGenerator {
         Ok(root_element)
     }
 
-    fn generate_element(&self, tracker: &mut RecursionTracker, xsd: &XSD) -> Result<Vec<XMLElement>, XMLGeneratorError> {
+    fn generate_element(
+        &self,
+        tracker: &mut RecursionTracker,
+        xsd: &XSD,
+    ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         let n = self.get_occurrences();
 
         let mut elements = vec![];

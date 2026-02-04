@@ -1,53 +1,11 @@
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::type_generator::TypeGenerator;
 use crate::type_info::{TypeInfo, generate_type, get_qname};
 use crate::xsd::XSD;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
-
-fn generate_attribute_from_type(
-    xml_element: &mut XMLElement,
-    generator: &TypeGenerator,
-    name: &String,
-) -> Result<(), XMLGeneratorError> {
-    if !generator.elements.is_empty() {
-        return Err(XMLGeneratorError::DataTypesFormatError(
-            "Attributes can contain complex elements".to_string(),
-        ));
-    }
-
-    if !generator.groups.is_empty() {
-        return Err(XMLGeneratorError::DataTypesFormatError(
-            "Attributes cannot include groups".to_string(),
-        ));
-    }
-
-    if !generator.attributes.is_empty() {
-        return Err(XMLGeneratorError::DataTypesFormatError(
-            "Attributes cannot have their own attributes".to_string(),
-        ));
-    }
-
-    if let Some(type_info) = &generator.type_info {
-        return match type_info.generate() {
-            Some(value) => {
-                xml_element.add_attribute(name.as_str(), value.as_str());
-                Ok(())
-            }
-            None => Err(XMLGeneratorError::DataTypeNotFoundError(
-                type_info.name.clone(),
-            )),
-        };
-    }
-
-    Err(XMLGeneratorError::DataTypeInformationError(format!(
-        "No type information found for type: {}",
-        name
-    )))
-}
 
 pub(crate) struct AttributeGenerator {
     pub(crate) name: Option<Name>,
@@ -151,8 +109,8 @@ impl AttributeGenerator {
         }
 
         for type_generator in xsd.types() {
-            if type_generator.name.eq(&self.type_name) {
-                generate_attribute_from_type(xml_element, type_generator, &name)?;
+            if type_generator.name_equals(&self.type_name) {
+                type_generator.generate_attribute(xml_element)?;
                 generated = true;
             }
         }

@@ -11,9 +11,9 @@ use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
 
 #[derive(Default)]
 pub struct GroupGenerator {
-    pub(crate) elements: Vec<ElementGenerator>,
-    pub(crate) min: usize,
-    pub(crate) max: Option<usize>,
+    elements: Vec<ElementGenerator>,
+    min: usize,
+    max: Option<usize>,
 }
 
 impl GroupGenerator {
@@ -54,6 +54,15 @@ impl GroupGenerator {
         Ok(generator)
     }
 
+    pub(crate) fn get_content(&self, content: &mut Vec<String>) -> Result<(), XMLGeneratorError> {
+        for element in self.elements.iter() {
+            let name = element.get_name()?;
+            content.push(name);
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn generate(
         &self,
         xml_element: &mut XMLElement,
@@ -62,12 +71,12 @@ impl GroupGenerator {
     ) -> Result<(), XMLGeneratorError> {
         for element in self.elements.iter() {
             let children = element.generate(data_tracker, xsd)?;
-            
+
             for child in children {
                 xml_element.add_child(child)?;
             }
         }
-    
+
         Ok(())
     }
 }
