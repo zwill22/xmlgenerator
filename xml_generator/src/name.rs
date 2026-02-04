@@ -33,7 +33,7 @@ impl Name {
         match &schema.schema.target_namespace {
             None => match name {
                 None => None,
-                Some(name) => Some(Name::new(name.clone(), None)),
+                Some(val) => Some(Name::new(val.clone(), None)),
             },
             Some(ns) => match name{
                 None => None,

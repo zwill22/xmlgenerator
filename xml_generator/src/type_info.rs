@@ -1,6 +1,7 @@
 use crate::XMLGeneratorError;
 use crate::error::unimplemented;
 use crate::regex::generate_regex;
+use crate::type_generator::TypeGenerator;
 use chrono::Duration;
 use fake::faker;
 use fake::{Fake, Faker};
@@ -8,7 +9,6 @@ use num_traits::Signed;
 use rand::Rng;
 use rand::seq::IndexedRandom;
 use regex::Regex;
-use regextranslator::RegexTranslator;
 use time::{Date, Time, format_description};
 use xsd_parser::models::schema::QName;
 use xsd_parser::models::schema::xs::{
@@ -250,7 +250,7 @@ fn check_carriage_returns(pattern: &str) -> Result<(), XMLGeneratorError> {
 fn handle_regex_pattern(
     type_info: &mut TypeInfo,
     pattern: &str,
-    translator: &RegexTranslator,
+    generator: &TypeGenerator,
 ) -> Result<(), XMLGeneratorError> {
     check_carriage_returns(pattern)?;
 
@@ -259,21 +259,21 @@ fn handle_regex_pattern(
             // Generalise `\d` pattern to equal `[0-9]`
             if pattern.contains(r"\d") {
                 let new_pattern = pattern.replace(r"\d", r"[0-9]");
-                return handle_regex_pattern(type_info, &new_pattern, translator);
+                return handle_regex_pattern(type_info, &new_pattern, generator);
             }
 
             type_info.pattern = Some(regex);
             Ok(())
         }
         Err(pattern_err) => {
-            let translation = translator.translate(pattern)?;
+            let translation = generator.translate(pattern)?;
 
             if translation.as_str() == pattern {
                 let error = format!("Compilation error: {}", pattern_err);
                 return Err(XMLGeneratorError::RegexError(error));
             }
 
-            handle_regex_pattern(type_info, &translation, translator)
+            handle_regex_pattern(type_info, &translation, generator)
         }
     }
 }
@@ -281,17 +281,17 @@ fn handle_regex_pattern(
 fn handle_pattern(
     type_info: &mut TypeInfo,
     pattern: &FacetType,
-    regex_translator: &RegexTranslator,
+    generator: &TypeGenerator,
 ) -> Result<(), XMLGeneratorError> {
     let regex_str = pattern.value.as_str();
 
-    handle_regex_pattern(type_info, regex_str, regex_translator)
+    handle_regex_pattern(type_info, regex_str, generator)
 }
 
 fn handle_facet(
     type_info: &mut TypeInfo,
     facet: &Facet,
-    regex_translator: &RegexTranslator,
+    generator: &TypeGenerator,
 ) -> Result<(), XMLGeneratorError> {
     match facet {
         Facet::MinExclusive(_) => unimplemented("MinExclusive facet"),
@@ -305,7 +305,7 @@ fn handle_facet(
         Facet::MaxLength(_) => unimplemented("MaxLength facet"),
         Facet::Enumeration(facet_type) => handle_enumeration(type_info, facet_type),
         Facet::WhiteSpace(_) => unimplemented("WhiteSpace facet"),
-        Facet::Pattern(facet_type) => handle_pattern(type_info, facet_type, regex_translator),
+        Facet::Pattern(facet_type) => handle_pattern(type_info, facet_type, generator),
         Facet::Assertion(_) => unimplemented("Assertion facet"),
         Facet::ExplicitTimezone(_) => unimplemented("ExplicitTimezone facet"),
     }
@@ -314,12 +314,12 @@ fn handle_facet(
 fn handle_content(
     type_info: &mut TypeInfo,
     content: &RestrictionContent,
-    regex_translator: &RegexTranslator,
+    generator: &TypeGenerator,
 ) -> Result<(), XMLGeneratorError> {
     match content {
         RestrictionContent::Annotation(_) => unimplemented("Annotation"),
         RestrictionContent::SimpleType(_) => unimplemented("SimpleType"),
-        RestrictionContent::Facet(facet) => handle_facet(type_info, facet, regex_translator),
+        RestrictionContent::Facet(facet) => handle_facet(type_info, facet, generator),
     }
 }
 
@@ -330,27 +330,27 @@ pub(crate) fn get_qname(qname: &QName) -> String {
 fn get_restriction(
     type_info: &mut TypeInfo,
     restriction: &Restriction,
-    regex_translator: &RegexTranslator,
+    generator: &TypeGenerator,
 ) -> Result<(), XMLGeneratorError> {
     if let Some(base) = &restriction.base {
         type_info.name = get_qname(base);
     }
 
     for content in &restriction.content {
-        handle_content(type_info, content, regex_translator)?;
+        handle_content(type_info, content, generator)?;
     }
 
     Ok(())
 }
 
 fn parse_restriction(
+    generator: &TypeGenerator,
     type_info: &mut TypeInfo,
     content: &SimpleBaseTypeContent,
-    regex_translator: &RegexTranslator,
 ) -> Result<(), XMLGeneratorError> {
     match content {
         SimpleBaseTypeContent::Annotation(_) => unimplemented("Annotation"),
-        SimpleBaseTypeContent::Restriction(x) => get_restriction(type_info, x, regex_translator),
+        SimpleBaseTypeContent::Restriction(x) => get_restriction(type_info, x, generator),
         SimpleBaseTypeContent::List(_) => unimplemented("List"),
         SimpleBaseTypeContent::Union(_) => unimplemented("Union"),
     }
@@ -365,12 +365,12 @@ pub(crate) struct TypeInfo {
 
 impl TypeInfo {
     pub(crate) fn new(
+        generator: &TypeGenerator,
         content: &Vec<SimpleBaseTypeContent>,
-        regex_translator: &RegexTranslator,
     ) -> Result<TypeInfo, XMLGeneratorError> {
         let mut type_info = TypeInfo::default();
         for item in content {
-            parse_restriction(&mut type_info, item, regex_translator)?;
+            parse_restriction(generator, &mut type_info, item)?;
         }
 
         Ok(type_info)

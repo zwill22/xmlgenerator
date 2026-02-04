@@ -1,7 +1,7 @@
 use crate::element::Element;
 use crate::error::XMLGeneratorError;
 
-fn get_field_struct<'a>(generators: &'a [Element], field: &String) -> Option<&'a Element> {
+fn get_field_struct<'a>(generators: &'a [Element], field: &String) -> Option<&'a Element<'a>> {
     for generator in generators.iter() {
         if let Ok(name) = generator.get_name() {
             if name.eq(field) {
@@ -13,27 +13,29 @@ fn get_field_struct<'a>(generators: &'a [Element], field: &String) -> Option<&'a
     None
 }
 
-pub(crate) fn find_root_element(generators: &[Element]) -> Result<&Element, XMLGeneratorError> {
-    if generators.is_empty() {
+pub(crate) fn find_root_element<'a>(
+    elements: &'a [Element<'a>],
+) -> Result<&'a Element<'a>, XMLGeneratorError> {
+    if elements.is_empty() {
         return Err(XMLGeneratorError::NoElementsError);
     }
 
     let mut all_fields = vec![];
     let mut all_types = vec![];
-    for generator in generators.iter() {
+    for generator in elements.iter() {
         generator.get_content(&mut all_fields, &mut all_types)?;
     }
 
     let mut dependent_elements = vec![];
     for field in all_fields {
-        let structure = get_field_struct(generators, &field);
+        let structure = get_field_struct(elements, &field);
         if let Some(item) = structure {
             dependent_elements.push(item);
         }
     }
 
     let mut independent_elements = vec![];
-    for generator in generators.iter() {
+    for generator in elements.iter() {
         if !dependent_elements.contains(&generator) {
             independent_elements.push(generator);
         }
@@ -47,7 +49,7 @@ pub(crate) fn find_root_element(generators: &[Element]) -> Result<&Element, XMLG
         return Err(XMLGeneratorError::MultipleRootsError);
     }
 
-    for generator in generators.iter() {
+    for generator in elements.iter() {
         if independent_elements.contains(&generator) {
             return Ok(generator);
         }

@@ -4,30 +4,40 @@ use crate::error::{XMLGeneratorError, unimplemented};
 use crate::group::Group;
 use crate::namespaces::Namespaces;
 use crate::tracker::RecursionTracker;
+use crate::type_generator::TypeGenerator;
 use crate::type_info::TypeInfo;
 use crate::xsd::XSD;
-use regextranslator::RegexTranslator;
 use std::ops::Deref;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{ComplexBaseType, ComplexBaseTypeContent, SimpleBaseType};
 
-#[derive(Default)]
-pub(crate) struct DataType {
+pub(crate) struct DataType<'a> {
+    generator: &'a TypeGenerator,
     name: String,
     type_info: Option<TypeInfo>,
-    elements: Vec<Element>,
-    groups: Vec<Group>,
+    elements: Vec<Element<'a>>,
+    groups: Vec<Group<'a>>,
     attributes: Vec<Attribute>,
 }
 
-impl DataType {
+impl<'a> DataType<'a> {
+    fn new(generator: &'a TypeGenerator) -> DataType<'a> {
+        Self {
+            generator,
+            name: "".to_string(),
+            type_info: None,
+            elements: vec![],
+            groups: vec![],
+            attributes: vec![],
+        }
+    }
+
     pub(crate) fn simple_type(
+        generator: &'a TypeGenerator,
         simple: &SimpleBaseType,
-        translator: &RegexTranslator,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut generator = Self::default();
-        let mut data_type = Self::default();
+        let mut data_type = Self::new(generator);
 
         data_type.name = simple.name.clone().unwrap_or("".to_string());
         if data_type.name.is_empty() {
@@ -38,7 +48,7 @@ impl DataType {
             return unimplemented("Final");
         }
 
-        let type_info = TypeInfo::new(&simple.content, translator)?;
+        let type_info = TypeInfo::new(generator, &simple.content)?;
 
         data_type.type_info = Some(type_info);
 
@@ -46,13 +56,12 @@ impl DataType {
     }
 
     pub(crate) fn complex_type(
-        complex: &ComplexBaseType,
-        translator: &RegexTranslator,
-        schema_info: &SchemaInfo,
+        generator: &'a TypeGenerator,
+        complex: & ComplexBaseType,
         namespaces: &Namespaces,
+        schema_info: &SchemaInfo,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut generator = Self::default();
-        let mut data_type = Self::default();
+        let mut data_type = Self::new(generator);
 
         data_type.name = complex.name.clone().unwrap_or("".to_string());
 
@@ -80,19 +89,19 @@ impl DataType {
         for content in &complex.content {
             match content {
                 ComplexBaseTypeContent::Group(group_type) => {
-                    let group = Group::new(group_type, translator, schema_info, namespaces)?;
+                    let group = Group::new(generator, group_type, schema_info, namespaces)?;
                     data_type.groups.push(group);
                 }
                 ComplexBaseTypeContent::All(group_type) => {
-                    let group = Group::new(group_type, translator, schema_info, namespaces)?;
+                    let group = Group::new(generator, group_type, schema_info, namespaces)?;
                     data_type.groups.push(group);
                 }
                 ComplexBaseTypeContent::Choice(group_type) => {
-                    let group = Group::new(group_type, translator, schema_info, namespaces)?;
+                    let group = Group::new(generator, group_type, schema_info, namespaces)?;
                     data_type.groups.push(group);
                 }
                 ComplexBaseTypeContent::Sequence(group_type) => {
-                    let group = Group::new(group_type, translator, schema_info, namespaces)?;
+                    let group = Group::new(generator, group_type, schema_info, namespaces)?;
                     data_type.groups.push(group);
                 }
                 ComplexBaseTypeContent::Attribute(attribute_type) => {
@@ -218,7 +227,7 @@ impl DataType {
     }
 }
 
-impl PartialEq for DataType {
+impl PartialEq for DataType<'_> {
     fn eq(&self, other: &Self) -> bool {
         if !self.name.eq(&other.name) {
             return false;

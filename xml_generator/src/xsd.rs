@@ -5,64 +5,60 @@ use crate::find_root::find_root_element;
 use crate::namespaces::Namespaces;
 use crate::schema_version::SchemaVersion;
 use crate::tracker::RecursionTracker;
-use crate::r#type::Type;
-use regextranslator::RegexTranslator;
 use crate::data_type::DataType;
+use crate::type_generator::TypeGenerator;
 use std::slice::Iter;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::SchemaContent;
 
-pub(crate) struct XSD {
+pub(crate) struct XSD<'a> {
     version: SchemaVersion,
-    data_types: Vec<DataType>,
-    elements: Vec<Element>,
+    data_types: Vec<DataType<'a>>,
+    elements: Vec<Element<'a>>,
     namespaces: Namespaces,
+    type_generator: &'a TypeGenerator,
 }
 
-impl XSD {
-    pub(crate) fn new(
+impl XSD<'_> {
+    pub(crate) fn new<'a>(
+        type_generator: &'a TypeGenerator,
         schemas: &Schemas,
-        translator: &RegexTranslator,
-    ) -> Result<Self, XMLGeneratorError> {
-        let v = SchemaVersion::new(schemas)?;
-        let ns = Namespaces::new(schemas)?;
+    ) -> Result<XSD<'a>, XMLGeneratorError> {
+        let mut xsd = XSD {
+            version: SchemaVersion::new(schemas)?,
+            data_types: vec![],
+            elements: vec![],
+            namespaces: Namespaces::new(schemas)?,
+            type_generator,
+        };
 
-        let mut types = vec![];
-        let mut elements = vec![];
         for (_schema_id, schema_info) in schemas.schemas() {
             let schema = &schema_info.schema;
             for content in &schema.content {
                 match content {
                     SchemaContent::Element(element) => {
-                        let element = Element::new(&element, &translator, schema_info, &ns)?;
-                        elements.push(element);
+                        let element =
+                            Element::new(type_generator, &element, &xsd.namespaces, schema_info)?;
+                        xsd.elements.push(element);
                     }
                     SchemaContent::Import(_) => {}
                     SchemaContent::Annotation(_) => {}
                     SchemaContent::SimpleType(simple) => {
-                        let simple_type = DataType::simple_type(simple, translator)?;
-                        data_types.push(simple_type);
+                        let simple_type = DataType::simple_type(type_generator, simple)?;
+                        xsd.data_types.push(simple_type);
                     }
                     SchemaContent::ComplexType(complex) => {
                         let complex_type =
-                            DataType::complex_type(complex, translator, schema_info, &namespaces)?;
-                        data_types.push(complex_type);
+                            DataType::complex_type(type_generator, complex, &xsd.namespaces, schema_info)?;
+                        xsd.data_types.push(complex_type);
                     }
                     _ => return unimplemented("Unimplemented schema content type"),
                 }
             }
         }
 
-        let data = XSD {
-            version: v,
-            types: types,
-            elements: elements,
-            namespaces: ns,
-            data_types,
-        };
-
-        Ok(data)
+        Ok(xsd)
     }
 
     pub(crate) fn apply_metadata_to(&self, element: &mut XMLElement) {
@@ -89,15 +85,15 @@ impl XSD {
         self.version.get_version()
     }
 
-    pub(crate) fn find_root(&self) -> Result<&Element, XMLGeneratorError> {
+    pub(crate) fn find_root(&self) -> Result<&Element<'_>, XMLGeneratorError> {
         find_root_element(&self.elements)
     }
 
-    pub(crate) fn elements(&self) -> Iter<'_, Element> {
+    pub(crate) fn elements(&self) -> Iter<'_, Element<'_>> {
         self.elements.iter()
     }
 
-    pub(crate) fn types(&self) -> Iter<'_, DataType> {
+    pub(crate) fn types(&self) -> Iter<'_, DataType<'_>> {
         self.data_types.iter()
     }
 

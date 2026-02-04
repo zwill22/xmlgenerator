@@ -4,25 +4,25 @@ use crate::error::unimplemented;
 use crate::namespaces::Namespaces;
 use crate::tracker::RecursionTracker;
 use crate::xsd::XSD;
-use regextranslator::RegexTranslator;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{GroupType, GroupTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
+use crate::type_generator::TypeGenerator;
 
 #[derive(Default)]
-pub struct Group {
-    elements: Vec<Element>,
+pub struct Group<'a> {
+    elements: Vec<Element<'a>>,
     min: usize,
     max: Option<usize>,
 }
 
-impl Group {
-    pub(crate) fn new(
+impl Group<'_> {
+    pub(crate) fn new<'a>(
+        generator: &'a TypeGenerator,
         group_type: &GroupType,
-        translator: &RegexTranslator,
         schema_info: &SchemaInfo,
         namespaces: &Namespaces,
-    ) -> Result<Group, XMLGeneratorError> {
+    ) -> Result<Group<'a>, XMLGeneratorError> {
         let mut group = Group::default();
 
         if group_type.name.is_some() {
@@ -44,7 +44,7 @@ impl Group {
             match content {
                 GroupTypeContent::Element(element_type) => {
                     let element =
-                        Element::new(element_type, translator, schema_info, namespaces)?;
+                        Element::new(generator, element_type, namespaces, schema_info)?;
                     group.elements.push(element)
                 }
                 _ => return unimplemented("Group type content"),
@@ -96,7 +96,7 @@ impl Group {
     }
 }
 
-impl Occurrence for Group {
+impl Occurrence for Group<'_> {
     fn get_min(&self) -> usize {
         self.min
     }
@@ -106,7 +106,7 @@ impl Occurrence for Group {
     }
 }
 
-impl PartialEq for Group {
+impl PartialEq for Group<'_> {
     fn eq(&self, other: &Self) -> bool {
         if !self.elements.eq(&other.elements) {
             return false;

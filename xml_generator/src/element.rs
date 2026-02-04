@@ -1,12 +1,12 @@
+use crate::data_type::DataType;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::name::Name;
 use crate::namespaces::Namespaces;
 use crate::tracker::RecursionTracker;
-use crate::data_type::DataType;
+use crate::type_generator::TypeGenerator;
 use crate::type_info::{generate_type, get_qname};
 use crate::xsd::XSD;
 use rand::Rng;
-use regextranslator::RegexTranslator;
 use std::cmp::{max, min};
 use uuid::Uuid;
 use xml_builder::XMLElement;
@@ -62,10 +62,10 @@ pub(crate) trait Occurrence {
     }
 }
 
-#[derive(Default)]
-pub(crate) struct Element {
+pub(crate) struct Element<'a> {
+    generator: &'a TypeGenerator,
     name: Option<Name>,
-    data_types: Vec<DataType>,
+    data_types: Vec<DataType<'a>>,
     type_name: Option<String>,
     reference: Option<Name>,
     min: usize,
@@ -73,14 +73,27 @@ pub(crate) struct Element {
     id: Uuid,
 }
 
-impl Element {
+impl<'a> Element<'a> {
+    fn default(generator: &'a TypeGenerator) -> Element<'a> {
+        Self {
+            generator,
+            name: None,
+            data_types: vec![],
+            type_name: None,
+            reference: None,
+            min: 0,
+            max: None,
+            id: Uuid::new_v4(),
+        }
+    }
+
     pub(crate) fn new(
+        generator: &'a TypeGenerator,
         element_type: &ElementType,
-        translator: &RegexTranslator,
-        schema: &SchemaInfo,
         namespaces: &Namespaces,
+        schema: & SchemaInfo,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut element = Element::default();
+        let mut element = Element::default(generator);
 
         if let Some(element_ref) = &element_type.ref_ {
             let reference = Name::from_qname(element_ref, namespaces);
@@ -140,20 +153,17 @@ impl Element {
         for content in &element_type.content {
             match content {
                 ElementTypeContent::SimpleType(simple_type) => {
-                    let simple = Type::simple_type(simple_type, translator)?;
-                    element.types.push(simple);
+                    let simple = DataType::simple_type(generator, &simple_type)?;
                     element.data_types.push(simple);
                 }
                 ElementTypeContent::ComplexType(complex_type) => {
-                    let complex = Type::complex_type(complex_type, translator, schema, namespaces)?;
-                    element.types.push(complex);
+                    let complex =
+                        DataType::complex_type(generator, &complex_type, namespaces, schema)?;
                     element.data_types.push(complex);
                 }
                 _ => return unimplemented("Element content type"),
             }
         }
-
-        element.id = Uuid::new_v4();
 
         Ok(element)
     }
@@ -284,7 +294,7 @@ impl Element {
     }
 }
 
-impl Occurrence for Element {
+impl Occurrence for Element<'_> {
     fn get_min(&self) -> usize {
         self.min
     }
@@ -294,7 +304,7 @@ impl Occurrence for Element {
     }
 }
 
-impl PartialEq for Element {
+impl PartialEq for Element<'_> {
     fn eq(&self, other: &Self) -> bool {
         if !self.name.eq(&other.name) {
             return false;
