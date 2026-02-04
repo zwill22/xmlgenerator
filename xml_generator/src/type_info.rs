@@ -25,10 +25,15 @@ fn make_fake_string(pattern: &str) -> Option<String> {
 
 fn make_fake_signed<Output: fake::Dummy<Faker> + ToString + Signed>(
     positive: bool,
+    zero_allowed: bool,
 ) -> Option<String> {
     let val: Output = Faker.fake::<Output>();
 
     let abs_val = val.abs();
+
+    if !zero_allowed && (abs_val == Output::zero()) {
+        return make_fake_signed::<Output>(positive, zero_allowed);
+    }
 
     if positive {
         return Some(abs_val.to_string());
@@ -79,10 +84,10 @@ pub(crate) fn generate_type(type_name: &str) -> Option<String> {
         "int" => make_fake::<i32>(),     // A signed 32-bit integer
         "integer" => make_fake::<i32>(), // An integer value
         "long" => make_fake::<i64>(),    // A signed 64-bit integer
-        "negativeInteger" => make_fake_signed::<i32>(false), // A signed negative integer
-        "nonNegativeInteger" => make_fake_signed::<i32>(true), // A signed positive integer
-        "nonPositiveInteger" => make_fake_signed::<i32>(false), // A non-positive integer
-        "positiveInteger" => make_fake_signed::<i32>(true), // A positive integer
+        "negativeInteger" => make_fake_signed::<i32>(false, false), // A signed negative integer
+        "nonNegativeInteger" => make_fake_signed::<i32>(true, true), // A signed positive integer
+        "nonPositiveInteger" => make_fake_signed::<i32>(false, true), // A non-positive integer
+        "positiveInteger" => make_fake_signed::<i32>(true, false), // A positive integer
         "short" => make_fake::<i16>(),   // A signed 16-bit integer
         "unsignedLong" => make_fake::<u64>(), // An unsigned 64-bit integer
         "unsignedInt" => make_fake::<u32>(), // An unsigned 32-bit integer
