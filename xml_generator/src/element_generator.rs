@@ -35,6 +35,32 @@ fn generate_type_output(
     Err(XMLGeneratorError::DataTypeNotFoundError(type_name.clone()))
 }
 
+pub(crate) trait Occurrence {
+    fn get_min(&self) -> usize;
+    fn get_max(&self) -> Option<usize>;
+
+    fn get_occurrences(&self) -> usize {
+        let min_occ = self.get_min();
+        let max_occ = self.get_max();
+
+        let mut rng = rand::rng();
+
+        let max_range = 10;
+        let max_val = match max_occ {
+            None => min_occ + max_range,
+            Some(m) => min(m, min_occ + max_range),
+        };
+
+        if min_occ == max_val {
+            return max_val;
+        }
+
+        let min_val = max(1, min_occ);
+
+        rng.random_range(min_val..=max_val)
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct ElementGenerator {
     name: Option<Name>,
@@ -128,24 +154,6 @@ impl ElementGenerator {
         generator.id = Uuid::new_v4();
 
         Ok(generator)
-    }
-
-    fn get_occurrences(&self) -> usize {
-        let mut rng = rand::rng();
-
-        let max_range = 10;
-        let max_val = match self.max {
-            None => self.min + max_range,
-            Some(m) => min(m, self.min + max_range),
-        };
-
-        if self.min == max_val {
-            return max_val;
-        }
-
-        let min_val = max(1, self.min);
-
-        rng.random_range(min_val..=max_val)
     }
 
     pub(crate) fn get_content(
@@ -271,6 +279,16 @@ impl ElementGenerator {
 
     pub(crate) fn get_id(&self) -> String {
         self.id.to_string()
+    }
+}
+
+impl Occurrence for ElementGenerator {
+    fn get_min(&self) -> usize {
+        self.min
+    }
+
+    fn get_max(&self) -> Option<usize> {
+        self.max
     }
 }
 

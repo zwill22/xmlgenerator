@@ -1,5 +1,5 @@
 use crate::XMLGeneratorError;
-use crate::element_generator::ElementGenerator;
+use crate::element_generator::{ElementGenerator, Occurrence};
 use crate::error::unimplemented;
 use crate::namespaces::Namespaces;
 use crate::recursion_tracker::RecursionTracker;
@@ -63,14 +63,14 @@ impl GroupGenerator {
         Ok(())
     }
 
-    pub(crate) fn generate(
+    fn generate_group(
         &self,
         xml_element: &mut XMLElement,
-        data_tracker: &mut RecursionTracker,
+        tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<(), XMLGeneratorError> {
         for element in self.elements.iter() {
-            let children = element.generate(data_tracker, xsd)?;
+            let children = element.generate(tracker, xsd)?;
 
             for child in children {
                 xml_element.add_child(child)?;
@@ -78,6 +78,31 @@ impl GroupGenerator {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn generate(
+        &self,
+        xml_element: &mut XMLElement,
+        tracker: &mut RecursionTracker,
+        xsd: &XSD,
+    ) -> Result<(), XMLGeneratorError> {
+        let n = self.get_occurrences();
+
+        for _ in 0..n {
+            self.generate_group(xml_element, tracker, xsd)?;
+        }
+        
+        Ok(())
+    }
+}
+
+impl Occurrence for GroupGenerator {
+    fn get_min(&self) -> usize {
+        self.min
+    }
+    
+    fn get_max(&self) -> Option<usize> {
+        self.max
     }
 }
 
