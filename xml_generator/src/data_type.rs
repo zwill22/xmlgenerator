@@ -3,7 +3,7 @@ use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::group::Group;
 use crate::namespaces::Namespaces;
-use crate::tracker::RecursionTracker;
+use crate::tracker::Tracker;
 use crate::type_info::TypeInfo;
 use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
@@ -186,7 +186,7 @@ impl DataType {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        data_tracker: &mut RecursionTracker,
+        data_tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(type_info) = &self.type_info {

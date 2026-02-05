@@ -3,13 +3,13 @@ use crate::error::XMLGeneratorError;
 use std::collections::HashSet;
 use std::string::String;
 
-pub(crate) struct RecursionTracker {
+pub(crate) struct Tracker {
     values: HashSet<String>,
 }
 
-impl RecursionTracker {
-    pub(crate) fn new() -> RecursionTracker {
-        RecursionTracker {
+impl Tracker {
+    pub(crate) fn new() -> Tracker {
+        Tracker {
             values: [].iter().cloned().collect(),
         }
     }

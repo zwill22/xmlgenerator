@@ -5,7 +5,7 @@ use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::namespaces::Namespaces;
 use crate::schema_version::SchemaVersion;
-use crate::tracker::RecursionTracker;
+use crate::tracker::Tracker;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
@@ -154,7 +154,7 @@ impl Xsd {
     fn generate_root(
         &self,
         generator: &mut Generator,
-        tracker: &mut RecursionTracker,
+        tracker: &mut Tracker,
         root: &Element,
     ) -> Result<XMLElement, XMLGeneratorError> {
         let root_elements = root.generate(generator, tracker, self)?;
@@ -177,7 +177,7 @@ impl Xsd {
     fn build_xml(&self, generator: &mut Generator) -> Result<XMLElement, XMLGeneratorError> {
         let root = self.find_root()?;
 
-        let mut tracker = RecursionTracker::new();
+        let mut tracker = Tracker::new();
 
         self.generate_root(generator, &mut tracker, root)
     }

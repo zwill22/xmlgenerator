@@ -3,7 +3,7 @@ use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::tracker::RecursionTracker;
+use crate::tracker::Tracker;
 use crate::xsd::Xsd;
 use rand::Rng;
 use regextranslator::RegexTranslator;
@@ -16,7 +16,7 @@ use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
 fn generate_type_output(
     generator: &mut Generator,
     xml_element: &mut XMLElement,
-    tracker: &mut RecursionTracker,
+    tracker: &mut Tracker,
     xsd: &Xsd,
     type_name: &String,
 ) -> Result<(), XMLGeneratorError> {
@@ -198,7 +198,7 @@ impl Element {
     fn generate_type_from_name(
         &self,
         generator: &mut Generator,
-        tracker: &mut RecursionTracker,
+        tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<XMLElement, XMLGeneratorError> {
         let name = self.get_name()?;
@@ -230,7 +230,7 @@ impl Element {
     fn generate_element(
         &self,
         generator: &mut Generator,
-        tracker: &mut RecursionTracker,
+        tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         let n = self.get_occurrences();
@@ -247,7 +247,7 @@ impl Element {
     fn generate_reference(
         &self,
         generator: &mut Generator,
-        tracker: &mut RecursionTracker,
+        tracker: &mut Tracker,
         xsd: &Xsd,
         reference: &Name,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
@@ -278,7 +278,7 @@ impl Element {
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
-        tracker: &mut RecursionTracker,
+        tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
