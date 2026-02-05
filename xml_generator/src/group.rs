@@ -4,7 +4,6 @@ use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::namespaces::Namespaces;
 use crate::tracker::RecursionTracker;
-use crate::traits::GenerateGroups;
 use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
@@ -65,6 +64,28 @@ impl Group {
         Ok(())
     }
 
+    fn elements(&self) -> Iter<'_, Element> {
+        self.elements.iter()
+    }
+
+    fn generate_group(
+        &self,
+        generator: &mut Generator,
+        xml_element: &mut XMLElement,
+        tracker: &mut RecursionTracker,
+        xsd: &Xsd,
+    ) -> Result<(), XMLGeneratorError> {
+        for element in self.elements() {
+            let children = element.generate(generator, tracker, xsd)?;
+
+            for child in children {
+                xml_element.add_child(child)?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
@@ -79,12 +100,6 @@ impl Group {
         }
 
         Ok(())
-    }
-}
-
-impl GenerateGroups for Group {
-    fn elements(&self) -> Iter<'_, Element> {
-        self.elements.iter()
     }
 }
 

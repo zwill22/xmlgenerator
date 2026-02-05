@@ -17,7 +17,6 @@ mod namespaces;
 mod schema_version;
 mod schemas;
 mod tracker;
-mod traits;
 mod type_info;
 mod xsd;
 

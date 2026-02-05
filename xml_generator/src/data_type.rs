@@ -1,16 +1,13 @@
 use crate::attribute::Attribute;
-use crate::element::Element;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::group::Group;
 use crate::namespaces::Namespaces;
 use crate::tracker::RecursionTracker;
-use crate::traits::GenerateGroups;
 use crate::type_info::TypeInfo;
 use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::ops::Deref;
-use std::slice::Iter;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{ComplexBaseType, ComplexBaseTypeContent, SimpleBaseType};
@@ -19,7 +16,6 @@ use xsd_parser::models::schema::xs::{ComplexBaseType, ComplexBaseTypeContent, Si
 pub(crate) struct DataType {
     name: String,
     type_info: Option<TypeInfo>,
-    elements: Vec<Element>,
     groups: Vec<Group>,
     attributes: Vec<Attribute>,
 }
@@ -43,7 +39,6 @@ impl DataType {
         let data_type = DataType {
             name,
             type_info: Some(type_info),
-            elements: vec![],
             groups: vec![],
             attributes: vec![],
         };
@@ -112,7 +107,6 @@ impl DataType {
         let data_type = DataType {
             name,
             type_info: None,
-            elements: vec![],
             groups,
             attributes,
         };
@@ -121,11 +115,6 @@ impl DataType {
     }
 
     pub(crate) fn get_content(&self, content: &mut Vec<String>) -> Result<(), XMLGeneratorError> {
-        for element in self.elements.iter() {
-            let name = element.get_name()?;
-            content.push(name);
-        }
-
         for group in self.groups.iter() {
             group.get_content(content)?;
         }
@@ -143,12 +132,6 @@ impl DataType {
         xml_element: &mut XMLElement,
         name: &String,
     ) -> Result<(), XMLGeneratorError> {
-        if !self.elements.is_empty() {
-            return Err(XMLGeneratorError::DataTypesFormatError(
-                "Attributes can contain complex elements".to_string(),
-            ));
-        }
-
         if !self.groups.is_empty() {
             return Err(XMLGeneratorError::DataTypesFormatError(
                 "Attributes cannot include groups".to_string(),
@@ -187,12 +170,6 @@ impl DataType {
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(type_info) = &self.type_info {
-            if !self.elements.is_empty() {
-                return Err(XMLGeneratorError::DataTypesFormatError(
-                    "Type includes type information and elements".to_string(),
-                ));
-            }
-
             if !self.groups.is_empty() {
                 return Err(XMLGeneratorError::DataTypesFormatError(
                     "Type includes type information and groups".to_string(),
@@ -215,8 +192,6 @@ impl DataType {
             }
         }
 
-        self.generate_group(generator, xml_element, data_tracker, xsd)?;
-
         for group in self.groups.iter() {
             group.generate(generator, xml_element, data_tracker, xsd)?;
         }
@@ -229,12 +204,6 @@ impl DataType {
     }
 }
 
-impl GenerateGroups for DataType {
-    fn elements(&self) -> Iter<'_, Element> {
-        self.elements.iter()
-    }
-}
-
 impl PartialEq for DataType {
     fn eq(&self, other: &Self) -> bool {
         if !self.name.eq(&other.name) {
@@ -242,10 +211,6 @@ impl PartialEq for DataType {
         }
 
         if !self.type_info.eq(&other.type_info) {
-            return false;
-        }
-
-        if !self.elements.eq(&other.elements) {
             return false;
         }
 
