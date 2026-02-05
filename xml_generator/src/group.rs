@@ -10,28 +10,7 @@ use std::slice::Iter;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{GroupType, GroupTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
-
-pub(crate) trait GenerateGroups {
-    fn elements(&self) -> Iter<'_, Element>;
-
-    fn generate_group(
-        &self,
-        generator: &mut Generator,
-        xml_element: &mut XMLElement,
-        tracker: &mut RecursionTracker,
-        xsd: &XSD,
-    ) -> Result<(), XMLGeneratorError> {
-        for element in self.elements() {
-            let children = element.generate(generator, tracker, xsd)?;
-
-            for child in children {
-                xml_element.add_child(child)?;
-            }
-        }
-
-        Ok(())
-    }
-}
+use crate::traits::GenerateGroups;
 
 #[derive(Default)]
 pub struct Group {

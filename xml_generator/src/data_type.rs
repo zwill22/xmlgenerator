@@ -2,9 +2,10 @@ use crate::attribute::Attribute;
 use crate::element::Element;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
-use crate::group::{GenerateGroups, Group};
+use crate::group::Group;
 use crate::namespaces::Namespaces;
 use crate::tracker::RecursionTracker;
+use crate::traits::GenerateGroups;
 use crate::type_info::TypeInfo;
 use crate::xsd::XSD;
 use regextranslator::RegexTranslator;
@@ -201,12 +202,7 @@ impl DataType {
             }
         }
 
-        for element in self.elements.iter() {
-            let children = element.generate(generator, data_tracker, xsd)?;
-            for child in children {
-                xml_element.add_child(child)?;
-            }
-        }
+        self.generate_group(generator, xml_element, data_tracker, xsd)?;
 
         for group in self.groups.iter() {
             group.generate(generator, xml_element, data_tracker, xsd)?;
