@@ -48,7 +48,12 @@ impl Group {
                     let element = Element::new(translator, element_type, namespaces, schema_info)?;
                     group.elements.push(element)
                 }
-                _ => return unimplemented("Group type content"),
+                GroupTypeContent::Annotation(_) => unimplemented("GroupTypeContent::Annotation")?,
+                GroupTypeContent::Group(_) => unimplemented("GroupTypeContent::Group")?,
+                GroupTypeContent::All(_) => unimplemented("GroupTypeContent::All")?,
+                GroupTypeContent::Choice(_) => unimplemented("GroupTypeContent::Choice")?,
+                GroupTypeContent::Sequence(_) => unimplemented("GroupTypeContent::Sequence")?,
+                GroupTypeContent::Any(_) => unimplemented("GroupTypeContent::Any")?,
             }
         }
 

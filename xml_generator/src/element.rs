@@ -147,7 +147,15 @@ impl Element {
                         DataType::complex_type(translator, complex_type, namespaces, schema)?;
                     element.data_types.push(complex);
                 }
-                _ => return unimplemented("Element content type"),
+                ElementTypeContent::Annotation(_) => {
+                    unimplemented("ElementTypeContent::Annotation")?
+                }
+                ElementTypeContent::Alternative(_) => {
+                    unimplemented("ElementTypeContent::Alternative")?
+                }
+                ElementTypeContent::Unique(_) => unimplemented("ElementTypeContent::Unique")?,
+                ElementTypeContent::Key(_) => unimplemented("ElementTypeContent::Key")?,
+                ElementTypeContent::Keyref(_) => unimplemented("ElementTypeContent::Keyref")?,
             }
         }
 

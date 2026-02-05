@@ -67,12 +67,14 @@ impl TypeInfo {
 
         for content in base_content {
             match content {
-                SimpleBaseTypeContent::Annotation(_) => unimplemented("Annotation")?,
-                SimpleBaseTypeContent::Restriction(x) => {
-                    type_info.get_restriction(translator, x)?
+                SimpleBaseTypeContent::Restriction(restriction) => {
+                    type_info.get_restriction(translator, restriction)?
                 }
-                SimpleBaseTypeContent::List(_) => unimplemented("List")?,
-                SimpleBaseTypeContent::Union(_) => unimplemented("Union")?,
+                SimpleBaseTypeContent::Annotation(_) => {
+                    unimplemented("SimpleBaseTypeContent::Annotation")?
+                }
+                SimpleBaseTypeContent::List(_) => unimplemented("SimpleBaseTypeContent::List")?,
+                SimpleBaseTypeContent::Union(_) => unimplemented("SimpleBaseTypeContent::Union")?,
             }
         }
 
@@ -105,20 +107,20 @@ impl TypeInfo {
         facet: &Facet,
     ) -> Result<(), XMLGeneratorError> {
         match facet {
-            Facet::MinExclusive(_) => unimplemented("MinExclusive facet"),
-            Facet::MinInclusive(_) => unimplemented("MinInclusive facet"),
-            Facet::MaxExclusive(_) => unimplemented("MaxExclusive facet"),
-            Facet::MaxInclusive(_) => unimplemented("MaxInclusive facet"),
-            Facet::TotalDigits(_) => unimplemented("TotalDigits facet"),
-            Facet::FractionDigits(_) => unimplemented("FractionDigits facet"),
-            Facet::Length(_) => unimplemented("Length facet"),
-            Facet::MinLength(_) => unimplemented("MinLength facet"),
-            Facet::MaxLength(_) => unimplemented("MaxLength facet"),
             Facet::Enumeration(enumeration) => self.handle_enumeration(enumeration),
-            Facet::WhiteSpace(_) => unimplemented("WhiteSpace facet"),
             Facet::Pattern(pattern) => self.handle_pattern_facet(translator, pattern),
-            Facet::Assertion(_) => unimplemented("Assertion facet"),
-            Facet::ExplicitTimezone(_) => unimplemented("ExplicitTimezone facet"),
+            Facet::MinExclusive(_) => unimplemented("Facet::MinExclusive")?,
+            Facet::MinInclusive(_) => unimplemented("Facet::MinInclusive")?,
+            Facet::MaxExclusive(_) => unimplemented("Facet::MaxExclusive")?,
+            Facet::MaxInclusive(_) => unimplemented("Facet::MaxInclusive")?,
+            Facet::TotalDigits(_) => unimplemented("Facet::TotalDigits")?,
+            Facet::FractionDigits(_) => unimplemented("Facet::FractionDigits")?,
+            Facet::Length(_) => unimplemented("Facet::Length")?,
+            Facet::MinLength(_) => unimplemented("Facet::MinLength")?,
+            Facet::MaxLength(_) => unimplemented("Facet::MaxLength")?,
+            Facet::WhiteSpace(_) => unimplemented("Facet::WhiteSpace")?,
+            Facet::Assertion(_) => unimplemented("Facet::Assertion")?,
+            Facet::ExplicitTimezone(_) => unimplemented("Facet::ExplicitTimezone")?,
         }
     }
 
@@ -133,9 +135,13 @@ impl TypeInfo {
 
         for content in &restriction.content {
             match content {
-                RestrictionContent::Annotation(_) => unimplemented("Annotation")?,
-                RestrictionContent::SimpleType(_) => unimplemented("SimpleType")?,
                 RestrictionContent::Facet(facet) => self.handle_facet(translator, facet)?,
+                RestrictionContent::Annotation(_) => {
+                    unimplemented("RestrictionContent::Annotation")?
+                }
+                RestrictionContent::SimpleType(_) => {
+                    unimplemented("RestrictionContent::SimpleType")?
+                }
             }
         }
 
@@ -172,7 +178,7 @@ impl PartialEq for TypeInfo {
 
         match &self.pattern {
             None => match other.pattern {
-                None => {}
+                None => {},
                 Some(_) => return false,
             },
             Some(pattern1) => match &other.pattern {

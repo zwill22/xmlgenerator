@@ -84,23 +84,43 @@ impl DataType {
                     let group = Group::new(translator, group_type, schema_info, namespaces)?;
                     groups.push(group);
                 }
-                ComplexBaseTypeContent::All(group_type) => {
-                    let group = Group::new(translator, group_type, schema_info, namespaces)?;
+                ComplexBaseTypeContent::All(all) => {
+                    let group = Group::new(translator, all, schema_info, namespaces)?;
                     groups.push(group);
                 }
-                ComplexBaseTypeContent::Choice(group_type) => {
-                    let group = Group::new(translator, group_type, schema_info, namespaces)?;
+                ComplexBaseTypeContent::Choice(choice) => {
+                    let group = Group::new(translator, choice, schema_info, namespaces)?;
                     groups.push(group);
                 }
-                ComplexBaseTypeContent::Sequence(group_type) => {
-                    let group = Group::new(translator, group_type, schema_info, namespaces)?;
+                ComplexBaseTypeContent::Sequence(sequence) => {
+                    let group = Group::new(translator, sequence, schema_info, namespaces)?;
                     groups.push(group);
                 }
                 ComplexBaseTypeContent::Attribute(attribute_type) => {
                     let attribute = Attribute::new(attribute_type, schema_info, namespaces)?;
                     attributes.push(attribute);
                 }
-                _ => return unimplemented("Complex base type"),
+                ComplexBaseTypeContent::Annotation(_) => {
+                    unimplemented("ComplexBaseTypeContent::Annotation")?
+                }
+                ComplexBaseTypeContent::SimpleContent(_) => {
+                    unimplemented("ComplexBaseTypeContent::SimpleContent")?
+                }
+                ComplexBaseTypeContent::ComplexContent(_) => {
+                    unimplemented("ComplexBaseTypeContent::ComplexContent")?
+                }
+                ComplexBaseTypeContent::OpenContent(_) => {
+                    unimplemented("ComplexBaseTypeContent::OpenContent")?
+                }
+                ComplexBaseTypeContent::AttributeGroup(_) => {
+                    unimplemented("ComplexBaseTypeContent::AttributeGroup")?
+                }
+                ComplexBaseTypeContent::AnyAttribute(_) => {
+                    unimplemented("ComplexBaseTypeContent::AnyAttribute")?
+                }
+                ComplexBaseTypeContent::Assert(_) => {
+                    unimplemented("ComplexBaseTypeContent::Assert")?
+                }
             }
         }
 
