@@ -155,7 +155,7 @@ impl TypeInfo {
                 panic!("Type info includes enumeration and pattern data");
             }
 
-            return generator.generate_enumeration(&self.enumerations);
+            return generator.choose(&self.enumerations).cloned();
         }
 
         if let Some(pattern) = &self.pattern {
