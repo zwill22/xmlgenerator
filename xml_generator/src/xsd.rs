@@ -1,11 +1,10 @@
 use crate::XMLGeneratorError;
+use crate::data_type::DataType;
 use crate::element::Element;
 use crate::error::unimplemented;
-use crate::find_root::find_root_element;
 use crate::namespaces::Namespaces;
 use crate::schema_version::SchemaVersion;
 use crate::tracker::RecursionTracker;
-use crate::data_type::DataType;
 use crate::type_generator::TypeGenerator;
 use std::slice::Iter;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
@@ -13,24 +12,24 @@ use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::SchemaContent;
 
 pub(crate) struct XSD<'a> {
+    type_generator: &'a TypeGenerator,
     version: SchemaVersion,
+    namespaces: Namespaces,
     data_types: Vec<DataType<'a>>,
     elements: Vec<Element<'a>>,
-    namespaces: Namespaces,
-    type_generator: &'a TypeGenerator,
 }
 
 impl XSD<'_> {
     pub(crate) fn new<'a>(
-        type_generator: &'a TypeGenerator,
+        generator: &'a TypeGenerator,
         schemas: &Schemas,
     ) -> Result<XSD<'a>, XMLGeneratorError> {
         let mut xsd = XSD {
+            type_generator: generator,
             version: SchemaVersion::new(schemas)?,
+            namespaces: Namespaces::new(schemas)?,
             data_types: vec![],
             elements: vec![],
-            namespaces: Namespaces::new(schemas)?,
-            type_generator,
         };
 
         for (_schema_id, schema_info) in schemas.schemas() {
@@ -39,18 +38,22 @@ impl XSD<'_> {
                 match content {
                     SchemaContent::Element(element) => {
                         let element =
-                            Element::new(type_generator, &element, &xsd.namespaces, schema_info)?;
+                            Element::new(generator, &element, &xsd.namespaces, schema_info)?;
                         xsd.elements.push(element);
                     }
                     SchemaContent::Import(_) => {}
                     SchemaContent::Annotation(_) => {}
                     SchemaContent::SimpleType(simple) => {
-                        let simple_type = DataType::simple_type(type_generator, simple)?;
+                        let simple_type = DataType::simple_type(generator, simple)?;
                         xsd.data_types.push(simple_type);
                     }
                     SchemaContent::ComplexType(complex) => {
-                        let complex_type =
-                            DataType::complex_type(type_generator, complex, &xsd.namespaces, schema_info)?;
+                        let complex_type = DataType::complex_type(
+                            generator,
+                            complex,
+                            &xsd.namespaces,
+                            schema_info,
+                        )?;
                         xsd.data_types.push(complex_type);
                     }
                     _ => return unimplemented("Unimplemented schema content type"),
@@ -85,16 +88,67 @@ impl XSD<'_> {
         self.version.get_version()
     }
 
-    pub(crate) fn find_root(&self) -> Result<&Element<'_>, XMLGeneratorError> {
-        find_root_element(&self.elements)
-    }
-
     pub(crate) fn elements(&self) -> Iter<'_, Element<'_>> {
         self.elements.iter()
     }
 
     pub(crate) fn types(&self) -> Iter<'_, DataType<'_>> {
         self.data_types.iter()
+    }
+
+    fn get_element(&self, field: &String) -> Option<&Element<'_>> {
+        for element in self.elements() {
+            if let Ok(name) = element.get_name() {
+                if name.eq(field) {
+                    return Some(element);
+                }
+            }
+        }
+
+        None
+    }
+
+    pub(crate) fn find_root(&self) -> Result<&Element<'_>, XMLGeneratorError> {
+        if self.elements.is_empty() {
+            return Err(XMLGeneratorError::NoElementsError);
+        }
+
+        let mut all_fields = vec![];
+        let mut all_types = vec![];
+        for generator in self.elements.iter() {
+            generator.get_content(&mut all_fields, &mut all_types)?;
+        }
+
+        let mut dependent_elements = vec![];
+        for field in all_fields {
+            let structure = self.get_element(&field);
+            if let Some(item) = structure {
+                dependent_elements.push(item);
+            }
+        }
+
+        let mut independent_elements = vec![];
+        for element in self.elements() {
+            if !dependent_elements.contains(&element) {
+                independent_elements.push(element);
+            }
+        }
+
+        if independent_elements.is_empty() {
+            return Err(XMLGeneratorError::NoIndependentElementsError);
+        }
+
+        if independent_elements.len() > 1 {
+            return Err(XMLGeneratorError::MultipleRootsError);
+        }
+
+        for generator in self.elements() {
+            if independent_elements.contains(&generator) {
+                return Ok(generator);
+            }
+        }
+
+        unreachable!();
     }
 
     fn generate_root(

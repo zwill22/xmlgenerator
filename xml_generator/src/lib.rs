@@ -8,7 +8,6 @@ use xsdvalidator::XSDValidator;
 mod attribute;
 mod element;
 pub mod error;
-mod find_root;
 mod group;
 mod name;
 mod namespaces;
