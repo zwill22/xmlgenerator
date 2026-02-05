@@ -2,27 +2,28 @@ use crate::XMLGeneratorError;
 use crate::element::{Element, Occurrence};
 use crate::error::unimplemented;
 use crate::namespaces::Namespaces;
+use crate::regex::RegexGenerator;
 use crate::tracker::RecursionTracker;
 use crate::xsd::XSD;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{GroupType, GroupTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
-use crate::type_generator::TypeGenerator;
+use regextranslator::RegexTranslator;
 
 #[derive(Default)]
-pub struct Group<'a> {
-    elements: Vec<Element<'a>>,
+pub struct Group {
+    elements: Vec<Element>,
     min: usize,
     max: Option<usize>,
 }
 
-impl Group<'_> {
-    pub(crate) fn new<'a>(
-        generator: &'a TypeGenerator,
+impl Group {
+    pub(crate) fn new(
+        translator: &RegexTranslator,
         group_type: &GroupType,
         schema_info: &SchemaInfo,
         namespaces: &Namespaces,
-    ) -> Result<Group<'a>, XMLGeneratorError> {
+    ) -> Result<Group, XMLGeneratorError> {
         let mut group = Group::default();
 
         if group_type.name.is_some() {
@@ -43,8 +44,7 @@ impl Group<'_> {
         for content in &group_type.content {
             match content {
                 GroupTypeContent::Element(element_type) => {
-                    let element =
-                        Element::new(generator, element_type, namespaces, schema_info)?;
+                    let element = Element::new(translator, element_type, namespaces, schema_info)?;
                     group.elements.push(element)
                 }
                 _ => return unimplemented("Group type content"),
@@ -65,12 +65,13 @@ impl Group<'_> {
 
     fn generate_group(
         &self,
+        regex_generator: &mut RegexGenerator,
         xml_element: &mut XMLElement,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<(), XMLGeneratorError> {
         for element in self.elements.iter() {
-            let children = element.generate(tracker, xsd)?;
+            let children = element.generate(regex_generator, tracker, xsd)?;
 
             for child in children {
                 xml_element.add_child(child)?;
@@ -82,6 +83,7 @@ impl Group<'_> {
 
     pub(crate) fn generate(
         &self,
+        regex_generator: &mut RegexGenerator,
         xml_element: &mut XMLElement,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
@@ -89,24 +91,24 @@ impl Group<'_> {
         let n = self.get_occurrences();
 
         for _ in 0..n {
-            self.generate_group(xml_element, tracker, xsd)?;
+            self.generate_group(regex_generator, xml_element, tracker, xsd)?;
         }
-        
+
         Ok(())
     }
 }
 
-impl Occurrence for Group<'_> {
+impl Occurrence for Group {
     fn get_min(&self) -> usize {
         self.min
     }
-    
+
     fn get_max(&self) -> Option<usize> {
         self.max
     }
 }
 
-impl PartialEq for Group<'_> {
+impl PartialEq for Group {
     fn eq(&self, other: &Self) -> bool {
         if !self.elements.eq(&other.elements) {
             return false;

@@ -1,11 +1,13 @@
 pub use crate::error::XMLGeneratorError;
+use crate::regex::RegexGenerator;
 use crate::schemas::build_schemas;
-use crate::type_generator::TypeGenerator;
 use crate::xsd::XSD;
+use regextranslator::RegexTranslator;
 use std::path::PathBuf;
 use xsdvalidator::XSDValidator;
 
 mod attribute;
+mod data_type;
 mod element;
 pub mod error;
 mod group;
@@ -15,24 +17,22 @@ mod regex;
 mod schema_version;
 mod schemas;
 mod tracker;
-mod data_type;
-mod type_generator;
 mod type_info;
 mod xsd;
 
 pub struct XMLGenerator {
     validator: XSDValidator,
-    generator: TypeGenerator,
+    translator: RegexTranslator,
 }
 
 impl Default for XMLGenerator {
     fn default() -> Self {
         let validator = XSDValidator::new(false);
-        let generator = TypeGenerator::new();
+        let translator = RegexTranslator::new().unwrap();
 
         XMLGenerator {
             validator,
-            generator,
+            translator,
         }
     }
 }
@@ -76,8 +76,10 @@ impl XMLGenerator {
         let schemas = build_schemas(xsd_path)?;
         self.validate(xsd_path)?;
 
-        let xsd = XSD::new(&self.generator, &schemas)?;
+        let mut regex_generator = RegexGenerator::new();
 
-        xsd.generate_xml()
+        let xsd = XSD::new(&mut regex_generator, &self.translator, &schemas)?;
+
+        xsd.generate_xml(&mut regex_generator)
     }
 }

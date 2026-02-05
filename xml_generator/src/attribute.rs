@@ -1,7 +1,8 @@
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::type_info::{TypeInfo, generate_type, get_qname};
+use crate::regex::RegexGenerator;
+use crate::type_info::TypeInfo;
 use crate::xsd::XSD;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
@@ -19,7 +20,7 @@ impl Attribute {
         attribute_type: &AttributeType,
         schema_info: &SchemaInfo,
         namespaces: &Namespaces,
-    ) -> Result<Self, XMLGeneratorError> {
+    ) -> Result<Attribute, XMLGeneratorError> {
         let mut attribute = Attribute {
             name: None,
             attribute_type: AttributeUseType::Required,
@@ -30,7 +31,7 @@ impl Attribute {
         attribute.name = Name::from_name(&attribute_type.name, schema_info, namespaces);
 
         if let Some(attribute_type) = &attribute_type.type_ {
-            attribute.type_name = get_qname(attribute_type);
+            attribute.type_name = String::from_utf8(attribute_type.local_name().to_vec()).unwrap()
         }
 
         attribute.attribute_type = attribute_type.use_;
@@ -70,12 +71,12 @@ impl Attribute {
         Ok(attribute)
     }
 
-    fn get_attribute(&self) -> Option<String> {
+    fn get_attribute(&self, regex_generator: &mut RegexGenerator) -> Option<String> {
         if let Some(type_info) = &self.type_info {
-            if let Some(value) = type_info.generate() {
+            if let Some(value) = type_info.generate(regex_generator) {
                 return Some(value);
             }
-        } else if let Some(value) = generate_type(&self.type_name) {
+        } else if let Some(value) = regex_generator.generate_type(&self.type_name) {
             return Some(value);
         }
 
@@ -93,6 +94,7 @@ impl Attribute {
 
     pub(crate) fn generate(
         &self,
+        regex_generator: &mut RegexGenerator,
         xml_element: &mut XMLElement,
         xsd: &XSD,
     ) -> Result<(), XMLGeneratorError> {
@@ -103,21 +105,21 @@ impl Attribute {
         }
 
         let name = self.get_name()?;
-        if let Some(attribute) = self.get_attribute() {
+        if let Some(attribute) = self.get_attribute(regex_generator) {
             xml_element.add_attribute(name.as_str(), attribute.as_str());
             generated = true;
         }
 
         for type_generator in xsd.types() {
             if type_generator.name_equals(&self.type_name) {
-                type_generator.generate_attribute(xml_element, &name)?;
+                type_generator.generate_attribute(regex_generator, xml_element, &name)?;
                 generated = true;
             }
         }
 
         if self.attribute_type == AttributeUseType::Required && !generated {
             if self.type_name.is_empty() && self.type_info.is_none() {
-                let value = generate_type("string").unwrap();
+                let value = regex_generator.generate_type("string").unwrap();
                 xml_element.add_attribute(name.as_str(), value.as_str());
             } else {
                 return Err(XMLGeneratorError::TypeGenerationError(

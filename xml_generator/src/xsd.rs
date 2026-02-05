@@ -3,31 +3,31 @@ use crate::data_type::DataType;
 use crate::element::Element;
 use crate::error::unimplemented;
 use crate::namespaces::Namespaces;
+use crate::regex::RegexGenerator;
 use crate::schema_version::SchemaVersion;
 use crate::tracker::RecursionTracker;
-use crate::type_generator::TypeGenerator;
 use std::slice::Iter;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::SchemaContent;
+use regextranslator::RegexTranslator;
 
-pub(crate) struct XSD<'a> {
-    type_generator: &'a TypeGenerator,
+pub(crate) struct XSD {
     version: SchemaVersion,
     namespaces: Namespaces,
-    data_types: Vec<DataType<'a>>,
-    elements: Vec<Element<'a>>,
+    data_types: Vec<DataType>,
+    elements: Vec<Element>,
 }
 
-impl XSD<'_> {
+impl XSD {
     pub(crate) fn new<'a>(
-        generator: &'a TypeGenerator,
+        regex_generator: &mut RegexGenerator,
+        translator: &RegexTranslator,
         schemas: &Schemas,
-    ) -> Result<XSD<'a>, XMLGeneratorError> {
+    ) -> Result<XSD, XMLGeneratorError> {
         let mut xsd = XSD {
-            type_generator: generator,
             version: SchemaVersion::new(schemas)?,
-            namespaces: Namespaces::new(schemas)?,
+            namespaces: Namespaces::new(regex_generator, schemas)?,
             data_types: vec![],
             elements: vec![],
         };
@@ -37,23 +37,18 @@ impl XSD<'_> {
             for content in &schema.content {
                 match content {
                     SchemaContent::Element(element) => {
-                        let element =
-                            Element::new(generator, &element, &xsd.namespaces, schema_info)?;
+                        let element = Element::new(translator, &element, &xsd.namespaces, schema_info)?;
                         xsd.elements.push(element);
                     }
                     SchemaContent::Import(_) => {}
                     SchemaContent::Annotation(_) => {}
                     SchemaContent::SimpleType(simple) => {
-                        let simple_type = DataType::simple_type(generator, simple)?;
+                        let simple_type = DataType::simple_type(translator, simple)?;
                         xsd.data_types.push(simple_type);
                     }
                     SchemaContent::ComplexType(complex) => {
-                        let complex_type = DataType::complex_type(
-                            generator,
-                            complex,
-                            &xsd.namespaces,
-                            schema_info,
-                        )?;
+                        let complex_type =
+                            DataType::complex_type(translator, complex, &xsd.namespaces, schema_info)?;
                         xsd.data_types.push(complex_type);
                     }
                     _ => return unimplemented("Unimplemented schema content type"),
@@ -88,15 +83,15 @@ impl XSD<'_> {
         self.version.get_version()
     }
 
-    pub(crate) fn elements(&self) -> Iter<'_, Element<'_>> {
+    pub(crate) fn elements(&self) -> Iter<'_, Element> {
         self.elements.iter()
     }
 
-    pub(crate) fn types(&self) -> Iter<'_, DataType<'_>> {
+    pub(crate) fn types(&self) -> Iter<'_, DataType> {
         self.data_types.iter()
     }
 
-    fn get_element(&self, field: &String) -> Option<&Element<'_>> {
+    fn get_element(&self, field: &String) -> Option<&Element> {
         for element in self.elements() {
             if let Ok(name) = element.get_name() {
                 if name.eq(field) {
@@ -108,7 +103,7 @@ impl XSD<'_> {
         None
     }
 
-    pub(crate) fn find_root(&self) -> Result<&Element<'_>, XMLGeneratorError> {
+    pub(crate) fn find_root(&self) -> Result<&Element, XMLGeneratorError> {
         if self.elements.is_empty() {
             return Err(XMLGeneratorError::NoElementsError);
         }
@@ -153,10 +148,11 @@ impl XSD<'_> {
 
     fn generate_root(
         &self,
-        root: &Element,
+        regex_generator: &mut RegexGenerator,
         tracker: &mut RecursionTracker,
+        root: &Element,
     ) -> Result<XMLElement, XMLGeneratorError> {
-        let root_elements = root.generate(tracker, self)?;
+        let root_elements = root.generate(regex_generator, tracker, self)?;
 
         if root_elements.len() > 1 {
             return Err(XMLGeneratorError::MultipleRootsError);
@@ -173,15 +169,21 @@ impl XSD<'_> {
         ))
     }
 
-    fn build_xml(&self) -> Result<XMLElement, XMLGeneratorError> {
+    fn build_xml(
+        &self,
+        regex_generator: &mut RegexGenerator,
+    ) -> Result<XMLElement, XMLGeneratorError> {
         let root = self.find_root()?;
 
         let mut tracker = RecursionTracker::new();
 
-        self.generate_root(root, &mut tracker)
+        self.generate_root(regex_generator, &mut tracker, root)
     }
 
-    pub(crate) fn generate_xml(&self) -> Result<String, XMLGeneratorError> {
+    pub(crate) fn generate_xml(
+        &self,
+        regex_generator: &mut RegexGenerator,
+    ) -> Result<String, XMLGeneratorError> {
         let schema_version = self.get_version()?;
 
         let mut xml = XMLBuilder::new()
@@ -190,7 +192,7 @@ impl XSD<'_> {
             .encoding("UTF-8".into())
             .build();
 
-        let root_element = self.build_xml()?;
+        let root_element = self.build_xml(regex_generator)?;
         xml.set_root_element(root_element);
 
         let mut writer: Vec<u8> = Vec::new();

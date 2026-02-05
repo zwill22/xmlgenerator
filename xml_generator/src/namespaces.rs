@@ -1,6 +1,5 @@
 use crate::XMLGeneratorError;
-use crate::regex::generate_regex;
-use regex::Regex;
+use crate::regex::RegexGenerator;
 use std::collections::HashMap;
 use std::str::from_utf8;
 use xsd_parser::Schemas;
@@ -28,24 +27,7 @@ fn check_namespace_exists(ns: &String, schemas: &Schemas) -> Result<(), XMLGener
 
 fn check_namespace_is_valid(ns: &String) -> bool {
     let re = r"^[A-Z_a-z][-.0-9A-Z_a-z]*$";
-    let regex = Regex::new(re).unwrap();
-
-    regex.is_match(ns)
-}
-
-fn generate_valid_name(schemas: &Schemas) -> Result<String, XMLGeneratorError> {
-    let pattern = r"[A-Za-z]{2}";
-    let regex = Regex::new(pattern).unwrap();
-
-    match generate_regex(&regex) {
-        Some(output) => match check_namespace_exists(&output, schemas) {
-            Ok(_) => generate_valid_name(schemas),
-            Err(_) => Ok(output),
-        },
-        None => Err(XMLGeneratorError::RegexError(
-            "Unable to generate regex".to_string(),
-        )),
-    }
+    RegexGenerator::validate(ns, re).unwrap()
 }
 
 #[derive(Default)]
@@ -57,11 +39,14 @@ pub(crate) struct Namespaces {
 }
 
 impl Namespaces {
-    pub(crate) fn new(schemas: &Schemas) -> Result<Namespaces, XMLGeneratorError> {
+    pub(crate) fn new(
+        regex_generator: &mut RegexGenerator,
+        schemas: &Schemas,
+    ) -> Result<Namespaces, XMLGeneratorError> {
         let mut namespaces = Namespaces::default();
 
         for (_ns_id, ns_info) in schemas.namespaces() {
-            namespaces.get_info(ns_info, schemas)?;
+            namespaces.get_info(regex_generator, ns_info, schemas)?;
         }
 
         let mut root = true;
@@ -73,8 +58,27 @@ impl Namespaces {
         Ok(namespaces)
     }
 
+    fn generate_valid_name(
+        &mut self,
+        regex_generator: &mut RegexGenerator,
+        schemas: &Schemas,
+    ) -> Result<String, XMLGeneratorError> {
+        let pattern = r"[A-Za-z]{2}";
+
+        match regex_generator.generate_regex(pattern) {
+            Some(output) => match check_namespace_exists(&output, schemas) {
+                Ok(_) => self.generate_valid_name(regex_generator, schemas),
+                Err(_) => Ok(output),
+            },
+            None => Err(XMLGeneratorError::RegexError(
+                "Unable to generate regex".to_string(),
+            )),
+        }
+    }
+
     fn add_default_namespace(
         &mut self,
+        regex_generator: &mut RegexGenerator,
         ns: String,
         schemas: &Schemas,
     ) -> Result<(), XMLGeneratorError> {
@@ -86,7 +90,7 @@ impl Namespaces {
                 if check_namespace_is_valid(&ns) {
                     self.other_namespaces.insert(ns.to_string(), ns);
                 } else {
-                    let valid_name = generate_valid_name(schemas)?;
+                    let valid_name = self.generate_valid_name(regex_generator, schemas)?;
                     self.other_namespaces.insert(valid_name, ns);
                 }
             }
@@ -179,6 +183,7 @@ impl Namespaces {
 
     fn get_info(
         &mut self,
+        regex_generator: &mut RegexGenerator,
         ns_info: &NamespaceInfo,
         schemas: &Schemas,
     ) -> Result<(), XMLGeneratorError> {
@@ -193,7 +198,7 @@ impl Namespaces {
 
             match &ns_info.prefix {
                 None => {
-                    self.add_default_namespace(ns, schemas)?;
+                    self.add_default_namespace(regex_generator, ns, schemas)?;
                 }
                 Some(prefix) => {
                     let prefix_str = prefix.to_string();

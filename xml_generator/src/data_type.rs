@@ -3,41 +3,31 @@ use crate::element::Element;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::group::Group;
 use crate::namespaces::Namespaces;
+use crate::regex::RegexGenerator;
 use crate::tracker::RecursionTracker;
-use crate::type_generator::TypeGenerator;
 use crate::type_info::TypeInfo;
 use crate::xsd::XSD;
+use regextranslator::RegexTranslator;
 use std::ops::Deref;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{ComplexBaseType, ComplexBaseTypeContent, SimpleBaseType};
 
-pub(crate) struct DataType<'a> {
-    generator: &'a TypeGenerator,
+#[derive(Default)]
+pub(crate) struct DataType {
     name: String,
     type_info: Option<TypeInfo>,
-    elements: Vec<Element<'a>>,
-    groups: Vec<Group<'a>>,
+    elements: Vec<Element>,
+    groups: Vec<Group>,
     attributes: Vec<Attribute>,
 }
 
-impl<'a> DataType<'a> {
-    fn new(generator: &'a TypeGenerator) -> DataType<'a> {
-        Self {
-            generator,
-            name: "".to_string(),
-            type_info: None,
-            elements: vec![],
-            groups: vec![],
-            attributes: vec![],
-        }
-    }
-
+impl DataType {
     pub(crate) fn simple_type(
-        generator: &'a TypeGenerator,
+        translator: &RegexTranslator,
         simple: &SimpleBaseType,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut data_type = Self::new(generator);
+        let mut data_type = Self::default();
 
         data_type.name = simple.name.clone().unwrap_or("".to_string());
         if data_type.name.is_empty() {
@@ -48,7 +38,7 @@ impl<'a> DataType<'a> {
             return unimplemented("Final");
         }
 
-        let type_info = TypeInfo::new(generator, &simple.content)?;
+        let type_info = TypeInfo::new(translator, &simple.content)?;
 
         data_type.type_info = Some(type_info);
 
@@ -56,12 +46,12 @@ impl<'a> DataType<'a> {
     }
 
     pub(crate) fn complex_type(
-        generator: &'a TypeGenerator,
-        complex: & ComplexBaseType,
+        translator: &RegexTranslator,
+        complex: &ComplexBaseType,
         namespaces: &Namespaces,
         schema_info: &SchemaInfo,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut data_type = Self::new(generator);
+        let mut data_type = Self::default();
 
         data_type.name = complex.name.clone().unwrap_or("".to_string());
 
@@ -89,19 +79,19 @@ impl<'a> DataType<'a> {
         for content in &complex.content {
             match content {
                 ComplexBaseTypeContent::Group(group_type) => {
-                    let group = Group::new(generator, group_type, schema_info, namespaces)?;
+                    let group = Group::new(translator, group_type, schema_info, namespaces)?;
                     data_type.groups.push(group);
                 }
                 ComplexBaseTypeContent::All(group_type) => {
-                    let group = Group::new(generator, group_type, schema_info, namespaces)?;
+                    let group = Group::new(translator, group_type, schema_info, namespaces)?;
                     data_type.groups.push(group);
                 }
                 ComplexBaseTypeContent::Choice(group_type) => {
-                    let group = Group::new(generator, group_type, schema_info, namespaces)?;
+                    let group = Group::new(translator, group_type, schema_info, namespaces)?;
                     data_type.groups.push(group);
                 }
                 ComplexBaseTypeContent::Sequence(group_type) => {
-                    let group = Group::new(generator, group_type, schema_info, namespaces)?;
+                    let group = Group::new(translator, group_type, schema_info, namespaces)?;
                     data_type.groups.push(group);
                 }
                 ComplexBaseTypeContent::Attribute(attribute_type) => {
@@ -134,6 +124,7 @@ impl<'a> DataType<'a> {
 
     pub(crate) fn generate_attribute(
         &self,
+        regex_generator: &mut RegexGenerator,
         xml_element: &mut XMLElement,
         name: &String,
     ) -> Result<(), XMLGeneratorError> {
@@ -156,7 +147,7 @@ impl<'a> DataType<'a> {
         }
 
         if let Some(type_info) = &self.type_info {
-            return match type_info.generate() {
+            return match type_info.generate(regex_generator) {
                 Some(value) => {
                     xml_element.add_attribute(name.as_str(), value.as_str());
                     Ok(())
@@ -175,6 +166,7 @@ impl<'a> DataType<'a> {
 
     pub(crate) fn generate(
         &self,
+        regex_generator: &mut RegexGenerator,
         xml_element: &mut XMLElement,
         data_tracker: &mut RecursionTracker,
         xsd: &XSD,
@@ -192,7 +184,7 @@ impl<'a> DataType<'a> {
                 ));
             }
 
-            let output = type_info.generate();
+            let output = type_info.generate(regex_generator);
             match output {
                 None => {
                     return Err(XMLGeneratorError::TypeGenerationError(
@@ -209,25 +201,25 @@ impl<'a> DataType<'a> {
         }
 
         for element in self.elements.iter() {
-            let children = element.generate(data_tracker, xsd)?;
+            let children = element.generate(regex_generator, data_tracker, xsd)?;
             for child in children {
                 xml_element.add_child(child)?;
             }
         }
 
         for group in self.groups.iter() {
-            group.generate(xml_element, data_tracker, xsd)?;
+            group.generate(regex_generator, xml_element, data_tracker, xsd)?;
         }
 
         for attribute in self.attributes.iter() {
-            attribute.generate(xml_element, xsd)?;
+            attribute.generate(regex_generator, xml_element, xsd)?;
         }
 
         Ok(())
     }
 }
 
-impl PartialEq for DataType<'_> {
+impl PartialEq for DataType {
     fn eq(&self, other: &Self) -> bool {
         if !self.name.eq(&other.name) {
             return false;

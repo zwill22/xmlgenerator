@@ -2,9 +2,8 @@ use crate::data_type::DataType;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::name::Name;
 use crate::namespaces::Namespaces;
+use crate::regex::RegexGenerator;
 use crate::tracker::RecursionTracker;
-use crate::type_generator::TypeGenerator;
-use crate::type_info::{generate_type, get_qname};
 use crate::xsd::XSD;
 use rand::Rng;
 use std::cmp::{max, min};
@@ -12,15 +11,17 @@ use uuid::Uuid;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{ElementType, ElementTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
+use regextranslator::RegexTranslator;
 
 fn generate_type_output(
+    regex_generator: &mut RegexGenerator,
     xml_element: &mut XMLElement,
     tracker: &mut RecursionTracker,
     xsd: &XSD,
     type_name: &String,
 ) -> Result<(), XMLGeneratorError> {
     // TODO TypeGenerator?
-    if let Some(output) = generate_type(type_name) {
+    if let Some(output) = regex_generator.generate_type(type_name) {
         return match xml_element.add_text(output) {
             Ok(_) => Ok(()),
             Err(err) => Err(XMLGeneratorError::XMLBuilderError(err.to_string())),
@@ -29,7 +30,7 @@ fn generate_type_output(
 
     for data_type in xsd.types() {
         if data_type.name_equals(type_name) {
-            return data_type.generate(xml_element, tracker, xsd);
+            return data_type.generate(regex_generator, xml_element, tracker, xsd);
         }
     }
 
@@ -62,10 +63,9 @@ pub(crate) trait Occurrence {
     }
 }
 
-pub(crate) struct Element<'a> {
-    generator: &'a TypeGenerator,
+pub(crate) struct Element {
     name: Option<Name>,
-    data_types: Vec<DataType<'a>>,
+    data_types: Vec<DataType>,
     type_name: Option<String>,
     reference: Option<Name>,
     min: usize,
@@ -73,27 +73,14 @@ pub(crate) struct Element<'a> {
     id: Uuid,
 }
 
-impl<'a> Element<'a> {
-    fn default(generator: &'a TypeGenerator) -> Element<'a> {
-        Self {
-            generator,
-            name: None,
-            data_types: vec![],
-            type_name: None,
-            reference: None,
-            min: 0,
-            max: None,
-            id: Uuid::new_v4(),
-        }
-    }
-
+impl Element {
     pub(crate) fn new(
-        generator: &'a TypeGenerator,
+        translator: &RegexTranslator,
         element_type: &ElementType,
         namespaces: &Namespaces,
-        schema: & SchemaInfo,
+        schema: &SchemaInfo,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut element = Element::default(generator);
+        let mut element = Self::default();
 
         if let Some(element_ref) = &element_type.ref_ {
             let reference = Name::from_qname(element_ref, namespaces);
@@ -101,8 +88,7 @@ impl<'a> Element<'a> {
         }
 
         if let Some(element_type) = &element_type.type_ {
-            let type_info = get_qname(element_type);
-            element.type_name = Some(type_info);
+            element.type_name = String::from_utf8(element_type.local_name().to_vec()).ok();
         }
 
         if element_type.substitution_group.is_some() {
@@ -153,12 +139,11 @@ impl<'a> Element<'a> {
         for content in &element_type.content {
             match content {
                 ElementTypeContent::SimpleType(simple_type) => {
-                    let simple = DataType::simple_type(generator, &simple_type)?;
+                    let simple = DataType::simple_type(translator, &simple_type)?;
                     element.data_types.push(simple);
                 }
                 ElementTypeContent::ComplexType(complex_type) => {
-                    let complex =
-                        DataType::complex_type(generator, &complex_type, namespaces, schema)?;
+                    let complex = DataType::complex_type(translator, &complex_type, namespaces, schema)?;
                     element.data_types.push(complex);
                 }
                 _ => return unimplemented("Element content type"),
@@ -203,6 +188,7 @@ impl<'a> Element<'a> {
 
     fn generate_type_from_name(
         &self,
+        regex_generator: &mut RegexGenerator,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<XMLElement, XMLGeneratorError> {
@@ -218,11 +204,11 @@ impl<'a> Element<'a> {
                     ));
                 }
 
-                generate_type_output(&mut root_element, tracker, xsd, type_info)?;
+                generate_type_output(regex_generator, &mut root_element, tracker, xsd, type_info)?;
             }
             None => {
                 for content in self.data_types.iter() {
-                    content.generate(&mut root_element, tracker, xsd)?;
+                    content.generate(regex_generator, &mut root_element, tracker, xsd)?;
                 }
             }
         }
@@ -234,6 +220,7 @@ impl<'a> Element<'a> {
 
     fn generate_element(
         &self,
+        regex_generator: &mut RegexGenerator,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
@@ -241,7 +228,7 @@ impl<'a> Element<'a> {
 
         let mut elements = vec![];
         for _ in 0..n {
-            let element = self.generate_type_from_name(tracker, xsd)?;
+            let element = self.generate_type_from_name(regex_generator, tracker, xsd)?;
             elements.push(element);
         }
 
@@ -250,6 +237,7 @@ impl<'a> Element<'a> {
 
     fn generate_reference(
         &self,
+        regex_generator: &mut RegexGenerator,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
         reference: &Name,
@@ -268,7 +256,7 @@ impl<'a> Element<'a> {
         for element in xsd.elements() {
             if let Some(name) = &element.name {
                 if name.eq(reference) {
-                    return element.generate(tracker, xsd);
+                    return element.generate(regex_generator, tracker, xsd);
                 }
             }
         }
@@ -280,12 +268,13 @@ impl<'a> Element<'a> {
 
     pub(crate) fn generate(
         &self,
+        regex_generator: &mut RegexGenerator,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
-            None => self.generate_element(tracker, xsd),
-            Some(reference) => self.generate_reference(tracker, xsd, reference),
+            None => self.generate_element(regex_generator, tracker, xsd),
+            Some(reference) => self.generate_reference(regex_generator, tracker, xsd, reference),
         }
     }
 
@@ -294,7 +283,21 @@ impl<'a> Element<'a> {
     }
 }
 
-impl Occurrence for Element<'_> {
+impl Default for Element {
+    fn default() -> Self {
+        Self {
+            name: None,
+            data_types: vec![],
+            type_name: None,
+            reference: None,
+            min: 0,
+            max: None,
+            id: Uuid::new_v4(),
+        }
+    }
+}
+
+impl Occurrence for Element {
     fn get_min(&self) -> usize {
         self.min
     }
@@ -304,7 +307,7 @@ impl Occurrence for Element<'_> {
     }
 }
 
-impl PartialEq for Element<'_> {
+impl PartialEq for Element {
     fn eq(&self, other: &Self) -> bool {
         if !self.name.eq(&other.name) {
             return false;
