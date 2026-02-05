@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use std::path::{PathBuf};
+    use std::path::PathBuf;
     use xsdvalidator::{XSDValidationError, XSDValidator};
 
     fn check_error(error: XSDValidationError) {
@@ -18,7 +18,7 @@ mod tests {
 
         match validator.validate(&path) {
             Ok(_) => panic!("No error thrown"),
-            Err(e) => check_error(e)
+            Err(e) => check_error(e),
         }
     }
 }

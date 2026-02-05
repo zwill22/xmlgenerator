@@ -2,7 +2,7 @@ use crate::XMLGeneratorError;
 use crate::element::Element;
 use crate::generator::Generator;
 use crate::tracker::RecursionTracker;
-use crate::xsd::XSD;
+use crate::xsd::Xsd;
 use std::slice::Iter;
 use xml_builder::XMLElement;
 
@@ -14,7 +14,7 @@ pub(crate) trait GenerateGroups {
         generator: &mut Generator,
         xml_element: &mut XMLElement,
         tracker: &mut RecursionTracker,
-        xsd: &XSD,
+        xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         for element in self.elements() {
             let children = element.generate(generator, tracker, xsd)?;

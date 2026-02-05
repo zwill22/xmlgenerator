@@ -60,9 +60,7 @@ fn handle_input(input_string: String) -> PyResult<PathBuf> {
                 Err(InvalidPathError::new_err("Input path does not exist"))
             }
         }
-        Err(err) => {
-            Err(InvalidPathError::new_err(err))
-        }
+        Err(err) => Err(InvalidPathError::new_err(err)),
     }
 }
 

@@ -4,13 +4,13 @@ use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::namespaces::Namespaces;
 use crate::tracker::RecursionTracker;
-use crate::xsd::XSD;
+use crate::traits::GenerateGroups;
+use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{GroupType, GroupTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
-use crate::traits::GenerateGroups;
 
 #[derive(Default)]
 pub struct Group {
@@ -70,7 +70,7 @@ impl Group {
         generator: &mut Generator,
         xml_element: &mut XMLElement,
         tracker: &mut RecursionTracker,
-        xsd: &XSD,
+        xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         let n = self.get_occurrences();
 

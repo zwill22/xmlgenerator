@@ -1,7 +1,7 @@
 pub use crate::error::XMLGeneratorError;
 use crate::generator::Generator;
 use crate::schemas::build_schemas;
-use crate::xsd::XSD;
+use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::path::PathBuf;
 use xsdvalidator::XSDValidator;
@@ -10,16 +10,16 @@ mod attribute;
 mod data_type;
 mod element;
 pub mod error;
+mod generator;
 mod group;
 mod name;
 mod namespaces;
-mod generator;
 mod schema_version;
 mod schemas;
 mod tracker;
+mod traits;
 mod type_info;
 mod xsd;
-mod traits;
 
 pub struct XMLGenerator {
     validator: XSDValidator,
@@ -79,7 +79,7 @@ impl XMLGenerator {
 
         let mut generator = Generator::new(100);
 
-        let xsd = XSD::new(&mut generator, &self.translator, &schemas)?;
+        let xsd = Xsd::new(&mut generator, &self.translator, &schemas)?;
 
         xsd.generate_xml(&mut generator)
     }

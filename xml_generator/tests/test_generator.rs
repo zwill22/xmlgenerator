@@ -36,8 +36,8 @@ mod tests {
             }
             XMLGeneratorError::NoElementsError => panic!("No elements included in XSD"),
             XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
-            XMLGeneratorError::NoIndependentElementsError => {},
-            XMLGeneratorError::MultipleRootsError => {},
+            XMLGeneratorError::NoIndependentElementsError => {}
+            XMLGeneratorError::MultipleRootsError => {}
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
             XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
             XMLGeneratorError::UnimplementedFeature(e) => panic!("Unimplemented feature: {}", e),

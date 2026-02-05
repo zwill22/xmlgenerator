@@ -2,8 +2,8 @@ use crate::XMLGeneratorError;
 use crate::data_type::DataType;
 use crate::element::Element;
 use crate::error::unimplemented;
-use crate::namespaces::Namespaces;
 use crate::generator::Generator;
+use crate::namespaces::Namespaces;
 use crate::schema_version::SchemaVersion;
 use crate::tracker::RecursionTracker;
 use regextranslator::RegexTranslator;
@@ -12,20 +12,20 @@ use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::SchemaContent;
 
-pub(crate) struct XSD {
+pub(crate) struct Xsd {
     version: SchemaVersion,
     namespaces: Namespaces,
     data_types: Vec<DataType>,
     elements: Vec<Element>,
 }
 
-impl XSD {
-    pub(crate) fn new<'a>(
+impl Xsd {
+    pub(crate) fn new(
         generator: &mut Generator,
         translator: &RegexTranslator,
         schemas: &Schemas,
-    ) -> Result<XSD, XMLGeneratorError> {
-        let mut xsd = XSD {
+    ) -> Result<Xsd, XMLGeneratorError> {
+        let mut xsd = Xsd {
             version: SchemaVersion::new(schemas)?,
             namespaces: Namespaces::new(generator, schemas)?,
             data_types: vec![],
@@ -38,7 +38,7 @@ impl XSD {
                 match content {
                     SchemaContent::Element(element) => {
                         let element =
-                            Element::new(translator, &element, &xsd.namespaces, schema_info)?;
+                            Element::new(translator, element, &xsd.namespaces, schema_info)?;
                         xsd.elements.push(element);
                     }
                     SchemaContent::Import(_) => {}
@@ -98,10 +98,10 @@ impl XSD {
 
     fn get_element(&self, field: &String) -> Option<&Element> {
         for element in self.elements() {
-            if let Ok(name) = element.get_name() {
-                if name.eq(field) {
-                    return Some(element);
-                }
+            if let Ok(name) = element.get_name()
+                && name.eq(field)
+            {
+                return Some(element);
             }
         }
 
@@ -163,15 +163,15 @@ impl XSD {
             return Err(XMLGeneratorError::MultipleRootsError);
         }
 
-        for mut root_element in root_elements {
-            self.apply_metadata_to(&mut root_element);
-
-            return Ok(root_element);
+        match root_elements.into_iter().next() {
+            Some(mut root_element) => {
+                self.apply_metadata_to(&mut root_element);
+                Ok(root_element)
+            }
+            None => Err(XMLGeneratorError::TypeGenerationError(
+                "No root elements generated".to_string(),
+            )),
         }
-
-        Err(XMLGeneratorError::TypeGenerationError(
-            "No root elements generated".to_string(),
-        ))
     }
 
     fn build_xml(&self, generator: &mut Generator) -> Result<XMLElement, XMLGeneratorError> {

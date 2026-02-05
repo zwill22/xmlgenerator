@@ -44,9 +44,7 @@ pub enum XMLGeneratorError {
 impl From<XSDValidationError> for XMLGeneratorError {
     fn from(value: XSDValidationError) -> Self {
         match value {
-            XSDValidationError::PathError => {
-                XMLGeneratorError::InvalidPathError("".to_string())
-            }
+            XSDValidationError::PathError => XMLGeneratorError::InvalidPathError("".to_string()),
             XSDValidationError::StringError => {
                 XMLGeneratorError::XSDValidatorError("Cannot read path string".to_string())
             }

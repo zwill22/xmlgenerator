@@ -1,9 +1,9 @@
 use crate::error::{XMLGeneratorError, unimplemented};
+use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::generator::Generator;
 use crate::type_info::TypeInfo;
-use crate::xsd::XSD;
+use crate::xsd::Xsd;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
@@ -96,7 +96,7 @@ impl Attribute {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &XSD,
+        xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         let mut generated = false;
 

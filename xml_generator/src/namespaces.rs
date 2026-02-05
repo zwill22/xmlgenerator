@@ -25,7 +25,7 @@ fn check_namespace_exists(ns: &String, schemas: &Schemas) -> Result<(), XMLGener
     )))
 }
 
-fn check_namespace_is_valid(ns: &String) -> bool {
+fn check_namespace_is_valid(ns: &str) -> bool {
     let re = r"^[A-Z_a-z][-.0-9A-Z_a-z]*$";
     Generator::validate(ns, re).unwrap()
 }
@@ -100,11 +100,11 @@ impl Namespaces {
     }
 
     pub(crate) fn find(&self, location: &str) -> Option<&String> {
-        if let Some(default_ns) = &self.default_namespace {
-            if default_ns.eq(location) {
-                // If namespace is default namespace, no need to include prefix
-                return None;
-            }
+        if let Some(default_ns) = &self.default_namespace
+            && default_ns.eq(location)
+        {
+            // If namespace is default namespace, no need to include prefix
+            return None;
         }
 
         for (k, v) in self.other_namespaces.iter() {

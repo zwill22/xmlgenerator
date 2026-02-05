@@ -1,6 +1,6 @@
 use crate::XMLGeneratorError;
-use xsd_parser::models::schema::{QName, SchemaInfo};
 use crate::namespaces::Namespaces;
+use xsd_parser::models::schema::{QName, SchemaInfo};
 
 #[derive(Default)]
 pub(crate) struct Name {
@@ -17,25 +17,22 @@ impl Name {
         let name = String::from_utf8(qname.local_name().to_vec()).unwrap();
         let ns = match qname.namespace() {
             None => None,
-            Some(namespace) => {
-                match namespaces.find(&namespace.to_string()) {
-                    None => None,
-                    Some(ns_name) => Some(ns_name.to_string()),
-                }
-
-            }
+            Some(namespace) => namespaces
+                .find(&namespace.to_string())
+                .map(|ns_name| ns_name.to_string()),
         };
 
         Self::new(name, ns)
     }
 
-    pub(crate) fn from_name(name: &Option<String>, schema: &SchemaInfo, namespaces: &Namespaces) -> Option<Name> {
+    pub(crate) fn from_name(
+        name: &Option<String>,
+        schema: &SchemaInfo,
+        namespaces: &Namespaces,
+    ) -> Option<Name> {
         match &schema.schema.target_namespace {
-            None => match name {
-                None => None,
-                Some(val) => Some(Name::new(val.clone(), None)),
-            },
-            Some(ns) => match name{
+            None => name.as_ref().map(|val| Name::new(val.clone(), None)),
+            Some(ns) => match name {
                 None => None,
                 Some(name) => match namespaces.find(ns) {
                     None => Some(Name::new(name.clone(), None)),
@@ -44,7 +41,7 @@ impl Name {
             },
         }
     }
-    
+
     pub(crate) fn get_suffix(&self) -> Result<String, XMLGeneratorError> {
         if self.name.is_empty() {
             return Err(XMLGeneratorError::DataTypesFormatError(
@@ -86,10 +83,7 @@ impl PartialEq for Name {
         }
 
         match &self.namespace {
-            None => match other.namespace {
-                None => true,
-                Some(_) => false,
-            },
+            None => other.namespace.is_none(),
             Some(ns) => match &other.namespace {
                 None => false,
                 Some(other_ns) => ns.eq(other_ns),

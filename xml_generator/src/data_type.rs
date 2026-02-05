@@ -7,7 +7,7 @@ use crate::namespaces::Namespaces;
 use crate::tracker::RecursionTracker;
 use crate::traits::GenerateGroups;
 use crate::type_info::TypeInfo;
-use crate::xsd::XSD;
+use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::ops::Deref;
 use std::slice::Iter;
@@ -29,10 +29,8 @@ impl DataType {
         translator: &RegexTranslator,
         simple: &SimpleBaseType,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut data_type = Self::default();
-
-        data_type.name = simple.name.clone().unwrap_or("".to_string());
-        if data_type.name.is_empty() {
+        let name = simple.name.clone().unwrap_or("".to_string());
+        if name.is_empty() {
             return unimplemented("Empty type");
         }
 
@@ -42,7 +40,13 @@ impl DataType {
 
         let type_info = TypeInfo::new(translator, &simple.content)?;
 
-        data_type.type_info = Some(type_info);
+        let data_type = DataType {
+            name,
+            type_info: Some(type_info),
+            elements: vec![],
+            groups: vec![],
+            attributes: vec![],
+        };
 
         Ok(data_type)
     }
@@ -53,9 +57,7 @@ impl DataType {
         namespaces: &Namespaces,
         schema_info: &SchemaInfo,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut data_type = Self::default();
-
-        data_type.name = complex.name.clone().unwrap_or("".to_string());
+        let name = complex.name.clone().unwrap_or("".to_string());
 
         if complex.mixed.is_some() {
             return unimplemented("Mixed types");
@@ -78,31 +80,42 @@ impl DataType {
             return unimplemented("Non-default attributes");
         }
 
+        let mut groups = vec![];
+        let mut attributes = vec![];
+
         for content in &complex.content {
             match content {
                 ComplexBaseTypeContent::Group(group_type) => {
                     let group = Group::new(translator, group_type, schema_info, namespaces)?;
-                    data_type.groups.push(group);
+                    groups.push(group);
                 }
                 ComplexBaseTypeContent::All(group_type) => {
                     let group = Group::new(translator, group_type, schema_info, namespaces)?;
-                    data_type.groups.push(group);
+                    groups.push(group);
                 }
                 ComplexBaseTypeContent::Choice(group_type) => {
                     let group = Group::new(translator, group_type, schema_info, namespaces)?;
-                    data_type.groups.push(group);
+                    groups.push(group);
                 }
                 ComplexBaseTypeContent::Sequence(group_type) => {
                     let group = Group::new(translator, group_type, schema_info, namespaces)?;
-                    data_type.groups.push(group);
+                    groups.push(group);
                 }
                 ComplexBaseTypeContent::Attribute(attribute_type) => {
                     let attribute = Attribute::new(attribute_type, schema_info, namespaces)?;
-                    data_type.attributes.push(attribute);
+                    attributes.push(attribute);
                 }
                 _ => return unimplemented("Complex base type"),
             }
         }
+
+        let data_type = DataType {
+            name,
+            type_info: None,
+            elements: vec![],
+            groups,
+            attributes,
+        };
 
         Ok(data_type)
     }
@@ -171,7 +184,7 @@ impl DataType {
         generator: &mut Generator,
         xml_element: &mut XMLElement,
         data_tracker: &mut RecursionTracker,
-        xsd: &XSD,
+        xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(type_info) = &self.type_info {
             if !self.elements.is_empty() {

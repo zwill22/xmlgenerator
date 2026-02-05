@@ -1,10 +1,10 @@
 use crate::data_type::DataType;
 use crate::error::{XMLGeneratorError, unimplemented};
+use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::generator::Generator;
 use crate::tracker::RecursionTracker;
-use crate::xsd::XSD;
+use crate::xsd::Xsd;
 use rand::Rng;
 use regextranslator::RegexTranslator;
 use std::cmp::{max, min};
@@ -17,7 +17,7 @@ fn generate_type_output(
     generator: &mut Generator,
     xml_element: &mut XMLElement,
     tracker: &mut RecursionTracker,
-    xsd: &XSD,
+    xsd: &Xsd,
     type_name: &String,
 ) -> Result<(), XMLGeneratorError> {
     // TODO TypeGenerator?
@@ -139,12 +139,12 @@ impl Element {
         for content in &element_type.content {
             match content {
                 ElementTypeContent::SimpleType(simple_type) => {
-                    let simple = DataType::simple_type(translator, &simple_type)?;
+                    let simple = DataType::simple_type(translator, simple_type)?;
                     element.data_types.push(simple);
                 }
                 ElementTypeContent::ComplexType(complex_type) => {
                     let complex =
-                        DataType::complex_type(translator, &complex_type, namespaces, schema)?;
+                        DataType::complex_type(translator, complex_type, namespaces, schema)?;
                     element.data_types.push(complex);
                 }
                 _ => return unimplemented("Element content type"),
@@ -191,7 +191,7 @@ impl Element {
         &self,
         generator: &mut Generator,
         tracker: &mut RecursionTracker,
-        xsd: &XSD,
+        xsd: &Xsd,
     ) -> Result<XMLElement, XMLGeneratorError> {
         let name = self.get_name()?;
         tracker.add(self)?;
@@ -223,7 +223,7 @@ impl Element {
         &self,
         generator: &mut Generator,
         tracker: &mut RecursionTracker,
-        xsd: &XSD,
+        xsd: &Xsd,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         let n = self.get_occurrences();
 
@@ -240,7 +240,7 @@ impl Element {
         &self,
         generator: &mut Generator,
         tracker: &mut RecursionTracker,
-        xsd: &XSD,
+        xsd: &Xsd,
         reference: &Name,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         if self.type_name.is_some() {
@@ -255,10 +255,10 @@ impl Element {
         }
 
         for element in xsd.elements() {
-            if let Some(name) = &element.name {
-                if name.eq(reference) {
-                    return element.generate(generator, tracker, xsd);
-                }
+            if let Some(name) = &element.name
+                && name.eq(reference)
+            {
+                return element.generate(generator, tracker, xsd);
             }
         }
 
@@ -271,7 +271,7 @@ impl Element {
         &self,
         generator: &mut Generator,
         tracker: &mut RecursionTracker,
-        xsd: &XSD,
+        xsd: &Xsd,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
             None => self.generate_element(generator, tracker, xsd),

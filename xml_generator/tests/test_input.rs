@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod tests {
-    use std::path::{PathBuf};
+    use std::path::PathBuf;
     use xmlgenerator::{XMLGenerator, XMLGeneratorError};
 
     fn check_error(error: XMLGeneratorError) {
         match error {
-            XMLGeneratorError::InvalidPathError(_) => {},
+            XMLGeneratorError::InvalidPathError(_) => {}
             _ => panic!("Incorrect error type"),
         }
     }
@@ -18,12 +18,12 @@ mod tests {
 
         match generator.validate(&path) {
             Ok(_) => panic!("No error thrown"),
-            Err(e) => check_error(e)
+            Err(e) => check_error(e),
         }
 
         match generator.generate(&path) {
             Ok(_) => panic!("No error thrown"),
-            Err(e) => check_error(e)
+            Err(e) => check_error(e),
         }
     }
 }
