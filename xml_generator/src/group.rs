@@ -1,14 +1,37 @@
 use crate::XMLGeneratorError;
 use crate::element::{Element, Occurrence};
 use crate::error::unimplemented;
+use crate::generator::Generator;
 use crate::namespaces::Namespaces;
-use crate::regex::RegexGenerator;
 use crate::tracker::RecursionTracker;
 use crate::xsd::XSD;
+use regextranslator::RegexTranslator;
+use std::slice::Iter;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{GroupType, GroupTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
-use regextranslator::RegexTranslator;
+
+pub(crate) trait GenerateGroups {
+    fn elements(&self) -> Iter<'_, Element>;
+
+    fn generate_group(
+        &self,
+        generator: &mut Generator,
+        xml_element: &mut XMLElement,
+        tracker: &mut RecursionTracker,
+        xsd: &XSD,
+    ) -> Result<(), XMLGeneratorError> {
+        for element in self.elements() {
+            let children = element.generate(generator, tracker, xsd)?;
+
+            for child in children {
+                xml_element.add_child(child)?;
+            }
+        }
+
+        Ok(())
+    }
+}
 
 #[derive(Default)]
 pub struct Group {
@@ -63,27 +86,9 @@ impl Group {
         Ok(())
     }
 
-    fn generate_group(
-        &self,
-        regex_generator: &mut RegexGenerator,
-        xml_element: &mut XMLElement,
-        tracker: &mut RecursionTracker,
-        xsd: &XSD,
-    ) -> Result<(), XMLGeneratorError> {
-        for element in self.elements.iter() {
-            let children = element.generate(regex_generator, tracker, xsd)?;
-
-            for child in children {
-                xml_element.add_child(child)?;
-            }
-        }
-
-        Ok(())
-    }
-
     pub(crate) fn generate(
         &self,
-        regex_generator: &mut RegexGenerator,
+        generator: &mut Generator,
         xml_element: &mut XMLElement,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
@@ -91,10 +96,16 @@ impl Group {
         let n = self.get_occurrences();
 
         for _ in 0..n {
-            self.generate_group(regex_generator, xml_element, tracker, xsd)?;
+            self.generate_group(generator, xml_element, tracker, xsd)?;
         }
 
         Ok(())
+    }
+}
+
+impl GenerateGroups for Group {
+    fn elements(&self) -> Iter<'_, Element> {
+        self.elements.iter()
     }
 }
 

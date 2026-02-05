@@ -1,14 +1,15 @@
 use crate::attribute::Attribute;
 use crate::element::Element;
 use crate::error::{XMLGeneratorError, unimplemented};
-use crate::group::Group;
+use crate::generator::Generator;
+use crate::group::{GenerateGroups, Group};
 use crate::namespaces::Namespaces;
-use crate::regex::RegexGenerator;
 use crate::tracker::RecursionTracker;
 use crate::type_info::TypeInfo;
 use crate::xsd::XSD;
 use regextranslator::RegexTranslator;
 use std::ops::Deref;
+use std::slice::Iter;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{ComplexBaseType, ComplexBaseTypeContent, SimpleBaseType};
@@ -124,7 +125,7 @@ impl DataType {
 
     pub(crate) fn generate_attribute(
         &self,
-        regex_generator: &mut RegexGenerator,
+        generator: &mut Generator,
         xml_element: &mut XMLElement,
         name: &String,
     ) -> Result<(), XMLGeneratorError> {
@@ -147,7 +148,7 @@ impl DataType {
         }
 
         if let Some(type_info) = &self.type_info {
-            return match type_info.generate(regex_generator) {
+            return match type_info.generate(generator) {
                 Some(value) => {
                     xml_element.add_attribute(name.as_str(), value.as_str());
                     Ok(())
@@ -166,7 +167,7 @@ impl DataType {
 
     pub(crate) fn generate(
         &self,
-        regex_generator: &mut RegexGenerator,
+        generator: &mut Generator,
         xml_element: &mut XMLElement,
         data_tracker: &mut RecursionTracker,
         xsd: &XSD,
@@ -184,7 +185,7 @@ impl DataType {
                 ));
             }
 
-            let output = type_info.generate(regex_generator);
+            let output = type_info.generate(generator);
             match output {
                 None => {
                     return Err(XMLGeneratorError::TypeGenerationError(
@@ -201,21 +202,27 @@ impl DataType {
         }
 
         for element in self.elements.iter() {
-            let children = element.generate(regex_generator, data_tracker, xsd)?;
+            let children = element.generate(generator, data_tracker, xsd)?;
             for child in children {
                 xml_element.add_child(child)?;
             }
         }
 
         for group in self.groups.iter() {
-            group.generate(regex_generator, xml_element, data_tracker, xsd)?;
+            group.generate(generator, xml_element, data_tracker, xsd)?;
         }
 
         for attribute in self.attributes.iter() {
-            attribute.generate(regex_generator, xml_element, xsd)?;
+            attribute.generate(generator, xml_element, xsd)?;
         }
 
         Ok(())
+    }
+}
+
+impl GenerateGroups for DataType {
+    fn elements(&self) -> Iter<'_, Element> {
+        self.elements.iter()
     }
 }
 

@@ -2,26 +2,26 @@ use crate::data_type::DataType;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::regex::RegexGenerator;
+use crate::generator::Generator;
 use crate::tracker::RecursionTracker;
 use crate::xsd::XSD;
 use rand::Rng;
+use regextranslator::RegexTranslator;
 use std::cmp::{max, min};
 use uuid::Uuid;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{ElementType, ElementTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
-use regextranslator::RegexTranslator;
 
 fn generate_type_output(
-    regex_generator: &mut RegexGenerator,
+    generator: &mut Generator,
     xml_element: &mut XMLElement,
     tracker: &mut RecursionTracker,
     xsd: &XSD,
     type_name: &String,
 ) -> Result<(), XMLGeneratorError> {
     // TODO TypeGenerator?
-    if let Some(output) = regex_generator.generate_type(type_name) {
+    if let Some(output) = generator.generate_type(type_name) {
         return match xml_element.add_text(output) {
             Ok(_) => Ok(()),
             Err(err) => Err(XMLGeneratorError::XMLBuilderError(err.to_string())),
@@ -30,7 +30,7 @@ fn generate_type_output(
 
     for data_type in xsd.types() {
         if data_type.name_equals(type_name) {
-            return data_type.generate(regex_generator, xml_element, tracker, xsd);
+            return data_type.generate(generator, xml_element, tracker, xsd);
         }
     }
 
@@ -143,7 +143,8 @@ impl Element {
                     element.data_types.push(simple);
                 }
                 ElementTypeContent::ComplexType(complex_type) => {
-                    let complex = DataType::complex_type(translator, &complex_type, namespaces, schema)?;
+                    let complex =
+                        DataType::complex_type(translator, &complex_type, namespaces, schema)?;
                     element.data_types.push(complex);
                 }
                 _ => return unimplemented("Element content type"),
@@ -188,7 +189,7 @@ impl Element {
 
     fn generate_type_from_name(
         &self,
-        regex_generator: &mut RegexGenerator,
+        generator: &mut Generator,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<XMLElement, XMLGeneratorError> {
@@ -204,11 +205,11 @@ impl Element {
                     ));
                 }
 
-                generate_type_output(regex_generator, &mut root_element, tracker, xsd, type_info)?;
+                generate_type_output(generator, &mut root_element, tracker, xsd, type_info)?;
             }
             None => {
                 for content in self.data_types.iter() {
-                    content.generate(regex_generator, &mut root_element, tracker, xsd)?;
+                    content.generate(generator, &mut root_element, tracker, xsd)?;
                 }
             }
         }
@@ -220,7 +221,7 @@ impl Element {
 
     fn generate_element(
         &self,
-        regex_generator: &mut RegexGenerator,
+        generator: &mut Generator,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
@@ -228,7 +229,7 @@ impl Element {
 
         let mut elements = vec![];
         for _ in 0..n {
-            let element = self.generate_type_from_name(regex_generator, tracker, xsd)?;
+            let element = self.generate_type_from_name(generator, tracker, xsd)?;
             elements.push(element);
         }
 
@@ -237,7 +238,7 @@ impl Element {
 
     fn generate_reference(
         &self,
-        regex_generator: &mut RegexGenerator,
+        generator: &mut Generator,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
         reference: &Name,
@@ -256,7 +257,7 @@ impl Element {
         for element in xsd.elements() {
             if let Some(name) = &element.name {
                 if name.eq(reference) {
-                    return element.generate(regex_generator, tracker, xsd);
+                    return element.generate(generator, tracker, xsd);
                 }
             }
         }
@@ -268,13 +269,13 @@ impl Element {
 
     pub(crate) fn generate(
         &self,
-        regex_generator: &mut RegexGenerator,
+        generator: &mut Generator,
         tracker: &mut RecursionTracker,
         xsd: &XSD,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
-            None => self.generate_element(regex_generator, tracker, xsd),
-            Some(reference) => self.generate_reference(regex_generator, tracker, xsd, reference),
+            None => self.generate_element(generator, tracker, xsd),
+            Some(reference) => self.generate_reference(generator, tracker, xsd, reference),
         }
     }
 

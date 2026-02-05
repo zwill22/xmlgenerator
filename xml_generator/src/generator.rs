@@ -86,16 +86,24 @@ fn fake_date_format(format: &str) -> Option<String> {
     date.format(&format).ok()
 }
 
-pub(crate) struct RegexGenerator {
+pub(crate) struct Generator {
     rng: ThreadRng,
     xor: XorShiftRng,
+    ignore: Vec<String>,
+    max_depth: u16,
 }
 
-impl RegexGenerator {
-    pub fn new() -> RegexGenerator {
+impl Generator {
+    pub fn new(max_depth: u16) -> Generator {
         let rng = rand::rng();
         let xor = XorShiftRng::from_os_rng();
-        RegexGenerator { rng, xor }
+        let ignore = get_ignore_types();
+        Generator {
+            rng,
+            xor,
+            ignore,
+            max_depth,
+        }
     }
 
     pub(crate) fn validate(input_str: &str, pattern: &str) -> Result<bool, XMLGeneratorError> {
@@ -236,8 +244,7 @@ impl RegexGenerator {
         name: &str,
         depth: u16,
     ) -> Option<String> {
-        let limit = 100; // TODO make an option
-        if depth >= limit {
+        if depth >= self.max_depth {
             return self.generate_regex(pattern);
         }
 
@@ -251,11 +258,9 @@ impl RegexGenerator {
     }
 
     pub(crate) fn generate_pattern(&mut self, pattern: &str, name: &str) -> Option<String> {
-        let ignore_types = get_ignore_types();
-
         match self.generate_type(name) {
             Some(output) => {
-                if ignore_types.contains(&name.to_string()) {
+                if self.ignore.contains(&name.to_string()) {
                     self.generate_regex(pattern)
                 } else {
                     self.sample_output(&output, pattern, name, 0)

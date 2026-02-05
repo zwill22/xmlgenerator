@@ -1,6 +1,6 @@
 use crate::XMLGeneratorError;
 use crate::error::unimplemented;
-use crate::regex::RegexGenerator;
+use crate::generator::Generator;
 use regex::Regex;
 use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
@@ -142,21 +142,21 @@ impl TypeInfo {
         Ok(())
     }
 
-    pub(crate) fn generate(&self, regex_generator: &mut RegexGenerator) -> Option<String> {
+    pub(crate) fn generate(&self, generator: &mut Generator) -> Option<String> {
         let name = &self.name;
         if !self.enumerations.is_empty() {
             if self.pattern.is_some() {
                 panic!("Type info includes enumeration and pattern data");
             }
 
-            return regex_generator.generate_enumeration(&self.enumerations);
+            return generator.generate_enumeration(&self.enumerations);
         }
 
         if let Some(pattern) = &self.pattern {
-            return regex_generator.generate_pattern(pattern, name);
+            return generator.generate_pattern(pattern, name);
         }
 
-        regex_generator.generate_type(name)
+        generator.generate_type(name)
     }
 
     pub(crate) fn get_name(&self) -> String {

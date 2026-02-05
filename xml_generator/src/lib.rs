@@ -1,5 +1,5 @@
 pub use crate::error::XMLGeneratorError;
-use crate::regex::RegexGenerator;
+use crate::generator::Generator;
 use crate::schemas::build_schemas;
 use crate::xsd::XSD;
 use regextranslator::RegexTranslator;
@@ -13,7 +13,7 @@ pub mod error;
 mod group;
 mod name;
 mod namespaces;
-mod regex;
+mod generator;
 mod schema_version;
 mod schemas;
 mod tracker;
@@ -76,10 +76,10 @@ impl XMLGenerator {
         let schemas = build_schemas(xsd_path)?;
         self.validate(xsd_path)?;
 
-        let mut regex_generator = RegexGenerator::new();
+        let mut generator = Generator::new(100);
 
-        let xsd = XSD::new(&mut regex_generator, &self.translator, &schemas)?;
+        let xsd = XSD::new(&mut generator, &self.translator, &schemas)?;
 
-        xsd.generate_xml(&mut regex_generator)
+        xsd.generate_xml(&mut generator)
     }
 }

@@ -1,7 +1,7 @@
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::regex::RegexGenerator;
+use crate::generator::Generator;
 use crate::type_info::TypeInfo;
 use crate::xsd::XSD;
 use xml_builder::XMLElement;
@@ -71,12 +71,12 @@ impl Attribute {
         Ok(attribute)
     }
 
-    fn get_attribute(&self, regex_generator: &mut RegexGenerator) -> Option<String> {
+    fn get_attribute(&self, generator: &mut Generator) -> Option<String> {
         if let Some(type_info) = &self.type_info {
-            if let Some(value) = type_info.generate(regex_generator) {
+            if let Some(value) = type_info.generate(generator) {
                 return Some(value);
             }
-        } else if let Some(value) = regex_generator.generate_type(&self.type_name) {
+        } else if let Some(value) = generator.generate_type(&self.type_name) {
             return Some(value);
         }
 
@@ -94,7 +94,7 @@ impl Attribute {
 
     pub(crate) fn generate(
         &self,
-        regex_generator: &mut RegexGenerator,
+        generator: &mut Generator,
         xml_element: &mut XMLElement,
         xsd: &XSD,
     ) -> Result<(), XMLGeneratorError> {
@@ -105,21 +105,21 @@ impl Attribute {
         }
 
         let name = self.get_name()?;
-        if let Some(attribute) = self.get_attribute(regex_generator) {
+        if let Some(attribute) = self.get_attribute(generator) {
             xml_element.add_attribute(name.as_str(), attribute.as_str());
             generated = true;
         }
 
         for type_generator in xsd.types() {
             if type_generator.name_equals(&self.type_name) {
-                type_generator.generate_attribute(regex_generator, xml_element, &name)?;
+                type_generator.generate_attribute(generator, xml_element, &name)?;
                 generated = true;
             }
         }
 
         if self.attribute_type == AttributeUseType::Required && !generated {
             if self.type_name.is_empty() && self.type_info.is_none() {
-                let value = regex_generator.generate_type("string").unwrap();
+                let value = generator.generate_type("string").unwrap();
                 xml_element.add_attribute(name.as_str(), value.as_str());
             } else {
                 return Err(XMLGeneratorError::TypeGenerationError(
