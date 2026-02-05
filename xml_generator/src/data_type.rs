@@ -81,19 +81,19 @@ impl DataType {
         for content in &complex.content {
             match content {
                 ComplexBaseTypeContent::Group(group_type) => {
-                    let group = Group::new(translator, group_type, schema_info, namespaces)?;
+                    let group = Group::new(translator, group_type, schema_info, namespaces, false)?;
                     groups.push(group);
                 }
                 ComplexBaseTypeContent::All(all) => {
-                    let group = Group::new(translator, all, schema_info, namespaces)?;
+                    let group = Group::new(translator, all, schema_info, namespaces, false)?;
                     groups.push(group);
                 }
                 ComplexBaseTypeContent::Choice(choice) => {
-                    let group = Group::new(translator, choice, schema_info, namespaces)?;
+                    let group = Group::new(translator, choice, schema_info, namespaces, true)?;
                     groups.push(group);
                 }
                 ComplexBaseTypeContent::Sequence(sequence) => {
-                    let group = Group::new(translator, sequence, schema_info, namespaces)?;
+                    let group = Group::new(translator, sequence, schema_info, namespaces, false)?;
                     groups.push(group);
                 }
                 ComplexBaseTypeContent::Attribute(attribute_type) => {

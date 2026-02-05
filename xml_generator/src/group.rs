@@ -16,6 +16,7 @@ pub struct Group {
     elements: Vec<Element>,
     min: usize,
     max: Option<usize>,
+    choose: bool,
 }
 
 impl Group {
@@ -24,6 +25,7 @@ impl Group {
         group_type: &GroupType,
         schema_info: &SchemaInfo,
         namespaces: &Namespaces,
+        choose: bool,
     ) -> Result<Group, XMLGeneratorError> {
         let mut group = Group::default();
 
@@ -41,6 +43,8 @@ impl Group {
             MaxOccurs::Unbounded => None,
             MaxOccurs::Bounded(x) => Some(x),
         };
+
+        group.choose = choose;
 
         for content in &group_type.content {
             match content {
@@ -73,6 +77,22 @@ impl Group {
         self.elements.iter()
     }
 
+    fn generate_element(
+        generator: &mut Generator,
+        xml_element: &mut XMLElement,
+        tracker: &mut RecursionTracker,
+        xsd: &Xsd,
+        element: &Element,
+    ) -> Result<(), XMLGeneratorError> {
+        let children = element.generate(generator, tracker, xsd)?;
+
+        for child in children {
+            xml_element.add_child(child)?;
+        }
+
+        Ok(())
+    }
+
     fn generate_group(
         &self,
         generator: &mut Generator,
@@ -80,11 +100,16 @@ impl Group {
         tracker: &mut RecursionTracker,
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
-        for element in self.elements() {
-            let children = element.generate(generator, tracker, xsd)?;
-
-            for child in children {
-                xml_element.add_child(child)?;
+        if self.choose {
+            match generator.choose(&self.elements) {
+                Some(element) => {
+                    Self::generate_element(generator, xml_element, tracker, xsd, element)?
+                }
+                None => {}
+            }
+        } else {
+            for element in self.elements() {
+                Self::generate_element(generator, xml_element, tracker, xsd, element)?;
             }
         }
 
