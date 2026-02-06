@@ -32,7 +32,6 @@ fn get_ignore_types() -> Vec<String> {
         "language",
         "NMTOKEN",
         "normalizedString",
-        "QName",
         "string",
         "token",
         "NOTATION",
@@ -78,9 +77,15 @@ fn make_fake_signed<Output: fake::Dummy<Faker> + ToString + Signed>(
 }
 
 fn fake_datetime() -> DateTime<Utc> {
-    let epoch = make_fake::<i64>().unwrap();
+    let epoch = make_fake::<i32>().unwrap();
 
-    DateTime::from_timestamp(epoch, 0).unwrap()
+    match DateTime::from_timestamp(epoch as i64, 0) {
+        Some(datetime) => datetime,
+        None => {
+            println!("Failed to generate datetime for epoch: {}", epoch);
+            fake_datetime()
+        }
+    }
 }
 
 fn fake_date() -> NaiveDate {
@@ -213,7 +218,7 @@ impl Generator {
             "NCName" => self.generate_regex(r"[A-Z_a-z][-.0-9A-Z_a-z]*"), // NCName
             "NMTOKEN" => make_fake_str::<String>(), // A string that represents the NMTOKEN attribute
             "normalizedString" => make_fake_str::<String>(), // A string that does not contain line feeds, carriage returns, or tabs
-            "QName" => make_fake_str::<String>(),            // QName
+            "QName" => self.generate_regex(r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-.0-9A-Z_a-z]*"),        // QName
             "string" => make_fake_str::<String>(),           // A string
             "token" => make_fake_str::<String>(), // A string that does not contain line feeds, carriage returns, tabs, leading or trailing spaces, or multiple spaces
 
