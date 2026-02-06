@@ -82,8 +82,12 @@ impl Attribute {
 
         None
     }
-    
-    fn get_full_name(&self, generator: &mut Generator, name: &Name) -> Result<String, XMLGeneratorError> {
+
+    fn get_full_name(
+        &self,
+        generator: &mut Generator,
+        name: &Name,
+    ) -> Result<String, XMLGeneratorError> {
         let current_namespace = generator.get_current_namespace();
 
         match name.get_prefix() {
@@ -115,7 +119,7 @@ impl Attribute {
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         let mut generated = false;
-        let n_namespaces  = generator.n_namespaces();
+        let n_namespaces = generator.n_namespaces();
 
         if self.attribute_type == AttributeUseType::Prohibited {
             return Ok(());

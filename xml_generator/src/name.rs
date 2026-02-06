@@ -28,10 +28,7 @@ impl Name {
     fn get_target_ns(schema_info: &SchemaInfo, namespaces: &Namespaces) -> Option<String> {
         match &schema_info.schema.target_namespace {
             None => None,
-            Some(ns) => match namespaces.find(ns) {
-                None => None,
-                Some(prefix) => Some(prefix.clone()),
-            },
+            Some(ns) => namespaces.find(ns).map(|prefix| prefix.to_string()),
         }
     }
 

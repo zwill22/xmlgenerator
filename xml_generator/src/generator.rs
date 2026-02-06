@@ -267,7 +267,7 @@ impl Generator {
         self.rng.random_range(1..=10)
     }
 
-    pub(crate) fn choose<'a, Item>(&mut self, vec: &'a Vec<Item>) -> Option<&'a Item> {
+    pub(crate) fn choose<'a, Item>(&mut self, vec: &'a [Item]) -> Option<&'a Item> {
         vec.choose(&mut self.rng)
     }
 

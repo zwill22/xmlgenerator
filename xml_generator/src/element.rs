@@ -210,12 +210,12 @@ impl Element {
             let prefix = names[0];
             let suffix = names[1];
 
-            return if Some(&prefix.to_string()) == current_namespace {
+            if Some(&prefix.to_string()) == current_namespace {
                 Ok(suffix.to_string())
             } else {
                 generator.add_namespace(prefix.to_string());
                 Ok(name.to_string())
-            };
+            }
         } else {
             Err(XMLGeneratorError::DataTypesFormatError(
                 "Invalid name".to_string(),

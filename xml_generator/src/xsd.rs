@@ -122,12 +122,13 @@ impl Xsd {
             Some(root_ns) => {
                 if name.contains(":") {
                     let names = name.split(":").collect::<Vec<&str>>();
-                    if names.len() == 2 {
-                        if names[0] == root_ns {
-                            return Ok(name.to_string());
-                        }
+                    if names.len() == 2 && names[0] == root_ns {
+                        return Ok(name.to_string());
                     }
-                    Err(XMLGeneratorError::DataTypeInformationError("multiple root namespaces".to_string()))
+
+                    Err(XMLGeneratorError::DataTypeInformationError(
+                        "multiple root namespaces".to_string(),
+                    ))
                 } else {
                     Ok(format!("{}:{}", root_ns, name))
                 }

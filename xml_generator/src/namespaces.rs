@@ -113,8 +113,8 @@ impl Namespaces {
             // unless it has been aliased
             return match &self.root_namespace {
                 Some(root_ns) => Some(root_ns),
-                None => None
-            }
+                None => None,
+            };
         }
 
         for (k, v) in self.other_namespaces.iter() {

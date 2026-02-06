@@ -101,11 +101,8 @@ impl Group {
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         if self.choose {
-            match generator.choose(&self.elements) {
-                Some(element) => {
-                    Self::generate_element(generator, xml_element, tracker, xsd, element)?
-                }
-                None => {}
+            if let Some(element) = generator.choose(&self.elements) {
+                Self::generate_element(generator, xml_element, tracker, xsd, element)?
             }
         } else {
             for element in self.elements() {
