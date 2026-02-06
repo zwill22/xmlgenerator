@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::XMLGeneratorError;
 use chrono::{DateTime, Duration, NaiveDate, NaiveTime, Utc};
 use fake::{Fake, Faker};
@@ -29,8 +30,6 @@ fn get_ignore_types() -> Vec<String> {
         "ID",
         "IDREF",
         "language",
-        "Name",
-        "NCName",
         "NMTOKEN",
         "normalizedString",
         "QName",
@@ -133,11 +132,11 @@ impl Generator {
         Ok(result)
     }
 
-    fn sample(&mut self, regex: rand_regex::Regex) -> Vec<String> {
+    fn sample(&mut self, regex: rand_regex::Regex) -> HashSet<String> {
         (&mut self.xor)
             .sample_iter(&regex)
             .take(1000)
-            .collect::<Vec<String>>()
+            .collect::<HashSet<String>>()
     }
 
     pub(crate) fn generate_regex(&mut self, pattern: &str) -> Option<String> {
@@ -146,11 +145,21 @@ impl Generator {
             Err(_) => return None,
         };
 
-        let mut samples = self.sample(regex);
+        let samples = self.sample(regex);
 
-        samples.sort();
+        if samples.len() == 1 {
+            return samples.into_iter().next();
+        }
 
-        samples.first().map(|s| s.to_string())
+        for sample in samples {
+            if sample.is_empty() {
+                continue;
+            }
+
+            return Some(sample);
+        }
+
+        None
     }
 
     fn generate_list(&mut self, date_type: &str) -> Option<String> {
@@ -264,12 +273,14 @@ impl Generator {
             return self.generate_regex(pattern);
         }
 
-        match pattern.find(output) {
+        match Regex::new(pattern).unwrap().find(output) {
             None => {
                 let next_output = self.generate_type(name).expect("No type generated");
                 self.sample_output(&next_output, pattern, name, depth + 1)
             }
-            Some(mat) => Some(mat.to_string()),
+            Some(mat) => {
+                Some(output[mat.start()..mat.end()].to_string())
+            }
         }
     }
 
