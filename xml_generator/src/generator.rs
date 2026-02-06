@@ -1,12 +1,11 @@
 use crate::XMLGeneratorError;
-use chrono::{Duration, NaiveDate};
-use fake::{Fake, Faker, faker};
+use chrono::{DateTime, Duration, NaiveDate, NaiveTime, Utc};
+use fake::{Fake, Faker};
 use num_traits::Signed;
 use rand::prelude::{IndexedRandom, ThreadRng};
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use regex::Regex;
-use time::{Date, Time};
 
 fn get_ignore_types() -> Vec<String> {
     let strs = vec![
@@ -79,10 +78,22 @@ fn make_fake_signed<Output: fake::Dummy<Faker> + ToString + Signed>(
     Some(negative_val.to_string())
 }
 
-fn fake_date() -> NaiveDate {
-    let epoch = make_fake::<i32>().unwrap();
+fn fake_datetime() -> DateTime<Utc> {
+    let epoch = make_fake::<i64>().unwrap();
 
-    NaiveDate::from_epoch_days(epoch).unwrap()
+    DateTime::from_timestamp(epoch, 0).unwrap()
+}
+
+fn fake_date() -> NaiveDate {
+    let datetime = fake_datetime();
+
+    datetime.date_naive()
+}
+
+fn fake_time() -> NaiveTime {
+    let datetime = fake_datetime();
+
+    datetime.time()
 }
 
 fn fake_date_format(format: &str) -> Option<String> {
@@ -189,7 +200,7 @@ impl Generator {
             "ID" => make_fake_str::<String>(),       // A string that represents the ID attribute
             "IDREF" => make_fake_str::<String>(),    // A string that represents the IDREF attribute
             "language" => make_fake_str::<String>(), // A string that contains a valid language id
-            "Name" => self.generate_regex(r"[:A-Z_a-z][-.0-9:A-Z_a-z]*"), // A string that contains a valid XML name r"\i\c*"
+            "Name" => self.generate_regex(r"[:A-Z_a-z][-.0-9:A-Z_a-z]*"), // A string that contains a valid XML name "\i\c*"
             "NCName" => self.generate_regex(r"[A-Z_a-z][-.0-9A-Z_a-z]*"), // NCName
             "NMTOKEN" => make_fake_str::<String>(), // A string that represents the NMTOKEN attribute
             "normalizedString" => make_fake_str::<String>(), // A string that does not contain line feeds, carriage returns, or tabs
@@ -198,15 +209,15 @@ impl Generator {
             "token" => make_fake_str::<String>(), // A string that does not contain line feeds, carriage returns, tabs, leading or trailing spaces, or multiple spaces
 
             // Date time data types
-            "date" => make_fake_str::<Date>(), // Defines a date value
-            "dateTime" => Some(faker::time::en::DateTime().fake()), // Defines a date and time value
+            "date" => Some(fake_date().to_string()), // Defines a date value
+            "dateTime" => Some(fake_datetime().to_string()), // Defines a date and time value
             "duration" => make_fake_str::<Duration>(), // Defines a time interval
-            "gDay" => fake_date_format("%d"),  // Defines the day (DD)
-            "gMonth" => fake_date_format("%m"), // Defines the month (MM)
+            "gDay" => fake_date_format("%d"),        // Defines the day (DD)
+            "gMonth" => fake_date_format("%m"),      // Defines the month (MM)
             "gMonthDay" => fake_date_format("--%m-$d"), // Defines the month and day (MM-DD)
-            "gYear" => fake_date_format("%Y"), // Defines the year (YYYY)
+            "gYear" => fake_date_format("%Y"),       // Defines the year (YYYY)
             "gYearMonth" => fake_date_format("%Y-%m"), // Defines the year and month (YYYY-MM)
-            "time" => make_fake_str::<Time>(),
+            "time" => Some(fake_time().to_string()),
 
             // Miscellaneous data types
             "anyURI" => make_fake_str::<http::Uri>(),
