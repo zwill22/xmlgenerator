@@ -110,7 +110,11 @@ impl Namespaces {
             && default_ns.eq(location)
         {
             // If namespace is default namespace, no need to include prefix
-            return None;
+            // unless it has been aliased
+            return match &self.root_namespace {
+                Some(root_ns) => Some(root_ns),
+                None => None
+            }
         }
 
         for (k, v) in self.other_namespaces.iter() {
