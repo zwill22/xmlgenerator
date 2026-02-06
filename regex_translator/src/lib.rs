@@ -243,27 +243,46 @@ fn validate_output(output: &str) -> Result<(), RegexTranslationError> {
     }
 }
 
-fn replace_decimal_character_reference(input_str: &str) -> Result<String, RegexTranslationError> {
-    let regex = Regex::new(r"&#(\w+.*?);")?;
+fn parse_radix_string(input: &str, radix: u32) -> Result<u32, RegexTranslationError> {
+    match u32::from_str_radix(input, radix) {
+        Ok(v) => Ok(v),
+        Err(_) => Err(RegexTranslationError::RegexError(
+            "Error converting hex string to integer.".to_string(),
+        )),
+    }
+}
 
-    let mut output = input_str.to_string();
+fn replace_character_reference(
+    pattern: &str,
+    input: &str,
+    radix: u32,
+) -> Result<String, RegexTranslationError> {
+    let regex = Regex::new(pattern)?;
 
-    for captures in regex.captures_iter(input_str) {
+    let mut output = input.to_string();
+    for captures in regex.captures_iter(input) {
         let full_match = captures.get(0).unwrap().as_str();
-        let partial_str = captures.get(1).unwrap().as_str().to_string();
+        let partial_match = captures.get(1).unwrap().as_str();
 
-        let decimal = match partial_str.parse::<u16>() {
-            Ok(v) => v,
-            Err(e) => {
-                return Err(RegexTranslationError::RegexError(e.to_string()));
-            }
-        };
+        let value = parse_radix_string(partial_match, radix)?;
+        let hex_str = format!(r"\u{:>04x}", value);
 
-        let hex_str = format!(r"\u{:04X}", decimal);
         output = output.replace(full_match, &hex_str);
     }
 
     Ok(output)
+}
+
+fn replace_hex_character_reference(input: &str) -> Result<String, RegexTranslationError> {
+    const HEX: u32 = 16;
+    const PATTERN: &str = r"&#x(\w+.*?);";
+    replace_character_reference(PATTERN, input, HEX)
+}
+
+fn replace_decimal_character_reference(input: &str) -> Result<String, RegexTranslationError> {
+    const DEC: u32 = 10;
+    const PATTERN: &str = r"&#(\w+.*?);";
+    replace_character_reference(PATTERN, input, DEC)
 }
 
 pub struct RegexTranslator {
@@ -294,11 +313,10 @@ impl RegexTranslator {
         output = regex.replace_all(output.as_str(), "$1--[").to_string();
 
         // Replace hexidecimal character reference &#x{}; -> \u{}
-        let regex = Regex::new(r"&#x(\w{4});")?;
-        output = regex.replace_all(output.as_str(), r"\u$1").to_string();
+        output = replace_hex_character_reference(output.as_str())?;
 
         // Replace decimal character reference &#{}; -> \u{}
-        output = replace_decimal_character_reference(&output)?;
+        output = replace_decimal_character_reference(output.as_str())?;
 
         Ok(output)
     }
