@@ -1,9 +1,9 @@
 extern crate alloc;
-extern crate core;
 
 use core::fmt::Display;
 use polars::prelude::*;
 
+use regex::Regex;
 use std::collections::HashMap;
 use std::path;
 
@@ -155,10 +155,7 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
     );
 
     // Bopomofo includes extended character in Rust Regex crate
-    map.insert(
-        "Bopomofo".to_string(),
-        r"[\u3105-\u312f]".to_string(),
-    );
+    map.insert("Bopomofo".to_string(), r"[\u3105-\u312f]".to_string());
 
     Ok(map)
 }
@@ -236,7 +233,7 @@ fn get_xml_mappings() -> HashMap<String, String> {
 }
 
 fn validate_output(output: &str) -> Result<(), RegexTranslationError> {
-    match regex::Regex::new(output) {
+    match Regex::new(output) {
         Ok(_) => Ok(()),
         Err(e) => {
             handle_surrogates(output)?;
@@ -244,6 +241,29 @@ fn validate_output(output: &str) -> Result<(), RegexTranslationError> {
             Err(e.into())
         }
     }
+}
+
+fn replace_decimal_character_reference(input_str: &str) -> Result<String, RegexTranslationError> {
+    let regex = Regex::new(r"&#(\w+.*?);")?;
+
+    let mut output = input_str.to_string();
+
+    for captures in regex.captures_iter(input_str) {
+        let full_match = captures.get(0).unwrap().as_str();
+        let partial_str = captures.get(1).unwrap().as_str().to_string();
+
+        let decimal = match partial_str.parse::<u16>() {
+            Ok(v) => v,
+            Err(e) => {
+                return Err(RegexTranslationError::RegexError(e.to_string()));
+            }
+        };
+
+        let hex_str = format!(r"\u{:04X}", decimal);
+        output = output.replace(full_match, &hex_str);
+    }
+
+    Ok(output)
 }
 
 pub struct RegexTranslator {
@@ -269,8 +289,16 @@ impl RegexTranslator {
             }
         }
 
-        let regex = regex::Regex::new(r"([^-\\])-\[")?;
+        // Replace negation pattern
+        let regex = Regex::new(r"([^-\\])-\[")?;
         output = regex.replace_all(output.as_str(), "$1--[").to_string();
+
+        // Replace hexidecimal character reference &#x{}; -> \u{}
+        let regex = Regex::new(r"&#x(\w{4});")?;
+        output = regex.replace_all(output.as_str(), r"\u$1").to_string();
+
+        // Replace decimal character reference &#{}; -> \u{}
+        output = replace_decimal_character_reference(&output)?;
 
         Ok(output)
     }
