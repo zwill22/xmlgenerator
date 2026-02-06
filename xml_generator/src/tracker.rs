@@ -14,6 +14,10 @@ impl Tracker {
         }
     }
 
+    pub(crate) fn is_root(&self) -> bool {
+        self.values.is_empty()
+    }
+
     fn includes(&self, generator: &Element) -> bool {
         let id = generator.get_id();
         self.values.contains(&id)

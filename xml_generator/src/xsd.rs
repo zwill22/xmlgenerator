@@ -66,8 +66,16 @@ impl Xsd {
 
     pub(crate) fn apply_metadata_to(&self, element: &mut XMLElement) {
         if let Some(location) = &self.namespaces.get_default_namespace() {
-            let name = "xmlns";
-            element.add_attribute(name, location);
+            match self.namespaces.get_root_namespace() {
+                None => {
+                    let name = "xmlns";
+                    element.add_attribute(name, location);
+                }
+                Some(root_namespace) => {
+                    let prefix = "xmlns:".to_string() + root_namespace.as_str();
+                    element.add_attribute(prefix.as_str(), location);
+                }
+            }
         }
 
         for (prefix, location) in self.namespaces.get_other_namespaces() {
@@ -106,6 +114,19 @@ impl Xsd {
         }
 
         None
+    }
+
+    pub(crate) fn get_root_name(&self, name: &str) -> Result<String, XMLGeneratorError> {
+        match self.namespaces.get_root_namespace() {
+            None => Ok(name.to_string()),
+            Some(root_ns) => {
+                if name.contains(":") {
+                    Err(XMLGeneratorError::DataTypeInformationError("multiple root namespaces".to_string()))
+                } else {
+                    Ok(format!("{}:{}", root_ns, name))
+                }
+            }
+        }
     }
 
     pub(crate) fn find_root(&self) -> Result<&Element, XMLGeneratorError> {

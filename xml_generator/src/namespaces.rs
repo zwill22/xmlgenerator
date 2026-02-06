@@ -32,6 +32,7 @@ fn check_namespace_is_valid(ns: &str) -> bool {
 
 #[derive(Default)]
 pub(crate) struct Namespaces {
+    root_namespace: Option<String>,
     default_namespace: Option<String>,
     target_namespace: Option<String>,
     locations: HashMap<String, String>,
@@ -84,6 +85,11 @@ impl Namespaces {
     ) -> Result<(), XMLGeneratorError> {
         match self.default_namespace {
             None => {
+                if !check_namespace_is_valid(&ns) {
+                    let valid_name = self.generate_valid_name(generator, schemas)?;
+                    self.root_namespace = Some(valid_name);
+                }
+
                 self.default_namespace = Some(ns);
             }
             Some(_) => {
@@ -236,6 +242,10 @@ impl Namespaces {
 
     pub(crate) fn get_default_namespace(&self) -> Option<String> {
         self.default_namespace.clone()
+    }
+
+    pub(crate) fn get_root_namespace(&self) -> Option<String> {
+        self.root_namespace.clone()
     }
 
     pub(crate) fn get_other_namespaces(&self) -> &HashMap<String, String> {

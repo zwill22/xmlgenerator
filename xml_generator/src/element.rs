@@ -195,13 +195,28 @@ impl Element {
         }
     }
 
+    fn get_root_name(
+        &self,
+        tracker: &Tracker,
+        xsd: &Xsd,
+    ) -> Result<String, XMLGeneratorError> {
+        let root = tracker.is_root();
+        let name = self.get_name()?;
+
+        if !root {
+            return Ok(name);
+        }
+
+        xsd.get_root_name(name.as_str())
+    }
+
     fn generate_type_from_name(
         &self,
         generator: &mut Generator,
         tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<XMLElement, XMLGeneratorError> {
-        let name = self.get_name()?;
+        let name = self.get_root_name(tracker, xsd)?;
         tracker.add(self)?;
         let mut root_element = XMLElement::new(&name);
 
