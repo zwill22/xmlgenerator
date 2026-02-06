@@ -155,7 +155,7 @@ impl Namespaces {
         Ok(())
     }
 
-    pub(crate) fn add_target_namespace(&mut self, ns: String) -> Result<(), XMLGeneratorError> {
+    fn add_target_namespace(&mut self, ns: String) -> Result<(), XMLGeneratorError> {
         if let Some(default_ns) = &self.default_namespace
             && default_ns.eq(&ns)
         {

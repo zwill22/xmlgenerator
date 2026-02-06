@@ -134,7 +134,7 @@ impl Element {
             return unimplemented("Embedded target namespace");
         }
 
-        element.name = Name::from_name(&element_type.name, schema, namespaces);
+        element.name = Name::from_name(schema, namespaces, &element_type.name);
 
         for content in &element_type.content {
             match content {
@@ -195,8 +195,37 @@ impl Element {
         }
     }
 
+    fn get_full_name(
+        &self,
+        generator: &mut Generator,
+        name: &str,
+    ) -> Result<String, XMLGeneratorError> {
+        let current_namespace = generator.get_current_namespace();
+
+        let names = name.split(":").collect::<Vec<&str>>();
+
+        if names.len() == 1 {
+            Ok(name.to_string())
+        } else if names.len() == 2 {
+            let prefix = names[0];
+            let suffix = names[1];
+
+            return if Some(&prefix.to_string()) == current_namespace {
+                Ok(suffix.to_string())
+            } else {
+                generator.add_namespace(prefix.to_string());
+                Ok(name.to_string())
+            };
+        } else {
+            Err(XMLGeneratorError::DataTypesFormatError(
+                "Invalid name".to_string(),
+            ))
+        }
+    }
+
     fn get_root_name(
         &self,
+        generator: &mut Generator,
         tracker: &Tracker,
         xsd: &Xsd,
     ) -> Result<String, XMLGeneratorError> {
@@ -204,10 +233,11 @@ impl Element {
         let name = self.get_name()?;
 
         if !root {
-            return Ok(name);
+            return self.get_full_name(generator, &name);
         }
 
-        xsd.get_root_name(name.as_str())
+        let root_name = xsd.get_root_name(name.as_str())?;
+        self.get_full_name(generator, &root_name)
     }
 
     fn generate_type_from_name(
@@ -216,7 +246,8 @@ impl Element {
         tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<XMLElement, XMLGeneratorError> {
-        let name = self.get_root_name(tracker, xsd)?;
+        let n_namespace = generator.n_namespaces();
+        let name = self.get_root_name(generator, tracker, xsd)?;
         tracker.add(self)?;
         let mut root_element = XMLElement::new(&name);
 
@@ -238,6 +269,7 @@ impl Element {
         }
 
         tracker.remove(self);
+        generator.update_namespaces(n_namespace);
 
         Ok(root_element)
     }

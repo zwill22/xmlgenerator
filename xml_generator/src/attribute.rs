@@ -28,7 +28,7 @@ impl Attribute {
             type_info: None,
         };
 
-        attribute.name = Name::from_name(&attribute_type.name, schema_info, namespaces);
+        attribute.name = Name::from_name(schema_info, namespaces, &attribute_type.name);
 
         if let Some(attribute_type) = &attribute_type.type_ {
             attribute.type_name = String::from_utf8(attribute_type.local_name().to_vec()).unwrap()
@@ -82,13 +82,29 @@ impl Attribute {
 
         None
     }
+    
+    fn get_full_name(&self, generator: &mut Generator, name: &Name) -> Result<String, XMLGeneratorError> {
+        let current_namespace = generator.get_current_namespace();
 
-    fn get_name(&self) -> Result<String, XMLGeneratorError> {
+        match name.get_prefix() {
+            None => name.get_name(),
+            Some(prefix) => {
+                if Some(&prefix) == current_namespace {
+                    name.get_suffix()
+                } else {
+                    generator.add_namespace(prefix);
+                    name.get_name()
+                }
+            }
+        }
+    }
+
+    fn get_name(&self, generator: &mut Generator) -> Result<String, XMLGeneratorError> {
         match &self.name {
             None => Err(XMLGeneratorError::DataTypesFormatError(
                 "Attribute Name is empty".to_string(),
             )),
-            Some(name) => name.get_name(),
+            Some(name) => self.get_full_name(generator, name),
         }
     }
 
@@ -99,12 +115,13 @@ impl Attribute {
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         let mut generated = false;
+        let n_namespaces  = generator.n_namespaces();
 
         if self.attribute_type == AttributeUseType::Prohibited {
             return Ok(());
         }
 
-        let name = self.get_name()?;
+        let name = self.get_name(generator)?;
         if let Some(attribute) = self.get_attribute(generator) {
             xml_element.add_attribute(name.as_str(), attribute.as_str());
             generated = true;
@@ -127,6 +144,8 @@ impl Attribute {
                 ));
             }
         }
+
+        generator.update_namespaces(n_namespaces);
 
         Ok(())
     }

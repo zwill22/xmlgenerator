@@ -25,21 +25,33 @@ impl Name {
         Self::new(name, ns)
     }
 
-    pub(crate) fn from_name(
-        name: &Option<String>,
-        schema: &SchemaInfo,
-        namespaces: &Namespaces,
-    ) -> Option<Name> {
-        match &schema.schema.target_namespace {
-            None => name.as_ref().map(|val| Name::new(val.clone(), None)),
-            Some(ns) => match name {
+    fn get_target_ns(schema_info: &SchemaInfo, namespaces: &Namespaces) -> Option<String> {
+        match &schema_info.schema.target_namespace {
+            None => None,
+            Some(ns) => match namespaces.find(ns) {
                 None => None,
-                Some(name) => match namespaces.find(ns) {
-                    None => Some(Name::new(name.clone(), None)),
-                    Some(ns_prefix) => Some(Name::new(name.clone(), Some(ns_prefix.clone()))),
-                },
+                Some(prefix) => Some(prefix.clone()),
             },
         }
+    }
+
+    pub(crate) fn from_name(
+        schema: &SchemaInfo,
+        namespaces: &Namespaces,
+        name: &Option<String>,
+    ) -> Option<Name> {
+        let name_val = match name {
+            None => return None,
+            Some(val) => val,
+        };
+
+        let prefix = Self::get_target_ns(schema, namespaces);
+
+        Some(Name::new(name_val.to_string(), prefix))
+    }
+
+    pub(crate) fn get_prefix(&self) -> Option<String> {
+        self.namespace.clone()
     }
 
     pub(crate) fn get_suffix(&self) -> Result<String, XMLGeneratorError> {

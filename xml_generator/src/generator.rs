@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use crate::XMLGeneratorError;
 use chrono::{DateTime, Duration, NaiveDate, NaiveTime, Utc};
 use fake::{Fake, Faker};
@@ -7,6 +6,7 @@ use rand::prelude::{IndexedRandom, ThreadRng};
 use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use regex::Regex;
+use std::collections::HashSet;
 
 fn get_ignore_types() -> Vec<String> {
     let strs = vec![
@@ -111,6 +111,7 @@ pub(crate) struct Generator {
     xor: XorShiftRng,
     ignore: Vec<String>,
     max_depth: u16,
+    namespaces: Vec<String>,
 }
 
 impl Generator {
@@ -123,6 +124,7 @@ impl Generator {
             xor,
             ignore,
             max_depth,
+            namespaces: vec![],
         }
     }
 
@@ -218,7 +220,9 @@ impl Generator {
             "NCName" => self.generate_regex(r"[A-Z_a-z][-.0-9A-Z_a-z]*"), // NCName
             "NMTOKEN" => make_fake_str::<String>(), // A string that represents the NMTOKEN attribute
             "normalizedString" => make_fake_str::<String>(), // A string that does not contain line feeds, carriage returns, or tabs
-            "QName" => self.generate_regex(r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-.0-9A-Z_a-z]*"),        // QName
+            "QName" => {
+                self.generate_regex(r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-.0-9A-Z_a-z]*")
+            } // QName
             "string" => make_fake_str::<String>(),           // A string
             "token" => make_fake_str::<String>(), // A string that does not contain line feeds, carriage returns, tabs, leading or trailing spaces, or multiple spaces
 
@@ -283,9 +287,7 @@ impl Generator {
                 let next_output = self.generate_type(name).expect("No type generated");
                 self.sample_output(&next_output, pattern, name, depth + 1)
             }
-            Some(mat) => {
-                Some(output[mat.start()..mat.end()].to_string())
-            }
+            Some(mat) => Some(output[mat.start()..mat.end()].to_string()),
         }
     }
 
@@ -300,5 +302,30 @@ impl Generator {
             }
             None => self.generate_regex(pattern),
         }
+    }
+
+    pub(crate) fn get_current_namespace(&self) -> Option<&String> {
+        self.namespaces.last()
+    }
+
+    pub(crate) fn add_namespace(&mut self, namespace: String) {
+        self.namespaces.push(namespace);
+    }
+
+    pub(crate) fn n_namespaces(&self) -> usize {
+        self.namespaces.len()
+    }
+
+    pub(crate) fn update_namespaces(&mut self, n_namespaces: usize) {
+        if n_namespaces == self.namespaces.len() {
+            return;
+        }
+
+        if n_namespaces == self.namespaces.len() - 1 {
+            self.namespaces.truncate(n_namespaces);
+            return;
+        }
+
+        panic!("Additional namespaces not removed");
     }
 }
