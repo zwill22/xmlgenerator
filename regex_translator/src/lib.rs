@@ -154,6 +154,12 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
         r"[\u20D0-\u20FF]".to_string(),
     );
 
+    // Bopomofo includes extended character in Rust Regex crate
+    map.insert(
+        "Bopomofo".to_string(),
+        r"[\u3105-\u312f]".to_string(),
+    );
+
     Ok(map)
 }
 
@@ -217,8 +223,14 @@ fn get_xml_mappings() -> HashMap<String, String> {
     let neg_c = r"\C".to_string();
     let neg_c_set = format!(r"[^{}]", c_set);
 
-    mappings.insert(neg_i, neg_i_set.to_string());
-    mappings.insert(neg_c, neg_c_set.to_string());
+    mappings.insert(neg_i, neg_i_set);
+    mappings.insert(neg_c, neg_c_set);
+
+    // Digit mapping is not recognised by Rust
+    let d = r"\d".to_string();
+    let d_set = r"[0-9]".to_string();
+
+    mappings.insert(d, d_set);
 
     mappings
 }

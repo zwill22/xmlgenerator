@@ -25,25 +25,13 @@ fn handle_pattern(
 ) -> Result<String, XMLGeneratorError> {
     check_carriage_returns(pattern)?;
 
-    match Regex::new(pattern) {
-        Ok(regex) => {
-            // Generalise `\d` pattern to equal `[0-9]`
-            if pattern.contains(r"\d") {
-                let new_pattern = pattern.replace(r"\d", r"[0-9]");
-                return handle_pattern(translator, &new_pattern);
-            }
+    let translation = translator.translate(pattern)?;
 
-            Ok(regex.to_string())
-        }
+    match Regex::new(translation.as_str()) {
+        Ok(regex) => Ok(regex.to_string()),
         Err(pattern_err) => {
-            let translation = translator.translate(pattern)?;
-
-            if translation.as_str() == pattern {
-                let error = format!("Compilation error: {}", pattern_err);
-                return Err(XMLGeneratorError::RegexError(error));
-            }
-
-            handle_pattern(translator, &translation)
+            let error = format!("Compilation error: {}", pattern_err);
+            Err(XMLGeneratorError::RegexError(error))
         }
     }
 }
@@ -178,7 +166,7 @@ impl PartialEq for TypeInfo {
 
         match &self.pattern {
             None => match other.pattern {
-                None => {},
+                None => {}
                 Some(_) => return false,
             },
             Some(pattern1) => match &other.pattern {
