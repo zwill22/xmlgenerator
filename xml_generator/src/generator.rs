@@ -218,7 +218,7 @@ impl Generator {
             "language" => make_fake_str::<String>(), // A string that contains a valid language id
             "Name" => self.generate_regex(r"[:A-Z_a-z][-.0-9:A-Z_a-z]*"), // A string that contains a valid XML name "\i\c*"
             "NCName" => self.generate_regex(r"[A-Z_a-z][-.0-9A-Z_a-z]*"), // NCName
-            "NMTOKEN" => make_fake_str::<String>(), // A string that represents the NMTOKEN attribute
+            "NMTOKEN" => self.generate_regex(r"[a-zA-Z0-9._\-:]*"), // A string that represents the NMTOKEN attribute
             "normalizedString" => make_fake_str::<String>(), // A string that does not contain line feeds, carriage returns, or tabs
             "QName" => {
                 self.generate_regex(r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-.0-9A-Z_a-z]*")
@@ -282,13 +282,18 @@ impl Generator {
             return self.generate_regex(pattern);
         }
 
-        match Regex::new(pattern).unwrap().find(output) {
-            None => {
-                let next_output = self.generate_type(name).expect("No type generated");
-                self.sample_output(&next_output, pattern, name, depth + 1)
+        for mat in Regex::new(pattern).unwrap().find_iter(output) {
+            let string = mat.as_str();
+
+            if string.is_empty() {
+                continue;
             }
-            Some(mat) => Some(output[mat.start()..mat.end()].to_string()),
+
+            return Some(string.to_string());
         }
+
+        let next_output = self.generate_type(name).expect("No type generated");
+        self.sample_output(&next_output, pattern, name, depth + 1)
     }
 
     pub(crate) fn generate_pattern(&mut self, pattern: &str, name: &str) -> Option<String> {
