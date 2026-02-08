@@ -179,6 +179,9 @@ fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationErr
         output.insert(neg_block, neg_set);
     }
 
+    // Additional values
+    output.insert(r"\p{Nd}".to_string(), r"[0-9]".to_string());
+
     Ok(output)
 }
 
