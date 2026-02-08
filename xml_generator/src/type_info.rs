@@ -147,7 +147,7 @@ impl TypeInfo {
         }
 
         if let Some(pattern) = &self.pattern {
-            return generator.generate_pattern(pattern, name);
+            return generator.generate_type_pattern(pattern, name);
         }
 
         generator.generate_type(name)
