@@ -311,10 +311,6 @@ impl RegexTranslator {
             }
         }
 
-        // Replace negation pattern
-        let regex = Regex::new(r"([^-\\])-\[")?;
-        output = regex.replace_all(output.as_str(), "$1--[").to_string();
-
         // Replace hexidecimal character reference &#x{}; -> \u{}
         output = replace_hex_character_reference(output.as_str())?;
 
