@@ -85,7 +85,7 @@ impl From<&str> for XsdType {
             // List types
             "ENTITIES" => XsdType::String(r"([A-Z_a-z][-.0-9A-Z_a-z]*)(\s+[A-Z_a-z][-.0-9A-Z_a-z]*)*".to_string()),
             "NMTOKENS" => XsdType::String(r"([a-zA-Z0-9._:-]+)(\s+[a-zA-Z0-9._:-]+)*".to_string()),
-            "IDREFS" => XsdType::String(r"([\i-[:]][\c-[:]]*)(\s+[\i-[:]][\c-[:]]*)*".to_string()),
+            "IDREFS" => XsdType::String(r"([A-Z_a-z][-.0-9A-Z_a-z]*)(\s+[A-Z_a-z][-.0-9A-Z_a-z]*)*".to_string()),
 
             // Just use a string for any type
             "anyType" => XsdType::String("".to_string()),
