@@ -5,6 +5,7 @@ use crate::name::Name;
 use crate::namespaces::Namespaces;
 use crate::tracker::Tracker;
 use crate::xsd::Xsd;
+use crate::xsd_type::XsdType;
 use rand::Rng;
 use regextranslator::RegexTranslator;
 use std::cmp::{max, min};
@@ -12,30 +13,6 @@ use uuid::Uuid;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{ElementType, ElementTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
-
-fn generate_type_output(
-    generator: &mut Generator,
-    xml_element: &mut XMLElement,
-    tracker: &mut Tracker,
-    xsd: &Xsd,
-    type_name: &String,
-) -> Result<(), XMLGeneratorError> {
-    // TODO TypeGenerator?
-    if let Some(output) = generator.generate_type(type_name) {
-        return match xml_element.add_text(output) {
-            Ok(_) => Ok(()),
-            Err(err) => Err(XMLGeneratorError::XMLBuilderError(err.to_string())),
-        };
-    }
-
-    for data_type in xsd.types() {
-        if data_type.name_equals(type_name) {
-            return data_type.generate(generator, xml_element, tracker, xsd);
-        }
-    }
-
-    Err(XMLGeneratorError::DataTypeNotFoundError(type_name.clone()))
-}
 
 pub(crate) trait Occurrence {
     fn get_min(&self) -> usize;
@@ -67,6 +44,7 @@ pub(crate) struct Element {
     name: Option<Name>,
     data_types: Vec<DataType>,
     type_name: Option<String>,
+    xsd_type: XsdType,
     reference: Option<Name>,
     min: usize,
     max: Option<usize>,
@@ -88,7 +66,16 @@ impl Element {
         }
 
         if let Some(element_type) = &element_type.type_ {
-            element.type_name = String::from_utf8(element_type.local_name().to_vec()).ok();
+            let type_name = match String::from_utf8(element_type.local_name().to_vec()) {
+                Ok(t) => t,
+                Err(e) => {
+                    return Err(XMLGeneratorError::DataTypeInformationError(e.to_string()));
+                }
+            };
+            match XsdType::from(type_name.as_str()) {
+                XsdType::None => element.type_name = Some(type_name),
+                xsd_type => element.xsd_type = xsd_type,
+            }
         }
 
         if element_type.substitution_group.is_some() {
@@ -170,9 +157,7 @@ impl Element {
         if let Some(reference) = &self.reference {
             fields.push(reference.get_name()?);
         }
-        if let Some(type_info) = &self.type_name
-            && !type_info.is_empty()
-        {
+        if let Some(type_info) = &self.type_name {
             types.push(type_info.to_string());
         }
 
@@ -240,6 +225,40 @@ impl Element {
         self.get_full_name(generator, &root_name)
     }
 
+    fn generate_type(
+        &self,
+        generator: &mut Generator,
+        tracker: &mut Tracker,
+        xml_element: &mut XMLElement,
+        xsd: &Xsd,
+    ) -> Result<(), XMLGeneratorError> {
+        if let Some(output) = generator.generate_type(&self.xsd_type) {
+            xml_element.add_text(output)?;
+            return Ok(());
+        }
+
+        if let Some(type_name) = &self.type_name {
+            if !self.data_types.is_empty() {
+                return Err(XMLGeneratorError::DataTypesFormatError(
+                    "Data has a type and contains type elements".to_string(),
+                ));
+            }
+
+            for data_type in xsd.types() {
+                if data_type.name_equals(type_name) {
+                    data_type.generate(generator, xml_element, tracker, xsd)?;
+                    return Ok(());
+                }
+            }
+        }
+
+        for content in self.data_types.iter() {
+            content.generate(generator, xml_element, tracker, xsd)?;
+        }
+
+        Ok(())
+    }
+
     fn generate_type_from_name(
         &self,
         generator: &mut Generator,
@@ -249,29 +268,14 @@ impl Element {
         let n_namespace = generator.n_namespaces();
         let name = self.get_root_name(generator, tracker, xsd)?;
         tracker.add(self)?;
-        let mut root_element = XMLElement::new(&name);
+        let mut xml_element = XMLElement::new(&name);
 
-        match &self.type_name {
-            Some(type_info) => {
-                if !self.data_types.is_empty() {
-                    return Err(XMLGeneratorError::DataTypesFormatError(
-                        "Data has a type and contains type elements".to_string(),
-                    ));
-                }
-
-                generate_type_output(generator, &mut root_element, tracker, xsd, type_info)?;
-            }
-            None => {
-                for content in self.data_types.iter() {
-                    content.generate(generator, &mut root_element, tracker, xsd)?;
-                }
-            }
-        }
+        self.generate_type(generator, tracker, &mut xml_element, xsd)?;
 
         tracker.remove(self);
         generator.update_namespaces(n_namespace);
 
-        Ok(root_element)
+        Ok(xml_element)
     }
 
     fn generate_element(
@@ -345,6 +349,7 @@ impl Default for Element {
             name: None,
             data_types: vec![],
             type_name: None,
+            xsd_type: XsdType::None,
             reference: None,
             min: 0,
             max: None,

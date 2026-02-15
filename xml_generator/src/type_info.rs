@@ -1,6 +1,7 @@
 use crate::XMLGeneratorError;
 use crate::error::unimplemented;
 use crate::generator::Generator;
+use crate::xsd_type::XsdType;
 use regex::Regex;
 use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
@@ -36,8 +37,10 @@ fn handle_pattern(
     }
 }
 
+#[derive(Default)]
 pub(crate) struct TypeInfo {
-    name: String,
+    name: Option<String>,
+    xsd_type: XsdType,
     pattern: Option<String>,
     enumerations: Vec<String>,
 }
@@ -47,11 +50,7 @@ impl TypeInfo {
         translator: &RegexTranslator,
         base_content: &Vec<SimpleBaseTypeContent>,
     ) -> Result<Self, XMLGeneratorError> {
-        let mut type_info = TypeInfo {
-            name: String::new(),
-            pattern: None,
-            enumerations: Vec::new(),
-        };
+        let mut type_info = TypeInfo::default();
 
         for content in base_content {
             match content {
@@ -118,7 +117,12 @@ impl TypeInfo {
         restriction: &Restriction,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(base) = &restriction.base {
-            self.name = String::from_utf8(base.local_name().to_vec()).unwrap()
+            let type_name = String::from_utf8(base.local_name().to_vec()).unwrap();
+            self.xsd_type = XsdType::from(type_name.as_str());
+            match self.xsd_type {
+                XsdType::None => self.name = Some(type_name),
+                _ => {}
+            }
         }
 
         for content in &restriction.content {
@@ -137,7 +141,6 @@ impl TypeInfo {
     }
 
     pub(crate) fn generate(&self, generator: &mut Generator) -> Option<String> {
-        let name = &self.name;
         if !self.enumerations.is_empty() {
             if self.pattern.is_some() {
                 panic!("Type info includes enumeration and pattern data");
@@ -147,14 +150,17 @@ impl TypeInfo {
         }
 
         if let Some(pattern) = &self.pattern {
-            return generator.generate_type_pattern(pattern, name);
+            return generator.generate_type_pattern(&self.xsd_type, pattern);
         }
 
-        generator.generate_type(name)
+        generator.generate_type(&self.xsd_type)
     }
 
     pub(crate) fn get_name(&self) -> String {
-        self.name.clone()
+        match &self.name {
+            None => self.xsd_type.to_string(),
+            Some(name) => name.clone(),
+        }
     }
 }
 

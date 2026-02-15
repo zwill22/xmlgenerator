@@ -1,18 +1,19 @@
+use std::cmp::PartialEq;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::type_info::TypeInfo;
 use crate::xsd::Xsd;
+use crate::xsd_type::XsdType;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
 
 pub(crate) struct Attribute {
     name: Option<Name>,
-    attribute_type: AttributeUseType,
-    type_name: String,
-    type_info: Option<TypeInfo>,
+    type_name: Option<String>,
+    xsd_type: XsdType,
+    use_type: AttributeUseType,
 }
 
 impl Attribute {
@@ -23,18 +24,22 @@ impl Attribute {
     ) -> Result<Attribute, XMLGeneratorError> {
         let mut attribute = Attribute {
             name: None,
-            attribute_type: AttributeUseType::Required,
-            type_name: String::new(),
-            type_info: None,
+            type_name: None,
+            xsd_type: XsdType::None,
+            use_type: AttributeUseType::Required,
         };
 
         attribute.name = Name::from_name(schema_info, namespaces, &attribute_type.name);
 
         if let Some(attribute_type) = &attribute_type.type_ {
-            attribute.type_name = String::from_utf8(attribute_type.local_name().to_vec()).unwrap()
+            let type_name = String::from_utf8(attribute_type.local_name().to_vec()).unwrap();
+            attribute.xsd_type = XsdType::from(type_name.as_str());
+            if matches!(attribute.xsd_type, XsdType::None) {
+                attribute.type_name = Some(type_name);
+            }
         }
 
-        attribute.attribute_type = attribute_type.use_;
+        attribute.use_type = attribute_type.use_;
 
         if attribute_type.ref_.is_some() {
             return unimplemented("Attribute references");
@@ -69,18 +74,6 @@ impl Attribute {
         }
 
         Ok(attribute)
-    }
-
-    fn get_attribute(&self, generator: &mut Generator) -> Option<String> {
-        if let Some(type_info) = &self.type_info {
-            if let Some(value) = type_info.generate(generator) {
-                return Some(value);
-            }
-        } else if let Some(value) = generator.generate_type(&self.type_name) {
-            return Some(value);
-        }
-
-        None
     }
 
     fn get_full_name(
@@ -121,26 +114,29 @@ impl Attribute {
         let mut generated = false;
         let n_namespaces = generator.n_namespaces();
 
-        if self.attribute_type == AttributeUseType::Prohibited {
+        if self.use_type == AttributeUseType::Prohibited {
             return Ok(());
         }
 
         let name = self.get_name(generator)?;
-        if let Some(attribute) = self.get_attribute(generator) {
+        if let Some(attribute) = generator.generate_type(&self.xsd_type) {
             xml_element.add_attribute(name.as_str(), attribute.as_str());
             generated = true;
         }
 
-        for type_generator in xsd.types() {
-            if type_generator.name_equals(&self.type_name) {
-                type_generator.generate_attribute(generator, xml_element, &name)?;
-                generated = true;
+        if let Some(type_name) = &self.type_name {
+            for type_generator in xsd.types() {
+                if type_generator.name_equals(&type_name) {
+                    type_generator.generate_attribute(generator, xml_element, &name)?;
+                    generated = true;
+                }
             }
         }
 
-        if self.attribute_type == AttributeUseType::Required && !generated {
-            if self.type_name.is_empty() && self.type_info.is_none() {
-                let value = generator.generate_type("string").unwrap();
+        if self.use_type == AttributeUseType::Required && !generated {
+            if self.type_name.is_none() {
+                let xsd_type = XsdType::String("".to_string());
+                let value = generator.generate_type(&xsd_type).unwrap();
                 xml_element.add_attribute(name.as_str(), value.as_str());
             } else {
                 return Err(XMLGeneratorError::TypeGenerationError(
@@ -165,7 +161,11 @@ impl PartialEq for Attribute {
             return false;
         }
 
-        if self.attribute_type != other.attribute_type {
+        if self.xsd_type != other.xsd_type {
+            return false;
+        }
+
+        if self.use_type != other.use_type {
             return false;
         }
 
