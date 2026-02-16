@@ -57,6 +57,9 @@ mod tests {
             }
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
             XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
+            XMLGeneratorError::LineEndingsError(e) => {
+                increment(stats, "Invalid line ending", e);
+            },
             XMLGeneratorError::UnimplementedFeature(e) => {
                 increment(stats, "Unimplemented Features", e);
             }

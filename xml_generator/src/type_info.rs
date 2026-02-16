@@ -2,29 +2,46 @@ use crate::XMLGeneratorError;
 use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::xsd_type::XsdType;
+use line_ending::LineEnding;
 use regex::Regex;
 use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
     Facet, FacetType, Restriction, RestrictionContent, SimpleBaseTypeContent,
 };
 
-fn check_carriage_returns(pattern: &str) -> Result<(), XMLGeneratorError> {
-    let stripped = pattern.replace("\\r\\n", "");
-
-    if stripped.contains("\\r") {
-        return Err(XMLGeneratorError::UnimplementedFeature(
-            "Carriage returns".to_string(),
-        ));
+fn check_line_ending(pattern: &str, ending: &str) -> Result<(), XMLGeneratorError> {
+    if pattern.contains(ending) {
+        return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
     }
 
     Ok(())
+}
+
+fn check_crlf_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
+    let stripped = pattern.replace("\\r\\n", "");
+
+    if stripped.contains("\\r") || stripped.contains("\\n") {
+        return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
+    }
+
+    Ok(())
+}
+
+
+
+fn check_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
+    match LineEnding::from_current_platform() {
+        LineEnding::LF => check_line_ending(pattern, r"\r"),
+        LineEnding::CRLF => check_crlf_endings(pattern),
+        LineEnding::CR => check_line_ending(pattern, r"\n"),
+    }
 }
 
 fn handle_pattern(
     translator: &RegexTranslator,
     pattern: &str,
 ) -> Result<String, XMLGeneratorError> {
-    check_carriage_returns(pattern)?;
+    check_line_endings(pattern)?;
 
     let translation = translator.translate(pattern)?;
 

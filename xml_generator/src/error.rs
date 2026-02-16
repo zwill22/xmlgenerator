@@ -39,6 +39,8 @@ pub enum XMLGeneratorError {
     TypeGenerationError(String),
     /// Regex Compilation Error
     RegexError(String),
+    /// Line endings (platform dependent)
+    LineEndingsError(String),
     /// Unimplemented Feature
     UnimplementedFeature(String),
 }
