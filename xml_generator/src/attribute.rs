@@ -29,7 +29,7 @@ impl Attribute {
             use_type: AttributeUseType::Required,
         };
 
-        attribute.name = Name::from_name(schema_info, namespaces, &attribute_type.name);
+        attribute.name = Name::from_name(schema_info, namespaces, &attribute_type.name)?;
 
         if let Some(attribute_type) = &attribute_type.type_ {
             let type_name = String::from_utf8(attribute_type.local_name().to_vec()).unwrap();

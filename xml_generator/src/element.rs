@@ -61,7 +61,7 @@ impl Element {
         let mut element = Self::default();
 
         if let Some(element_ref) = &element_type.ref_ {
-            let reference = Name::from_qname(element_ref, namespaces);
+            let reference = Name::from_qname(element_ref, namespaces)?;
             element.reference = Some(reference);
         }
 
@@ -121,7 +121,7 @@ impl Element {
             return unimplemented("Embedded target namespace");
         }
 
-        element.name = Name::from_name(schema, namespaces, &element_type.name);
+        element.name = Name::from_name(schema, namespaces, &element_type.name)?;
 
         for content in &element_type.content {
             match content {

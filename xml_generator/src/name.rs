@@ -2,6 +2,21 @@ use crate::XMLGeneratorError;
 use crate::namespaces::Namespaces;
 use xsd_parser::models::schema::{QName, SchemaInfo};
 
+fn validate(name: &str) -> Result<(), XMLGeneratorError> {
+    const VALID: &str = r"^[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}][-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]*$";
+
+    let regex = regex::Regex::new(VALID).unwrap();
+
+    if !regex.is_match(name) {
+        return Err(XMLGeneratorError::InvalidXSDError(format!(
+            "Invalid name: {}",
+            name
+        )));
+    }
+
+    Ok(())
+}
+
 #[derive(Default)]
 pub(crate) struct Name {
     name: String,
@@ -9,11 +24,21 @@ pub(crate) struct Name {
 }
 
 impl Name {
-    pub(crate) fn new(name: String, namespace: Option<String>) -> Self {
-        Self { name, namespace }
+    fn new(name: String, namespace: Option<String>) -> Result<Self, XMLGeneratorError> {
+        validate(&name)?;
+        if let Some(ns) = &namespace {
+            validate(ns)?;
+        }
+
+        let out = Self { name, namespace };
+
+        Ok(out)
     }
 
-    pub(crate) fn from_qname(qname: &QName, namespaces: &Namespaces) -> Self {
+    pub(crate) fn from_qname(
+        qname: &QName,
+        namespaces: &Namespaces,
+    ) -> Result<Self, XMLGeneratorError> {
         let name = String::from_utf8(qname.local_name().to_vec()).unwrap();
         let ns = match qname.namespace() {
             None => None,
@@ -36,15 +61,16 @@ impl Name {
         schema: &SchemaInfo,
         namespaces: &Namespaces,
         name: &Option<String>,
-    ) -> Option<Name> {
+    ) -> Result<Option<Name>, XMLGeneratorError> {
         let name_val = match name {
-            None => return None,
+            None => return Ok(None),
             Some(val) => val,
         };
 
         let prefix = Self::get_target_ns(schema, namespaces);
+        let name = Name::new(name_val.to_string(), prefix)?;
 
-        Some(Name::new(name_val.to_string(), prefix))
+        Ok(Some(name))
     }
 
     pub(crate) fn get_prefix(&self) -> Option<String> {
