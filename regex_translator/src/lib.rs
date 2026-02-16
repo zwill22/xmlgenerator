@@ -255,6 +255,16 @@ fn parse_radix_string(input: &str, radix: u32) -> Result<u32, RegexTranslationEr
     }
 }
 
+
+fn replace_negation_patterns(input: &str) -> Result<String, RegexTranslationError> {
+    const NEGATION: &str = r"\[(\S*?[\S--[-]])-(\[\S*?])]";
+    let regex = Regex::new(NEGATION)?;
+
+    let result = regex.replace_all(input, "[$1--$2]").to_string();
+
+    Ok(result)
+}
+
 fn replace_character_reference(
     pattern: &str,
     input: &str,
@@ -310,6 +320,9 @@ impl RegexTranslator {
                 output = output.as_str().replace(k, v.as_str());
             }
         }
+
+        // Replace negation patterns
+        output = replace_negation_patterns(output.as_str())?;
 
         // Replace hexidecimal character reference &#x{}; -> \u{}
         output = replace_hex_character_reference(output.as_str())?;
