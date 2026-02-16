@@ -167,21 +167,31 @@ impl Generator {
         None
     }
 
-    fn generate_two_patterns(&mut self, pattern1: &str, pattern2: &str) -> Option<String> {
-        if pattern1.is_empty() {
-            return self.generate_regex(pattern2);
+    fn generate_two_patterns(
+        &mut self,
+        base_pattern: &str,
+        specific_pattern: &str,
+    ) -> Option<String> {
+        if base_pattern.is_empty() {
+            return self.generate_regex(specific_pattern);
         }
 
-        if pattern2.is_empty() {
-            return self.generate_regex(pattern1);
+        if specific_pattern.is_empty() {
+            return self.generate_regex(base_pattern);
         }
 
-        match self.cross_match(pattern1, pattern2) {
+        match self.cross_match(base_pattern, specific_pattern) {
             Some(output) => return Some(output),
             None => {}
         }
 
-        self.cross_match(pattern2, pattern1)
+        match self.cross_match(specific_pattern, base_pattern) {
+            Some(output) => Some(output),
+            None => {
+                eprintln!("Warning: Cross match failed, using specific pattern without cross match");
+                self.generate_regex(specific_pattern)
+            },
+        }
     }
 
     pub(crate) fn generate_type_pattern(

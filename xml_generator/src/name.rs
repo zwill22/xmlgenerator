@@ -8,10 +8,7 @@ fn validate(name: &str) -> Result<(), XMLGeneratorError> {
     let regex = regex::Regex::new(VALID).unwrap();
 
     if !regex.is_match(name) {
-        return Err(XMLGeneratorError::InvalidXSDError(format!(
-            "Invalid name: {}",
-            name
-        )));
+        return Err(XMLGeneratorError::InvalidXSDNameError(name.to_string()));
     }
 
     Ok(())

@@ -29,6 +29,8 @@ pub enum XMLGeneratorError {
     NoElementsError,
     /// Invalid XSD
     InvalidXSDError(String),
+    /// Invalid name in XSD
+    InvalidXSDNameError(String),
     /// No independent elements in XSD
     NoIndependentElementsError,
     /// Multiple Roots elements in XSD

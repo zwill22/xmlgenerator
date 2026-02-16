@@ -46,6 +46,9 @@ mod tests {
                 increment(stats, "No Elements", "");
             }
             XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
+            XMLGeneratorError::InvalidXSDNameError(e) => {
+                increment(stats, "Invalid XSD element name", e);
+            }
             XMLGeneratorError::NoIndependentElementsError => {
                 increment(stats, "No Independent Elements", "");
             }

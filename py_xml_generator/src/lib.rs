@@ -23,6 +23,7 @@ create_exception!(pyxmlgenerator, MultipleXSDRootsError, PyException);
 create_exception!(pyxmlgenerator, TypeGenerationError, PyException);
 create_exception!(pyxmlgenerator, ImplementationError, PyException);
 create_exception!(pyxmlgenerator, RegexError, PyException);
+create_exception!(pyxmlgenerator, InvalidXSDNameError, PyException);
 
 fn handle_error(error: XMLGeneratorError) -> PyErr {
     match error {
@@ -46,6 +47,7 @@ fn handle_error(error: XMLGeneratorError) -> PyErr {
         XMLGeneratorError::TypeGenerationError(e) => TypeGenerationError::new_err(e),
         XMLGeneratorError::RegexError(e) => RegexError::new_err(e),
         XMLGeneratorError::UnimplementedFeature(e) => ImplementationError::new_err(e),
+        XMLGeneratorError::InvalidXSDNameError(e) => InvalidXSDNameError::new_err(e),
     }
 }
 
