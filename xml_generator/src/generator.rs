@@ -82,12 +82,12 @@ impl Generator {
             return samples.into_iter().next();
         }
 
-        for sample in samples {
+        for sample in &samples {
             if sample.is_empty() {
                 continue;
             }
 
-            return Some(sample);
+            return Some(sample.clone());
         }
 
         None
