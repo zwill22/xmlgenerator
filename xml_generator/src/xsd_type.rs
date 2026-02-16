@@ -50,7 +50,7 @@ pub(crate) enum XsdType {
     HexBinary,    // A hexidecimal binary value
     Duration,     // A duration of time
 
-    String(String),   // A string type with a pattern
+    String(String), // A string type with a pattern
 
     #[default]
     None, // No recognised type
@@ -100,38 +100,38 @@ impl From<&str> for XsdType {
         match s {
             // Numeric Data Types
             "byte" => XsdType::Byte,
-            "decimal" => XsdType::String(r"[+-]?[1-9][0-9]*(?:.[0-9]+)?".into()),
+            "decimal" => XsdType::String(r"[+-]?[0-9]+\.?[0-9]*".to_string()),
             "short" => XsdType::Short,
             "int" => XsdType::Int,
             "long" => XsdType::Long,
-            "integer" => XsdType::String(r"[+-]?[0-9]+".into()),
-            "negativeInteger" => XsdType::String(r"-[1-9][0-9]+".into()),
-            "nonNegativeInteger" => XsdType::String(r"(?:0|\+?[1-9][0-9]*)".into()),
-            "nonPositiveInteger" => XsdType::String(r"(?:0|-[1-9][0-9]*)".into()),
-            "positiveInteger" => XsdType::String(r"\+?[1-9][0-9]*".into()),
+            "integer" => XsdType::String(r"[+-]?[0-9]+".to_string()),
+            "negativeInteger" => XsdType::String(r"-[1-9][0-9]+".to_string()),
+            "nonNegativeInteger" => XsdType::String(r"(?:0|\+?[1-9][0-9]*)".to_string()),
+            "nonPositiveInteger" => XsdType::String(r"(?:0|-[1-9][0-9]*)".to_string()),
+            "positiveInteger" => XsdType::String(r"\+?[1-9][0-9]*".to_string()),
             "unsignedLong" => XsdType::UnsignedLong,
             "unsignedInt" => XsdType::UnsignedInt,
             "unsignedShort" => XsdType::UnsignedShort,
             "unsignedByte" => XsdType::UnsignedByte,
 
             // String data types
-            "ENTITY" => XsdType::String(r"[A-Z_a-z][-.0-9A-Z_a-z]*".to_string()),
+            "ENTITY" => XsdType::String(r"[A-Z_a-z][-\.0-9A-Z_a-z]*".to_string()),
             "ID" => XsdType::String(r"[a-zA-Z_][a-zA-Z0-9._-]*".to_string()),
-            "IDREF" => XsdType::String(r"[a-zA-Z_][a-zA-Z0-9._-]*".to_string()),
+            "IDREF" => XsdType::String(r"[a-zA-Z_][a-zA-Z0-9\._-]*".to_string()),
             "language" => XsdType::String(
                 r"([a-zA-Z]{2}|[iI]-[a-zA-Z]+|[xX]-[a-zA-Z]{1,8})(-[a-zA-Z]{1,8})*".to_string(),
             ),
-            "Name" => XsdType::String(r"[:A-Z_a-z][-.0-9:A-Z_a-z]*".to_string()),
-            "NCName" => XsdType::String(r"[A-Z_a-z][-.0-9A-Z_a-z]*".to_string()),
-            "NMTOKEN" => XsdType::String(r"[a-zA-Z0-9._\-:]*".to_string()),
+            "Name" => XsdType::String(r"[:A-Z_a-z][-\.0-9:A-Z_a-z]*".to_string()),
+            "NCName" => XsdType::String(r"[A-Z_a-z][-\.0-9A-Z_a-z]*".to_string()),
+            "NMTOKEN" => XsdType::String(r"[a-zA-Z0-9\._\-:]*".to_string()),
             "normalizedString" => XsdType::String(r"[^\r\n\t]*".to_string()),
             "QName" => XsdType::String(
-                r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-.0-9A-Z_a-z]*".to_string(),
+                r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-\.0-9A-Z_a-z]*".to_string(),
             ),
             "string" => XsdType::String("".to_string()),
-            "token" => {
-                XsdType::String(r"[a-zA-Z0-9._\-:][a-zA-Z0-9._\-:\s]*[a-zA-Z0-9._\-:]".to_string())
-            }
+            "token" => XsdType::String(
+                r"[a-zA-Z0-9\._\-:][a-zA-Z0-9\._\-:\s]*[a-zA-Z0-9\._\-:]".to_string(),
+            ),
 
             // Date time data types
             "date" => XsdType::String(strftime_to_regex("%Y-%m-%d")),
@@ -155,11 +155,13 @@ impl From<&str> for XsdType {
 
             // List types
             "ENTITIES" => XsdType::String(
-                r"([A-Z_a-z][-.0-9A-Z_a-z]*)(\s+[A-Z_a-z][-.0-9A-Z_a-z]*)*".to_string(),
+                r"([A-Z_a-z][-\.0-9A-Z_a-z]*)(\s+[A-Z_a-z][-\.0-9A-Z_a-z]*)*".to_string(),
             ),
-            "NMTOKENS" => XsdType::String(r"([a-zA-Z0-9._:-]+)(\s+[a-zA-Z0-9._:-]+)*".to_string()),
+            "NMTOKENS" => {
+                XsdType::String(r"([a-zA-Z0-9\._:-]+)(\s+[a-zA-Z0-9\._:-]+)*".to_string())
+            }
             "IDREFS" => XsdType::String(
-                r"([A-Z_a-z][-.0-9A-Z_a-z]*)(\s+[A-Z_a-z][-.0-9A-Z_a-z]*)*".to_string(),
+                r"([A-Z_a-z][-\.0-9A-Z_a-z]*)(\s+[A-Z_a-z][-\.0-9A-Z_a-z]*)*".to_string(),
             ),
 
             // Just use a string for any type

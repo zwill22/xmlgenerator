@@ -204,9 +204,8 @@ impl DataType {
                     ));
                 }
                 Some(value) => {
-                    let result = xml_element.add_text(value);
-                    if let Err(err) = result {
-                        return Err(XMLGeneratorError::XMLBuilderError(err.to_string()));
+                    if let Err(error) = xml_element.add_text(value) {
+                        return Err(XMLGeneratorError::XMLBuilderError(error.to_string()));
                     }
                 }
             }

@@ -255,7 +255,6 @@ fn parse_radix_string(input: &str, radix: u32) -> Result<u32, RegexTranslationEr
     }
 }
 
-
 fn replace_negation_patterns(input: &str) -> Result<String, RegexTranslationError> {
     const NEGATION: &str = r"\[(\S*?[\S--[-]])-(\[\S*?])]";
     let regex = Regex::new(NEGATION)?;

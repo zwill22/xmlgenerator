@@ -1,10 +1,10 @@
-use std::cmp::PartialEq;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
 use crate::xsd::Xsd;
 use crate::xsd_type::XsdType;
+use std::cmp::PartialEq;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
