@@ -193,10 +193,9 @@ impl Element {
             Ok(name.to_string())
         } else if names.len() == 2 {
             let prefix = names[0];
-            let suffix = names[1];
 
             if Some(&prefix.to_string()) == current_namespace {
-                Ok(suffix.to_string())
+                Ok(name.to_string())
             } else {
                 generator.add_namespace(prefix.to_string());
                 Ok(name.to_string())

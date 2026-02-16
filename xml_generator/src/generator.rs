@@ -49,12 +49,12 @@ impl Generator {
     }
 
     pub(crate) fn validate(input_str: &str, pattern: &str) -> Result<bool, XMLGeneratorError> {
-        let regex = match Regex::new(input_str) {
+        let regex = match Regex::new(pattern) {
             Ok(re) => re,
             Err(_) => return Err(XMLGeneratorError::RegexError(input_str.to_string())),
         };
 
-        let result = regex.is_match(pattern);
+        let result = regex.is_match(input_str);
 
         Ok(result)
     }

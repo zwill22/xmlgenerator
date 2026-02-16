@@ -26,6 +26,9 @@ fn check_namespace_exists(ns: &String, schemas: &Schemas) -> Result<(), XMLGener
 }
 
 fn check_namespace_is_valid(ns: &str) -> bool {
+    if ns.eq("xs") {
+        return false;
+    }
     let re = r"^[A-Z_a-z][-.0-9A-Z_a-z]*$";
     Generator::validate(ns, re).unwrap()
 }
@@ -52,7 +55,7 @@ impl Namespaces {
 
         let mut root = true;
         for (_, schema_info) in schemas.schemas() {
-            namespaces.get_schema_info(schemas, schema_info, root)?;
+            namespaces.get_schema_info(generator, schemas, schema_info, root)?;
             root = false;
         }
 
@@ -64,7 +67,7 @@ impl Namespaces {
         generator: &mut Generator,
         schemas: &Schemas,
     ) -> Result<String, XMLGeneratorError> {
-        let pattern = r"[A-Za-z]{2}";
+        let pattern = r"[a-z]{2}";
 
         match generator.generate_regex(pattern) {
             Some(output) => match check_namespace_exists(&output, schemas) {
@@ -126,7 +129,12 @@ impl Namespaces {
         None
     }
 
-    fn set_target_namespace(&mut self, target_location: String) -> Result<(), XMLGeneratorError> {
+    fn set_target_namespace(
+        &mut self,
+        generator: &mut Generator,
+        schemas: &Schemas,
+        target_location: String,
+    ) -> Result<(), XMLGeneratorError> {
         // A target namespace is provided but does not match any given namespace
         // There are two options here:
         // 1. Throw an error, do not accept an unnamed target namespace (easy, but may not be standard)
@@ -137,6 +145,12 @@ impl Namespaces {
                 "No target namespace found.".to_string(),
             )),
             Some(ns) => {
+                if ns.eq("xs") {
+                    let valid_name = self.generate_valid_name(generator, schemas)?;
+                    self.target_namespace = Some(valid_name.clone());
+                    self.other_namespaces.insert(valid_name, target_location);
+                    return Ok(());
+                }
                 self.target_namespace = Some(ns.clone());
                 Ok(())
             }
@@ -155,7 +169,12 @@ impl Namespaces {
         Ok(())
     }
 
-    fn add_target_namespace(&mut self, ns: String) -> Result<(), XMLGeneratorError> {
+    fn add_target_namespace(
+        &mut self,
+        generator: &mut Generator,
+        schemas: &Schemas,
+        ns: String,
+    ) -> Result<(), XMLGeneratorError> {
         if let Some(default_ns) = &self.default_namespace
             && default_ns.eq(&ns)
         {
@@ -163,7 +182,7 @@ impl Namespaces {
         }
 
         match &self.target_namespace {
-            None => self.set_target_namespace(ns)?,
+            None => self.set_target_namespace(generator, schemas, ns)?,
             Some(target) => self.check_target_namespace(ns, target)?,
         }
 
@@ -222,6 +241,7 @@ impl Namespaces {
 
     fn get_schema_info(
         &mut self,
+        generator: &mut Generator,
         schemas: &Schemas,
         schema_info: &SchemaInfo,
         root: bool,
@@ -232,7 +252,7 @@ impl Namespaces {
             && root
         {
             check_namespace_exists(ns, schemas)?;
-            self.add_target_namespace(ns.to_string())?;
+            self.add_target_namespace(generator, schemas, ns.to_string())?;
         }
 
         for content in &schema.content {

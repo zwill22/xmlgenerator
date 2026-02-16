@@ -118,7 +118,13 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
 
 fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
     // TODO Replace with const
-    let unicode_blocks = unicode_blocks()?;
+    let mut unicode_blocks = unicode_blocks()?;
+
+
+    unicode_blocks.insert("Nd".to_string(), r"[0-9]".to_string());
+    unicode_blocks.insert(r"L".to_string(), r"[[:alpha:]]".to_string());
+    unicode_blocks.insert(r"Ll".to_string(), r"[[:lower:]]".to_string());
+    unicode_blocks.insert(r"Lu".to_string(), r"[[:upper:]]".to_string());
 
     let mut output = HashMap::new();
 
@@ -134,9 +140,6 @@ fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationErr
 
         output.insert(neg_block, neg_set);
     }
-
-    // Additional values
-    output.insert(r"\p{Nd}".to_string(), r"[0-9]".to_string());
 
     Ok(output)
 }
@@ -164,14 +167,12 @@ fn get_xml_mappings() -> HashMap<String, String> {
     let mut mappings = HashMap::new();
     let i = r"\i".to_string();
     let i_set = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
-    let i_ascii = r"[:A-Z_a-z]";
 
     let c = r"\c".to_string();
     let c_set = r"[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
-    let c_ascii = r"[-.0-9:A-Z_a-z]";
 
-    mappings.insert(i, i_ascii.to_string());
-    mappings.insert(c, c_ascii.to_string());
+    mappings.insert(i, i_set.to_string());
+    mappings.insert(c, c_set.to_string());
 
     let neg_i = r"\I".to_string();
     let neg_i_set = format!(r"[^{}]", i_set);

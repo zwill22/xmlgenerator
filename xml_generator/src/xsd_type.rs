@@ -118,9 +118,7 @@ impl From<&str> for XsdType {
             "ENTITY" => XsdType::String(r"[A-Z_a-z][-\.0-9A-Z_a-z]*".to_string()),
             "ID" => XsdType::String(r"[a-zA-Z_][a-zA-Z0-9._-]*".to_string()),
             "IDREF" => XsdType::String(r"[a-zA-Z_][a-zA-Z0-9\._-]*".to_string()),
-            "language" => XsdType::String(
-                r"([a-zA-Z]{2}|[iI]-[a-zA-Z]+|[xX]-[a-zA-Z]{1,8})(-[a-zA-Z]{1,8})*".to_string(),
-            ),
+            "language" => XsdType::String(r"[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*".to_string()),
             "Name" => XsdType::String(r"[:A-Z_a-z][-\.0-9:A-Z_a-z]*".to_string()),
             "NCName" => XsdType::String(r"[A-Z_a-z][-\.0-9A-Z_a-z]*".to_string()),
             "NMTOKEN" => XsdType::String(r"[a-zA-Z0-9\._\-:]*".to_string()),
@@ -130,7 +128,7 @@ impl From<&str> for XsdType {
             ),
             "string" => XsdType::String("".to_string()),
             "token" => XsdType::String(
-                r"[a-zA-Z0-9\._\-:][a-zA-Z0-9\._\-:\s]*[a-zA-Z0-9\._\-:]".to_string(),
+                r"[a-zA-Z0-9\._\-:](?:[a-zA-Z0-9\._\-:]*\s[a-zA-Z0-9\._\-:]*)*[a-zA-Z0-9\._\-:]".to_string(),
             ),
 
             // Date time data types
