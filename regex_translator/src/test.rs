@@ -83,11 +83,7 @@ mod tests {
 
         for input_regex in regex {
             match translator.translate(input_regex.as_str()) {
-                Ok(out) => {
-                    if input_regex != out {
-                        //println!("Translated:\t{}\t->\t{}", input_regex, out);
-                    }
-                }
+                Ok(_) => {}
                 Err(e) => handle_errors(e, input_regex.as_str()),
             }
         }

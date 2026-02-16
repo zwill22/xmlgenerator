@@ -1,11 +1,13 @@
 extern crate alloc;
 
 use core::fmt::Display;
-use polars::prelude::*;
 
 use regex::Regex;
 use std::collections::HashMap;
-use std::path;
+use std::fs::File;
+use std::io::{BufRead, Error};
+use std::path::{Path, PathBuf};
+use std::{io, path};
 
 mod test;
 
@@ -16,6 +18,12 @@ pub enum RegexTranslationError {
     FileReadError(String),
     DataError(String),
     SurrogatesError,
+}
+
+impl From<Error> for RegexTranslationError {
+    fn from(e: Error) -> Self {
+        RegexTranslationError::FileReadError(e.to_string())
+    }
 }
 
 impl From<regexml::Error> for RegexTranslationError {
@@ -68,94 +76,42 @@ fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
     }
 }
 
-fn get_file_path() -> PlPath {
+fn get_file_path() -> PathBuf {
     const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
     const SEPARATOR: char = path::MAIN_SEPARATOR;
     const RELATIVE_DIR: &str = "data/unicode_blocks.txt";
 
     let full_path = MANIFEST_DIR.to_string() + &*SEPARATOR.to_string() + RELATIVE_DIR;
 
-    PlPath::new(full_path.as_str())
-}
-
-fn get_string(
-    data_frame: &DataFrame,
-    column: &str,
-    index: usize,
-) -> Result<String, RegexTranslationError> {
-    match data_frame.column(column).unwrap().get(index).unwrap() {
-        AnyValue::String(string) => Ok(string.to_owned()),
-        _ => Err(RegexTranslationError::DataError(
-            "Value is not a string".to_string(),
-        )),
-    }
+    Path::new(full_path.as_str()).to_path_buf()
 }
 
 fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
     let path = get_file_path();
 
-    let lf = LazyCsvReader::new(path)
-        .with_has_header(true)
-        .with_separator(b'\t')
-        .with_infer_schema_length(None)
-        .finish()
-        .expect("Unable to read file");
-
-    let df = match lf
-        .select([
-            col("Block range")
-                .str()
-                .replace_all(
-                    lit(r#""?U\+(.*?)..U\+(.*?)$"?"#),
-                    lit(r"[\u{${1}}-\u{${2}}]"),
-                    false,
-                )
-                .str()
-                .replace_all(lit(r#"""#), lit(r""), false)
-                .alias("Ranges"),
-            col("Block name")
-                .str()
-                .replace_all(lit(r"\[\w+\]"), lit(r""), false)
-                .str()
-                .replace_all(lit(r"\s"), lit(r""), false)
-                .str()
-                .replace_all(lit(r#"""#), lit(r""), false)
-                .alias("Name"),
-        ])
-        .collect()
-    {
-        Ok(d) => d,
-        Err(e) => return Err(RegexTranslationError::FileReadError(e.to_string())),
-    };
+    let file = File::open(path)?;
+    let lines = io::BufReader::new(file).lines();
 
     let mut map = HashMap::new();
-    for i in 0..df.height() {
-        let k = get_string(&df, "Name", i)?;
-        let v = get_string(&df, "Ranges", i)?;
-
-        match validate_output(v.as_str()) {
-            Ok(_) => {
-                map.insert(k, v);
-            }
-            Err(e) => {
-                if !k.to_string().contains("Surrogates") {
-                    return Err(RegexTranslationError::FileReadError(format!(
-                        "Unknown blocks in datafile: {}",
-                        e
-                    )));
-                }
-            }
+    for result in lines {
+        let line = result?;
+        let values = line.split_whitespace().collect::<Vec<_>>();
+        if values.len() != 4 {
+            continue;
         }
+
+        let min_char = values[0];
+        let max_char = values[2];
+        let name = values[3];
+
+        if name.contains("Surrogates") {
+            continue;
+        }
+
+        let range = format!(r"[\u{{{}}}-\u{{{}}}]", min_char, max_char);
+
+        map.insert(name.to_string(), range.clone());
     }
-
-    // Additional mappings
-    map.insert(
-        "CombiningMarksforSymbols".to_string(),
-        r"[\u20D0-\u20FF]".to_string(),
-    );
-
-    // Bopomofo includes extended character in Rust Regex crate
-    map.insert("Bopomofo".to_string(), r"[\u3105-\u312f]".to_string());
 
     Ok(map)
 }
@@ -168,12 +124,12 @@ fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationErr
 
     for (k, v) in unicode_blocks {
         // Unicode block (set)
-        let block = format!(r"\p{{Is{}}}", k);
+        let block = format!(r"\p{{{}}}", k);
 
         output.insert(block, v.to_string());
 
         // Set negation
-        let neg_block = format!(r"\P{{Is{}}}", k);
+        let neg_block = format!(r"\P{{{}}}", k);
         let neg_set = format!(r"[^{}]", v);
 
         output.insert(neg_block, neg_set);
