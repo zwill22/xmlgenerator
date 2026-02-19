@@ -142,8 +142,40 @@ fn handle_surrogates(output: &str) -> Result<(), RegexTranslationError> {
     Ok(())
 }
 
-fn get_xml_mappings() -> HashMap<String, String> {
+
+fn get_ascii_mappings() -> HashMap<String, String> {
     let mut mappings = HashMap::new();
+
+    const I: &str = r"\i";
+    const I_SET: &str = r"[:A-Z_a-z]";
+
+    const C: &str = r"\c";
+    const C_SET: &str = r"[-.0-9:A-Z_a-z]";
+
+    mappings.insert(I.to_string(), I_SET.to_string());
+    mappings.insert(C.to_string(), C_SET.to_string());
+
+    const NEGATIVE_I: &str = r"\I";
+    const NEGATIVE_I_SET: &str = r"[[\x{0}-\x{7F}]--[:A-Z_a-z]]";
+
+    const NEGATIVE_C: &str = r"\C";
+    const NEGATIVE_C_SET: &str = r"[[\x{0}-\x{7F}]--[-.0-9:A-Z_a-z]]";
+
+    mappings.insert(NEGATIVE_I.to_string(), NEGATIVE_I_SET.to_string());
+    mappings.insert(NEGATIVE_C.to_string(), NEGATIVE_C_SET.to_string());
+
+    // Digit mapping is not recognised by Rust
+    const D: &str = r"\d";
+    const D_SET: &str = r"[0-9]";
+
+    mappings.insert(D.to_string(), D_SET.to_string());
+
+    mappings
+}
+
+fn get_full_mappings() -> HashMap<String, String> {
+    let mut mappings = HashMap::new();
+
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
 
@@ -154,15 +186,16 @@ fn get_xml_mappings() -> HashMap<String, String> {
     mappings.insert(C.to_string(), C_SET.to_string());
 
     const NEGATIVE_I: &str = r"\I";
-    let negative_i_set = format!(r"[^{}]", I_SET);
+    const NEGATIVE_I_SET: &str = r"[[\x{0}-\x{7F}]--[:A-Z_a-z]]";
 
     const NEGATIVE_C: &str = r"\C";
-    let negative_c_set = format!(r"[^{}]", C_SET);
+    const NEGATIVE_C_SET: &str = r"[[\x{0}-\x{7F}]--[-.0-9:A-Z_a-z]]";
 
-    mappings.insert(NEGATIVE_I.to_string(), negative_i_set);
-    mappings.insert(NEGATIVE_C.to_string(), negative_c_set);
+    mappings.insert(NEGATIVE_I.to_string(), NEGATIVE_I_SET.to_string());
+    mappings.insert(NEGATIVE_C.to_string(), NEGATIVE_C_SET.to_string());
 
     // Digit mapping is not recognised by Rust
+    // TODO Include non-ASCII digits
     const D: &str = r"\d";
     const D_SET: &str = r"[0-9]";
 
@@ -233,26 +266,44 @@ fn replace_decimal_character_reference(input: &str) -> Result<String, RegexTrans
     replace_character_reference(PATTERN, input, DEC)
 }
 
+#[derive(Default)]
 pub struct RegexTranslator {
-    mappings: HashMap<String, String>,
+    unicode_mappings: HashMap<String, String>,
+    ascii_mappings: HashMap<String, String>,
+    full_mappings: HashMap<String, String>,
 }
 
 impl RegexTranslator {
     pub fn new() -> Result<Self, RegexTranslationError> {
-        let mut mappings = get_unicode_mappings()?;
+        let translator = Self {
+            unicode_mappings: get_unicode_mappings()?,
+            ascii_mappings: get_ascii_mappings(),
+            full_mappings: get_full_mappings(),
+        };
 
-        let xml_mappings = get_xml_mappings();
-        mappings.extend(xml_mappings);
-
-        Ok(Self { mappings })
+        Ok(translator)
     }
 
-    fn replace(&self, input: &str) -> Result<String, RegexTranslationError> {
+    fn replace(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {
         let mut output = input.to_string();
 
-        for (k, v) in self.mappings.iter() {
+        for (k, v) in self.unicode_mappings.iter() {
             if input.contains(k) {
                 output = output.as_str().replace(k, v.as_str());
+            }
+        }
+
+        if ascii {
+            for (k, v) in self.ascii_mappings.iter() {
+                if input.contains(k) {
+                    output = output.as_str().replace(k, v.as_str());
+                }
+            }
+        } else {
+            for (k, v) in self.full_mappings.iter() {
+                if input.contains(k) {
+                    output = output.as_str().replace(k, v.as_str());
+                }
             }
         }
 
@@ -268,10 +319,10 @@ impl RegexTranslator {
         Ok(output)
     }
 
-    pub fn translate(&self, input: &str) -> Result<String, RegexTranslationError> {
+    pub fn translate(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {
         validate_input(input)?;
 
-        let output = self.replace(input)?;
+        let output = self.replace(input, ascii)?;
 
         validate_output(&output)?;
 

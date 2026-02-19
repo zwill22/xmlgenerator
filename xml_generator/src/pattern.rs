@@ -1,0 +1,133 @@
+use crate::XMLGeneratorError;
+use line_ending::LineEnding;
+use regextranslator::RegexTranslator;
+
+fn check_line_ending(pattern: &str, ending: &str) -> Result<(), XMLGeneratorError> {
+    if pattern.contains(ending) {
+        return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
+    }
+
+    Ok(())
+}
+
+fn check_crlf_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
+    let stripped = pattern.replace("\\r\\n", "");
+
+    if stripped.contains("\\r") || stripped.contains("\\n") {
+        return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
+    }
+
+    Ok(())
+}
+
+fn check_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
+    match LineEnding::from_current_platform() {
+        LineEnding::LF => check_line_ending(pattern, r"\r"),
+        LineEnding::CRLF => check_crlf_endings(pattern),
+        LineEnding::CR => check_line_ending(pattern, r"\n"),
+    }
+}
+
+#[derive(PartialEq, Default)]
+pub(crate) struct Pattern {
+    original: String,
+    ascii: Option<String>,
+    full: Option<String>,
+}
+
+impl Pattern {
+    pub(crate) fn new(
+        regex_translator: &RegexTranslator,
+        input: &str,
+    ) -> Result<Self, XMLGeneratorError> {
+        let mut pattern = Self::default();
+        pattern.original = input.to_string();
+        check_line_endings(input)?;
+
+        let full_translation = regex_translator.translate(input, false)?;
+        if full_translation == input {
+            return Ok(pattern);
+        }
+
+        pattern.full = Some(full_translation.clone());
+
+        let ascii_translation = regex_translator.translate(input, true)?;
+        if ascii_translation == input {
+            return Ok(pattern);
+        }
+
+        if ascii_translation.eq(&full_translation) {
+            return Ok(pattern);
+        }
+
+        pattern.ascii = Some(ascii_translation.clone());
+
+        Ok(pattern)
+    }
+
+    pub(crate) fn get_pattern(&self, ascii: bool) -> &str {
+        if ascii {
+            if let Some(ascii) = &self.ascii {
+                return ascii;
+            }
+
+            if let Some(full) = &self.full {
+                return full;
+            }
+
+            &self.original
+        } else {
+            if let Some(full) = &self.full {
+                return full;
+            }
+
+            &self.original
+        }
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.original.is_empty()
+    }
+}
+
+impl From<&str> for Pattern {
+    fn from(s: &str) -> Self {
+        let mut pattern = Self::default();
+        pattern.original = s.to_string();
+
+        const I: &str = r"\i";
+        const I_ASCII: &str = r"[:A-Z_a-z]";
+        const I_FULL: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
+
+        const C: &str = r"\c";
+        const C_ASCII: &str = r"[-.0-9:A-Z_a-z]";
+        const C_FULL: &str = r"[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
+
+        let output = s.replace(C, C_FULL).replace(I, I_FULL);
+        if output == s {
+            return pattern;
+        }
+
+        pattern.full = Some(output.clone());
+
+        let ascii = s.replace(I, I_ASCII).replace(C, C_ASCII);
+
+        if ascii == s {
+            return pattern;
+        }
+
+        if ascii == output {
+            return pattern;
+        }
+
+        pattern.ascii = Some(ascii.clone());
+
+        pattern
+    }
+}
+
+impl std::fmt::Display for Pattern {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.original)
+    }
+}

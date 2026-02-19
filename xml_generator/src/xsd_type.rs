@@ -1,33 +1,7 @@
-use const_format::{formatcp};
+use crate::pattern::Pattern;
+use const_format::formatcp;
 use http::Uri;
 use std::fmt::Display;
-
-fn strftime_to_regex(input: &str) -> String {
-    const YEAR: &str = r"(?:[0-9]{3}[1-9]|[0-9]{2}[1-9][0-9]|[0-9][1-9][0-9]{2}|[1-9][0-9]{3})";
-    const MONTH: &str = r"(?:0[1-9]|1[0-2])";
-    const DAY: &str = r"(?:0[1-9]|1[0-9]|2[0-9]|3[0-1])";
-
-    const HOUR: &str = r"(?:0[1-9]|1[0-9]|2[0-3])";
-    const MINUTE: &str = r"[0-5][0-9]";
-    const SECOND: &str = r"[0-5][0-9]";
-
-    const MONTH_NAME: &str = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)";
-
-    let output = input
-        .replace("%Y", YEAR)
-        .replace("%m", MONTH)
-        .replace("%d", DAY)
-        .replace("%H", HOUR)
-        .replace("%M", MINUTE)
-        .replace("%S", SECOND)
-        .replace("%b", MONTH_NAME);
-
-    if output.contains("%") {
-        panic!("Raw time string not replaced")
-    }
-
-    output
-}
 
 #[derive(Default, PartialEq)]
 pub(crate) enum XsdType {
@@ -51,7 +25,7 @@ pub(crate) enum XsdType {
     HexBinary,    // A hexidecimal binary value
     Duration,     // A duration of time
 
-    String(String), // A string type with a pattern
+    String(Pattern), // A string type with a pattern
 
     #[default]
     None, // No recognised type
@@ -69,11 +43,45 @@ fn check_duration(_input: &str) -> bool {
     true
 }
 
-fn check_string(_input: &str, _pattern: &str) -> bool {
+fn check_string(_input: &str, _pattern: &Pattern) -> bool {
     true
 }
 
 impl XsdType {
+    pub(crate) fn string(string: &str) -> Self {
+        let pattern = Pattern::from(string);
+        Self::String(pattern)
+    }
+
+    fn from_date(string: &str) -> Self {
+        const YEAR: &str = r"(?:[0-9]{3}[1-9]|[0-9]{2}[1-9][0-9]|[0-9][1-9][0-9]{2}|[1-9][0-9]{3})";
+        const MONTH: &str = r"(?:0[1-9]|1[0-2])";
+        const DAY: &str = r"(?:0[1-9]|1[0-9]|2[0-9]|3[0-1])";
+
+        const HOUR: &str = r"(?:0[1-9]|1[0-9]|2[0-3])";
+        const MINUTE: &str = r"[0-5][0-9]";
+        const SECOND: &str = r"[0-5][0-9]";
+
+        const MONTH_NAME: &str = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)";
+
+        let output = string
+            .replace("%Y", YEAR)
+            .replace("%m", MONTH)
+            .replace("%d", DAY)
+            .replace("%H", HOUR)
+            .replace("%M", MINUTE)
+            .replace("%S", SECOND)
+            .replace("%b", MONTH_NAME);
+
+        if output.contains("%") {
+            panic!("Raw time string not replaced")
+        }
+
+        let pattern = Pattern::from(output.as_str());
+
+        Self::String(pattern)
+    }
+
     pub(crate) fn is_valid(&self, input: &str) -> bool {
         match self {
             XsdType::Byte => input.parse::<i8>().is_ok(),
@@ -98,9 +106,9 @@ impl XsdType {
 
 impl From<&str> for XsdType {
     fn from(s: &str) -> Self {
-        const NAME: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}][-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]*";
-        const NCNAME: &str = r"[A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}][-.0-9A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]*";
-        const NMTOKEN: &str = r"[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]+";
+        const NAME: &str = r"\i\c*";
+        const NCNAME: &str = r"[\i-[:]][\c-[:]]*";
+        const NMTOKEN: &str = r"\c+";
         const LANGUAGE: &str = "r[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*";
         const NORMAL: &str = r"[^\r\n\t]*";
         const QNAME: &str = r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-\.0-9A-Z_a-z]*";
@@ -110,73 +118,73 @@ impl From<&str> for XsdType {
         const NMTOKENS: &str = formatcp!(r"{0}(?:\s+{0})*", NMTOKEN);
         const NULL: &str = "";
 
-        let date = strftime_to_regex("%Y-%m-%d");
-        let datetime = strftime_to_regex("%Y-%m-%dT%H:%M:%S");
-        let g_day = strftime_to_regex("-%d");
-        let g_month = strftime_to_regex("--%m");
-        let g_month_day = strftime_to_regex("--%m-%d");
-        let g_year = strftime_to_regex("%Y");
-        let g_year_month = strftime_to_regex("%Y-%m");
-        let time = strftime_to_regex("%H:%M:%S");
+        const DATE : &str = "%Y-%m-%d";
+        const DATETIME: &str = "%Y-%m-%dT%H:%M:%S";
+        const G_DAY: &str = "-%d";
+        const G_MONTH: &str = "--%m";
+        const G_MONTH_DAY: &str = "--%m-%d";
+        const G_YEAR: &str = "%Y";
+        const G_YEAR_MONTH: &str = "%Y-%m";
+        const TIME : &str = "%H:%M:%S";
 
         match s {
             // Numeric Data Types
             "byte" => XsdType::Byte,
-            "decimal" => XsdType::String(r"[+-]?[0-9]+\.?[0-9]*".to_string()),
+            "decimal" => XsdType::string(r"[+-]?[0-9]+\.?[0-9]*"),
             "short" => XsdType::Short,
             "int" => XsdType::Int,
             "long" => XsdType::Long,
-            "integer" => XsdType::String(r"[+-]?[0-9]+".to_string()),
-            "negativeInteger" => XsdType::String(r"-[1-9][0-9]+".to_string()),
-            "nonNegativeInteger" => XsdType::String(r"(?:0|\+?[1-9][0-9]*)".to_string()),
-            "nonPositiveInteger" => XsdType::String(r"(?:0|-[1-9][0-9]*)".to_string()),
-            "positiveInteger" => XsdType::String(r"\+?[1-9][0-9]*".to_string()),
+            "integer" => XsdType::string(r"[+-]?[0-9]+"),
+            "negativeInteger" => XsdType::string(r"-[1-9][0-9]+"),
+            "nonNegativeInteger" => XsdType::string(r"(?:0|\+?[1-9][0-9]*)"),
+            "nonPositiveInteger" => XsdType::string(r"(?:0|-[1-9][0-9]*)"),
+            "positiveInteger" => XsdType::string(r"\+?[1-9][0-9]*"),
             "unsignedLong" => XsdType::UnsignedLong,
             "unsignedInt" => XsdType::UnsignedInt,
             "unsignedShort" => XsdType::UnsignedShort,
             "unsignedByte" => XsdType::UnsignedByte,
 
             // String data types
-            "ENTITY" => XsdType::String(NCNAME.to_string()),
-            "ID" => XsdType::String(NCNAME.to_string()),
-            "IDREF" => XsdType::String(NCNAME.to_string()),
-            "language" => XsdType::String(LANGUAGE.to_string()),
-            "Name" => XsdType::String(NAME.to_string()),
-            "NCName" => XsdType::String(NCNAME.to_string()),
-            "NMTOKEN" => XsdType::String(NMTOKEN.to_string()),
-            "normalizedString" => XsdType::String(NORMAL.to_string()),
-            "QName" => XsdType::String(QNAME.to_string()),
-            "string" => XsdType::String(NULL.to_string()),
-            "token" => XsdType::String(TOKEN.to_string()),
+            "ENTITY" => XsdType::string(NCNAME),
+            "ID" => XsdType::string(NCNAME),
+            "IDREF" => XsdType::string(NCNAME),
+            "language" => XsdType::string(LANGUAGE),
+            "Name" => XsdType::string(NAME),
+            "NCName" => XsdType::string(NCNAME),
+            "NMTOKEN" => XsdType::string(NMTOKEN),
+            "normalizedString" => XsdType::string(NORMAL),
+            "QName" => XsdType::string(QNAME),
+            "string" => XsdType::string(NULL),
+            "token" => XsdType::string(TOKEN),
 
             // Date time data types
-            "date" => XsdType::String(date),
-            "dateTime" => XsdType::String(datetime),
-            "gDay" => XsdType::String(g_day),
-            "gMonth" => XsdType::String(g_month),
-            "gMonthDay" => XsdType::String(g_month_day),
-            "gYear" => XsdType::String(g_year),
-            "gYearMonth" => XsdType::String(g_year_month),
-            "time" => XsdType::String(time),
+            "date" => XsdType::from_date(DATE),
+            "dateTime" => XsdType::from_date(DATETIME),
+            "gDay" => XsdType::from_date(G_DAY),
+            "gMonth" => XsdType::from_date(G_MONTH),
+            "gMonthDay" => XsdType::from_date(G_MONTH_DAY),
+            "gYear" => XsdType::from_date(G_YEAR),
+            "gYearMonth" => XsdType::from_date(G_YEAR_MONTH),
+            "time" => XsdType::from_date(TIME),
 
             // Miscellaneous data types
             "duration" => XsdType::Duration,
             "anyURI" => XsdType::URI,
             "base64Binary" => XsdType::Base64Binary,
-            "boolean" => XsdType::String(BOOLEAN.to_string()),
+            "boolean" => XsdType::string(BOOLEAN),
             "float" => XsdType::Float,
             "double" => XsdType::Double,
             "hexBinary" => XsdType::HexBinary,
-            "NOTATION" => XsdType::String(NULL.to_string()),
+            "NOTATION" => XsdType::string(NULL),
 
             // List types
-            "ENTITIES" => XsdType::String(NC_NAMES.to_string()),
-            "NMTOKENS" => XsdType::String(NMTOKENS.to_string()),
-            "IDREFS" => XsdType::String(NC_NAMES.to_string()),
+            "ENTITIES" => XsdType::string(NC_NAMES),
+            "NMTOKENS" => XsdType::string(NMTOKENS),
+            "IDREFS" => XsdType::string(NC_NAMES),
 
             // Just use a string for any type
-            "anyType" => XsdType::String(NULL.to_string()),
-            "anySimpleType" => XsdType::String(NULL.to_string()),
+            "anyType" => XsdType::string(NULL),
+            "anySimpleType" => XsdType::string(NULL),
 
             _ => XsdType::None,
         }

@@ -1,4 +1,5 @@
 use crate::XMLGeneratorError;
+use crate::pattern::Pattern;
 use crate::xsd_type::XsdType;
 use chrono::Duration;
 use fake::{Fake, Faker};
@@ -66,8 +67,10 @@ impl Generator {
             .collect::<HashSet<String>>()
     }
 
-    fn regex_samples(&mut self, pattern: &str) -> HashSet<String> {
-        let regex = match rand_regex::Regex::compile(pattern, self.max_repeat) {
+    fn regex_samples(&mut self, pattern: &Pattern, ascii: bool) -> HashSet<String> {
+        let re = pattern.get_pattern(ascii);
+
+        let regex = match rand_regex::Regex::compile(&re, self.max_repeat) {
             Ok(regex) => regex,
             Err(_) => return HashSet::new(),
         };
@@ -75,8 +78,8 @@ impl Generator {
         self.sample(regex)
     }
 
-    pub(crate) fn generate_regex(&mut self, pattern: &str) -> Option<String> {
-        let samples = self.regex_samples(pattern);
+    fn regex(&mut self, pattern: &Pattern, ascii: bool) -> Option<String> {
+        let samples = self.regex_samples(pattern, ascii);
 
         if samples.len() == 1 {
             return samples.into_iter().next();
@@ -93,15 +96,19 @@ impl Generator {
         None
     }
 
-    fn fake_string(&mut self, pattern: &str) -> Option<String> {
+    pub(crate) fn generate_regex(&mut self, pattern: &Pattern) -> Option<String> {
+        self.regex(pattern, true)
+    }
+
+    fn fake_string(&mut self, pattern: &Pattern, ascii: bool) -> Option<String> {
         if pattern.is_empty() {
             return fake::<String>();
         }
 
-        self.generate_regex(pattern)
+        self.regex(pattern, ascii)
     }
 
-    pub(crate) fn generate_type(&mut self, xsd_type: &XsdType) -> Option<String> {
+    fn type_generate(&mut self, xsd_type: &XsdType, ascii: bool) -> Option<String> {
         match xsd_type {
             XsdType::Byte => fake::<i8>(),
             XsdType::Short => fake::<i16>(),
@@ -117,17 +124,22 @@ impl Generator {
             XsdType::Base64Binary => fake_base64(),
             XsdType::HexBinary => fake_hex(),
             XsdType::Duration => fake::<Duration>(),
-            XsdType::String(pattern) => self.fake_string(pattern.as_str()),
+            XsdType::String(pattern) => self.fake_string(pattern, ascii),
             XsdType::None => None,
         }
+    }
+
+    pub(crate) fn generate_type(&mut self, xsd_type: &XsdType) -> Option<String> {
+        self.type_generate(xsd_type, true)
     }
 
     pub(crate) fn choose<'a, Item>(&mut self, vec: &'a [Item]) -> Option<&'a Item> {
         vec.choose(&mut self.rng)
     }
 
-    fn find_match(pattern: &str, input: &str) -> Option<String> {
-        for mat in Regex::new(pattern).unwrap().find_iter(input) {
+    fn find_match(pattern: &Pattern, input: &str, ascii: bool) -> Option<String> {
+        let re = pattern.get_pattern(ascii);
+        for mat in Regex::new(&re).unwrap().find_iter(input) {
             let string = mat.as_str();
 
             if string.is_empty() {
@@ -140,23 +152,35 @@ impl Generator {
         None
     }
 
-    fn generate_pattern(&mut self, xsd_type: &XsdType, pattern: &str) -> Option<String> {
-        let samples = self.regex_samples(pattern);
+    fn generate_pattern(
+        &mut self,
+        xsd_type: &XsdType,
+        pattern: &Pattern,
+        ascii: bool,
+    ) -> Option<String> {
+        let samples = self.regex_samples(pattern, ascii);
         for sample in samples {
             if xsd_type.is_valid(&sample) {
                 return Some(sample);
             }
         }
 
-        let output = self.generate_type(xsd_type).expect("No type generated");
+        let output = self
+            .type_generate(xsd_type, ascii)
+            .expect("No type generated");
 
-        Generator::find_match(pattern, &output)
+        Generator::find_match(pattern, &output, ascii)
     }
 
-    fn cross_match(&mut self, pattern1: &str, pattern2: &str) -> Option<String> {
-        let samples1 = self.regex_samples(pattern1);
+    fn cross_match(
+        &mut self,
+        pattern1: &Pattern,
+        pattern2: &Pattern,
+        ascii: bool,
+    ) -> Option<String> {
+        let samples1 = self.regex_samples(pattern1, ascii);
         for sample in samples1 {
-            match Generator::find_match(pattern2, &sample) {
+            match Generator::find_match(pattern2, &sample, ascii) {
                 Some(output) => {
                     return Some(output);
                 }
@@ -169,55 +193,60 @@ impl Generator {
 
     fn generate_two_patterns(
         &mut self,
-        base_pattern: &str,
-        specific_pattern: &str,
+        base_pattern: &Pattern,
+        specific_pattern: &Pattern,
     ) -> Option<String> {
         if base_pattern.is_empty() {
-            return self.generate_regex(specific_pattern);
+            return self.regex(specific_pattern, true);
         }
 
         if specific_pattern.is_empty() {
-            return self.generate_regex(base_pattern);
+            return self.regex(base_pattern, true);
         }
 
-        match self.cross_match(base_pattern, specific_pattern) {
-            Some(output) => return Some(output),
-            None => {}
-        }
-
-        match self.cross_match(specific_pattern, base_pattern) {
-            Some(output) => Some(output),
-            None => {
-                eprintln!(
-                    "Warning: Cross match failed, using specific pattern without cross match"
-                );
-                self.generate_regex(specific_pattern)
+        for ascii in [true, false] {
+            match self.cross_match(base_pattern, specific_pattern, ascii) {
+                Some(output) => return Some(output),
+                None => {}
             }
+
+            return match self.cross_match(specific_pattern, base_pattern, ascii) {
+                Some(output) => Some(output),
+                None => {
+                    eprintln!(
+                        "Warning: Cross match failed, using specific pattern without cross match"
+                    );
+                    self.regex(specific_pattern, ascii)
+                }
+            };
         }
+
+        unreachable!()
     }
 
     pub(crate) fn generate_type_pattern(
         &mut self,
         xsd_type: &XsdType,
-        pattern: &str,
+        pattern: &Pattern,
     ) -> Option<String> {
+        const ASCII: bool = true;
         match xsd_type {
-            XsdType::Byte => self.generate_pattern(&xsd_type, pattern),
-            XsdType::Short => self.generate_pattern(&xsd_type, pattern),
-            XsdType::Int => self.generate_pattern(&xsd_type, pattern),
-            XsdType::Long => self.generate_pattern(&xsd_type, pattern),
-            XsdType::UnsignedByte => self.generate_pattern(&xsd_type, pattern),
-            XsdType::UnsignedShort => self.generate_pattern(&xsd_type, pattern),
-            XsdType::UnsignedInt => self.generate_pattern(&xsd_type, pattern),
-            XsdType::UnsignedLong => self.generate_pattern(&xsd_type, pattern),
-            XsdType::Float => self.generate_pattern(&xsd_type, pattern),
-            XsdType::Double => self.generate_pattern(&xsd_type, pattern),
-            XsdType::URI => self.generate_pattern(&xsd_type, pattern),
-            XsdType::Base64Binary => self.generate_pattern(&xsd_type, pattern),
-            XsdType::HexBinary => self.generate_pattern(&xsd_type, pattern),
-            XsdType::Duration => self.generate_pattern(&xsd_type, pattern),
+            XsdType::Byte => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::Short => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::Int => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::Long => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::UnsignedByte => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::UnsignedShort => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::UnsignedInt => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::UnsignedLong => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::Float => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::Double => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::URI => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::Base64Binary => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::HexBinary => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::Duration => self.generate_pattern(&xsd_type, pattern, ASCII),
             XsdType::String(string) => self.generate_two_patterns(&string, pattern),
-            XsdType::None => self.generate_regex(pattern),
+            XsdType::None => self.regex(pattern, ASCII),
         }
     }
 

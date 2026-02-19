@@ -135,7 +135,7 @@ impl Attribute {
 
         if self.use_type == AttributeUseType::Required && !generated {
             if self.type_name.is_none() {
-                let xsd_type = XsdType::String("".to_string());
+                let xsd_type = XsdType::string("");
                 let value = generator.generate_type(&xsd_type).unwrap();
                 xml_element.add_attribute(name.as_str(), value.as_str());
             } else {

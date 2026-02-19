@@ -5,6 +5,7 @@ use std::str::from_utf8;
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::{Import, SchemaContent};
 use xsd_parser::models::schema::{NamespaceInfo, SchemaInfo};
+use crate::pattern::Pattern;
 
 fn check_namespace_exists(ns: &String, schemas: &Schemas) -> Result<(), XMLGeneratorError> {
     for (_ns_id, ns_info) in schemas.namespaces() {
@@ -67,9 +68,9 @@ impl Namespaces {
         generator: &mut Generator,
         schemas: &Schemas,
     ) -> Result<String, XMLGeneratorError> {
-        let pattern = r"[a-z]{2}";
+        let pattern = Pattern::from(r"[a-z]{2}");
 
-        match generator.generate_regex(pattern) {
+        match generator.generate_regex(&pattern) {
             Some(output) => match check_namespace_exists(&output, schemas) {
                 Ok(_) => self.generate_valid_name(generator, schemas),
                 Err(_) => Ok(output),

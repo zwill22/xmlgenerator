@@ -20,6 +20,7 @@ mod tracker;
 mod type_info;
 mod xsd;
 mod xsd_type;
+mod pattern;
 
 pub struct XMLGenerator {
     validator: XSDValidator,

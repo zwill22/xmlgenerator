@@ -1,62 +1,18 @@
 use crate::XMLGeneratorError;
 use crate::error::unimplemented;
 use crate::generator::Generator;
+use crate::pattern::Pattern;
 use crate::xsd_type::XsdType;
-use line_ending::LineEnding;
-use regex::Regex;
 use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
     Facet, FacetType, Restriction, RestrictionContent, SimpleBaseTypeContent,
 };
 
-fn check_line_ending(pattern: &str, ending: &str) -> Result<(), XMLGeneratorError> {
-    if pattern.contains(ending) {
-        return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
-    }
-
-    Ok(())
-}
-
-fn check_crlf_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
-    let stripped = pattern.replace("\\r\\n", "");
-
-    if stripped.contains("\\r") || stripped.contains("\\n") {
-        return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
-    }
-
-    Ok(())
-}
-
-fn check_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
-    match LineEnding::from_current_platform() {
-        LineEnding::LF => check_line_ending(pattern, r"\r"),
-        LineEnding::CRLF => check_crlf_endings(pattern),
-        LineEnding::CR => check_line_ending(pattern, r"\n"),
-    }
-}
-
-fn handle_pattern(
-    translator: &RegexTranslator,
-    pattern: &str,
-) -> Result<String, XMLGeneratorError> {
-    check_line_endings(pattern)?;
-
-    let translation = translator.translate(pattern)?;
-
-    match Regex::new(translation.as_str()) {
-        Ok(regex) => Ok(regex.to_string()),
-        Err(pattern_err) => {
-            let error = format!("Compilation error: {}", pattern_err);
-            Err(XMLGeneratorError::RegexError(error))
-        }
-    }
-}
-
 #[derive(Default)]
 pub(crate) struct TypeInfo {
     name: Option<String>,
     xsd_type: XsdType,
-    pattern: Option<String>,
+    pattern: Option<Pattern>,
     enumerations: Vec<String>,
 }
 
@@ -98,8 +54,10 @@ impl TypeInfo {
     ) -> Result<(), XMLGeneratorError> {
         let pattern = pattern_facet.value.as_str();
 
-        let output = handle_pattern(translator, pattern)?;
-        self.pattern = Some(output);
+        let result = Pattern::new(translator, pattern)?;
+
+        self.pattern = Some(result);
+
         Ok(())
     }
 
@@ -193,7 +151,7 @@ impl PartialEq for TypeInfo {
             Some(pattern1) => match &other.pattern {
                 None => return false,
                 Some(pattern2) => {
-                    if pattern1.as_str() != pattern2.as_str() {
+                    if pattern1 != pattern2 {
                         return false;
                     }
                 }
