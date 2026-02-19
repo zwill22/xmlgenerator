@@ -1,3 +1,4 @@
+use const_format::{formatcp};
 use http::Uri;
 use std::fmt::Display;
 
@@ -97,6 +98,27 @@ impl XsdType {
 
 impl From<&str> for XsdType {
     fn from(s: &str) -> Self {
+        const NAME: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}][-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]*";
+        const NCNAME: &str = r"[A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}][-.0-9A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]*";
+        const NMTOKEN: &str = r"[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]+";
+        const LANGUAGE: &str = "r[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*";
+        const NORMAL: &str = r"[^\r\n\t]*";
+        const QNAME: &str = r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-\.0-9A-Z_a-z]*";
+        const TOKEN: &str = r"[^\s]*(?: [^\s]*)*";
+        const NC_NAMES: &str = formatcp!(r"{0}(?:\s+{0})*", NCNAME);
+        const BOOLEAN: &str = r"(?:true|false|0|1)";
+        const NMTOKENS: &str = formatcp!(r"{0}(?:\s+{0})*", NMTOKEN);
+        const NULL: &str = "";
+
+        let date = strftime_to_regex("%Y-%m-%d");
+        let datetime = strftime_to_regex("%Y-%m-%dT%H:%M:%S");
+        let g_day = strftime_to_regex("-%d");
+        let g_month = strftime_to_regex("--%m");
+        let g_month_day = strftime_to_regex("--%m-%d");
+        let g_year = strftime_to_regex("%Y");
+        let g_year_month = strftime_to_regex("%Y-%m");
+        let time = strftime_to_regex("%H:%M:%S");
+
         match s {
             // Numeric Data Types
             "byte" => XsdType::Byte,
@@ -115,56 +137,46 @@ impl From<&str> for XsdType {
             "unsignedByte" => XsdType::UnsignedByte,
 
             // String data types
-            "ENTITY" => XsdType::String(r"[A-Z_a-z][-\.0-9A-Z_a-z]*".to_string()),
-            "ID" => XsdType::String(r"[a-zA-Z_][a-zA-Z0-9._-]*".to_string()),
-            "IDREF" => XsdType::String(r"[a-zA-Z_][a-zA-Z0-9\._-]*".to_string()),
-            "language" => XsdType::String(r"[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*".to_string()),
-            "Name" => XsdType::String(r"[:A-Z_a-z][-\.0-9:A-Z_a-z]*".to_string()),
-            "NCName" => XsdType::String(r"[A-Z_a-z][-\.0-9A-Z_a-z]*".to_string()),
-            "NMTOKEN" => XsdType::String(r"[a-zA-Z0-9\._\-:]*".to_string()),
-            "normalizedString" => XsdType::String(r"[^\r\n\t]*".to_string()),
-            "QName" => XsdType::String(
-                r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-\.0-9A-Z_a-z]*".to_string(),
-            ),
-            "string" => XsdType::String("".to_string()),
-            "token" => XsdType::String(
-                r"[a-zA-Z0-9\._\-:](?:[a-zA-Z0-9\._\-:]*\s[a-zA-Z0-9\._\-:]*)*[a-zA-Z0-9\._\-:]".to_string(),
-            ),
+            "ENTITY" => XsdType::String(NCNAME.to_string()),
+            "ID" => XsdType::String(NCNAME.to_string()),
+            "IDREF" => XsdType::String(NCNAME.to_string()),
+            "language" => XsdType::String(LANGUAGE.to_string()),
+            "Name" => XsdType::String(NAME.to_string()),
+            "NCName" => XsdType::String(NCNAME.to_string()),
+            "NMTOKEN" => XsdType::String(NMTOKEN.to_string()),
+            "normalizedString" => XsdType::String(NORMAL.to_string()),
+            "QName" => XsdType::String(QNAME.to_string()),
+            "string" => XsdType::String(NULL.to_string()),
+            "token" => XsdType::String(TOKEN.to_string()),
 
             // Date time data types
-            "date" => XsdType::String(strftime_to_regex("%Y-%m-%d")),
-            "dateTime" => XsdType::String(strftime_to_regex("%Y-%m-%dT%H:%M:%S")),
-            "gDay" => XsdType::String(strftime_to_regex("-%d")),
-            "gMonth" => XsdType::String(strftime_to_regex("--%m")),
-            "gMonthDay" => XsdType::String(strftime_to_regex("--%m-%d")),
-            "gYear" => XsdType::String(strftime_to_regex("%Y")),
-            "gYearMonth" => XsdType::String(strftime_to_regex("%Y-%m")),
-            "time" => XsdType::String(strftime_to_regex("%H:%M:%S")),
+            "date" => XsdType::String(date),
+            "dateTime" => XsdType::String(datetime),
+            "gDay" => XsdType::String(g_day),
+            "gMonth" => XsdType::String(g_month),
+            "gMonthDay" => XsdType::String(g_month_day),
+            "gYear" => XsdType::String(g_year),
+            "gYearMonth" => XsdType::String(g_year_month),
+            "time" => XsdType::String(time),
 
             // Miscellaneous data types
             "duration" => XsdType::Duration,
             "anyURI" => XsdType::URI,
             "base64Binary" => XsdType::Base64Binary,
-            "boolean" => XsdType::String(r"(?:true|false|0|1)".to_string()),
+            "boolean" => XsdType::String(BOOLEAN.to_string()),
             "float" => XsdType::Float,
             "double" => XsdType::Double,
             "hexBinary" => XsdType::HexBinary,
-            "NOTATION" => XsdType::String("".to_string()),
+            "NOTATION" => XsdType::String(NULL.to_string()),
 
             // List types
-            "ENTITIES" => XsdType::String(
-                r"([A-Z_a-z][-\.0-9A-Z_a-z]*)(\s+[A-Z_a-z][-\.0-9A-Z_a-z]*)*".to_string(),
-            ),
-            "NMTOKENS" => {
-                XsdType::String(r"([a-zA-Z0-9\._:-]+)(\s+[a-zA-Z0-9\._:-]+)*".to_string())
-            }
-            "IDREFS" => XsdType::String(
-                r"([A-Z_a-z][-\.0-9A-Z_a-z]*)(\s+[A-Z_a-z][-\.0-9A-Z_a-z]*)*".to_string(),
-            ),
+            "ENTITIES" => XsdType::String(NC_NAMES.to_string()),
+            "NMTOKENS" => XsdType::String(NMTOKENS.to_string()),
+            "IDREFS" => XsdType::String(NC_NAMES.to_string()),
 
             // Just use a string for any type
-            "anyType" => XsdType::String("".to_string()),
-            "anySimpleType" => XsdType::String("".to_string()),
+            "anyType" => XsdType::String(NULL.to_string()),
+            "anySimpleType" => XsdType::String(NULL.to_string()),
 
             _ => XsdType::None,
         }

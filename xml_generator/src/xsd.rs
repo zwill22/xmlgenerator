@@ -68,8 +68,7 @@ impl Xsd {
         if let Some(location) = &self.namespaces.get_default_namespace() {
             match self.namespaces.get_root_namespace() {
                 None => {
-                    let name = "xmlns";
-                    element.add_attribute(name, location);
+                    element.add_attribute("xmlns", location);
                 }
                 Some(root_namespace) => {
                     let prefix = "xmlns:".to_string() + root_namespace.as_str();
@@ -80,9 +79,8 @@ impl Xsd {
 
         for (prefix, location) in self.namespaces.get_other_namespaces() {
             if prefix == "xs" {
-                let name = "xmlns:xsi";
                 let value = location.to_string() + "-instance";
-                element.add_attribute(name, value.as_str());
+                element.add_attribute("xmlns:xsi", value.as_str());
             } else if prefix == "xml" {
                 // ignore
             } else {

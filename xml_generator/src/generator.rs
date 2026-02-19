@@ -188,9 +188,11 @@ impl Generator {
         match self.cross_match(specific_pattern, base_pattern) {
             Some(output) => Some(output),
             None => {
-                eprintln!("Warning: Cross match failed, using specific pattern without cross match");
+                eprintln!(
+                    "Warning: Cross match failed, using specific pattern without cross match"
+                );
                 self.generate_regex(specific_pattern)
-            },
+            }
         }
     }
 

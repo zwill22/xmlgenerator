@@ -29,8 +29,8 @@ fn check_namespace_is_valid(ns: &str) -> bool {
     if ns.eq("xs") {
         return false;
     }
-    let re = r"^[A-Z_a-z][-.0-9A-Z_a-z]*$";
-    Generator::validate(ns, re).unwrap()
+    const RE: &str = r"^[A-Z_a-z][-.0-9A-Z_a-z]*$";
+    Generator::validate(ns, RE).unwrap()
 }
 
 #[derive(Default)]

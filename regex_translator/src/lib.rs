@@ -4,10 +4,6 @@ use core::fmt::Display;
 
 use regex::Regex;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, Error};
-use std::path::{Path, PathBuf};
-use std::{io, path};
 
 mod test;
 
@@ -18,12 +14,6 @@ pub enum RegexTranslationError {
     FileReadError(String),
     DataError(String),
     SurrogatesError,
-}
-
-impl From<Error> for RegexTranslationError {
-    fn from(e: Error) -> Self {
-        RegexTranslationError::FileReadError(e.to_string())
-    }
 }
 
 impl From<regexml::Error> for RegexTranslationError {
@@ -76,25 +66,15 @@ fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
     }
 }
 
-fn get_file_path() -> PathBuf {
-    const MANIFEST_DIR: &str = env!("CARGO_MANIFEST_DIR");
-    const SEPARATOR: char = path::MAIN_SEPARATOR;
-    const RELATIVE_DIR: &str = "data/unicode_blocks.txt";
-
-    let full_path = MANIFEST_DIR.to_string() + &*SEPARATOR.to_string() + RELATIVE_DIR;
-
-    Path::new(full_path.as_str()).to_path_buf()
+const fn get_file() -> &'static str {
+    include_str!("../data/unicode_blocks.txt")
 }
 
 fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let path = get_file_path();
-
-    let file = File::open(path)?;
-    let lines = io::BufReader::new(file).lines();
+    const DATA: &'static str = get_file();
 
     let mut map = HashMap::new();
-    for result in lines {
-        let line = result?;
+    for line in DATA.lines() {
         let values = line.split_whitespace().collect::<Vec<_>>();
         if values.len() != 4 {
             continue;
@@ -119,7 +99,6 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
 fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
     // TODO Replace with const
     let mut unicode_blocks = unicode_blocks()?;
-
 
     unicode_blocks.insert("Nd".to_string(), r"[0-9]".to_string());
     unicode_blocks.insert(r"L".to_string(), r"[[:alpha:]]".to_string());
@@ -165,29 +144,29 @@ fn handle_surrogates(output: &str) -> Result<(), RegexTranslationError> {
 
 fn get_xml_mappings() -> HashMap<String, String> {
     let mut mappings = HashMap::new();
-    let i = r"\i".to_string();
-    let i_set = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
+    const I: &str = r"\i";
+    const I_SET: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
 
-    let c = r"\c".to_string();
-    let c_set = r"[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
+    const C: &str = r"\c";
+    const C_SET: &str = r"[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
 
-    mappings.insert(i, i_set.to_string());
-    mappings.insert(c, c_set.to_string());
+    mappings.insert(I.to_string(), I_SET.to_string());
+    mappings.insert(C.to_string(), C_SET.to_string());
 
-    let neg_i = r"\I".to_string();
-    let neg_i_set = format!(r"[^{}]", i_set);
+    const NEGATIVE_I: &str = r"\I";
+    let negative_i_set = format!(r"[^{}]", I_SET);
 
-    let neg_c = r"\C".to_string();
-    let neg_c_set = format!(r"[^{}]", c_set);
+    const NEGATIVE_C: &str = r"\C";
+    let negative_c_set = format!(r"[^{}]", C_SET);
 
-    mappings.insert(neg_i, neg_i_set);
-    mappings.insert(neg_c, neg_c_set);
+    mappings.insert(NEGATIVE_I.to_string(), negative_i_set);
+    mappings.insert(NEGATIVE_C.to_string(), negative_c_set);
 
     // Digit mapping is not recognised by Rust
-    let d = r"\d".to_string();
-    let d_set = r"[0-9]".to_string();
+    const D: &str = r"\d";
+    const D_SET: &str = r"[0-9]";
 
-    mappings.insert(d, d_set);
+    mappings.insert(D.to_string(), D_SET.to_string());
 
     mappings
 }
