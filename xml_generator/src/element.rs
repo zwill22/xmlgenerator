@@ -192,9 +192,14 @@ impl Element {
             Ok(name.to_string())
         } else if names.len() == 2 {
             let prefix = names[0];
+            let suffix = names[1];
 
             if Some(&prefix.to_string()) == current_namespace {
-                Ok(name.to_string())
+                if generator.is_ref(name)? {
+                    return Ok(name.to_string());
+                }
+
+                Ok(suffix.to_string())
             } else {
                 generator.add_namespace(prefix.to_string());
                 Ok(name.to_string())
@@ -325,10 +330,13 @@ impl Element {
         xsd: &Xsd,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
-            None => self.generate_element(generator, tracker, xsd),
-            Some(reference) => self.generate_reference(generator, tracker, xsd, reference),
             None => self.generate_element(generator, xsd),
-            Some(reference) => self.generate_reference(generator, xsd, reference),
+            Some(reference) => {
+                generator.track_ref(reference)?;
+                let out = self.generate_reference(generator, xsd, reference)?;
+                generator.untrack_ref(reference)?;
+                Ok(out)
+            }
         }
     }
 

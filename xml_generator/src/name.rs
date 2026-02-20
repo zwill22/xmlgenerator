@@ -14,7 +14,7 @@ fn validate(name: &str) -> Result<(), XMLGeneratorError> {
     Ok(())
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Name {
     name: String,
     namespace: Option<String>,

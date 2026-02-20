@@ -1,5 +1,6 @@
 use crate::XMLGeneratorError;
 use crate::element::Element;
+use crate::name::Name;
 use crate::pattern::Pattern;
 use crate::xsd_type::XsdType;
 use chrono::Duration;
@@ -37,6 +38,7 @@ pub(crate) struct Generator {
     regex_patterns: usize,
     namespaces: Vec<String>,
     tracker: HashSet<String>,
+    references: Vec<Name>,
 }
 
 impl Generator {
@@ -51,11 +53,47 @@ impl Generator {
             max_repeat,
             namespaces: vec![],
             tracker: HashSet::new(),
+            references: vec![],
         }
     }
 
     pub(crate) fn is_root(&self) -> bool {
         self.tracker.is_empty()
+    }
+
+    pub(crate) fn track_ref(&mut self, reference: &Name) -> Result<(), XMLGeneratorError> {
+        self.references.push(reference.clone());
+        Ok(())
+    }
+
+    pub(crate) fn untrack_ref(&mut self, reference: &Name) -> Result<(), XMLGeneratorError> {
+        match self.references.pop() {
+            Some(value) => {
+                if reference != &value {
+                    return Err(XMLGeneratorError::InvalidXSDError(
+                        "Unknown reference".to_string(),
+                    ));
+                }
+
+                Ok(())
+            }
+            None => Err(XMLGeneratorError::InvalidXSDError(
+                "Reference not found".to_string(),
+            )),
+        }
+    }
+
+    pub(crate) fn is_ref(&self, name: &str) -> Result<bool, XMLGeneratorError> {
+        let reference = match self.references.last() {
+            Some(reference) => reference,
+            None => return Ok(false),
+        };
+
+        if reference.get_name()? == name {
+            return Ok(true);
+        }
+
+        Ok(false)
     }
 
     fn includes(&self, element: &Element) -> bool {
