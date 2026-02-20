@@ -1,11 +1,12 @@
 use crate::XMLGeneratorError;
 use crate::generator::Generator;
+use crate::pattern::Pattern;
+use crate::xsd_type::XsdType;
 use std::collections::HashMap;
 use std::str::from_utf8;
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::{Import, SchemaContent};
 use xsd_parser::models::schema::{NamespaceInfo, SchemaInfo};
-use crate::pattern::Pattern;
 
 fn check_namespace_exists(ns: &String, schemas: &Schemas) -> Result<(), XMLGeneratorError> {
     for (_ns_id, ns_info) in schemas.namespaces() {
@@ -30,8 +31,8 @@ fn check_namespace_is_valid(ns: &str) -> bool {
     if ns.eq("xs") {
         return false;
     }
-    const RE: &str = r"^[A-Z_a-z][-.0-9A-Z_a-z]*$";
-    Generator::validate(ns, RE).unwrap()
+
+    XsdType::from("name").validate(ns)
 }
 
 #[derive(Default)]

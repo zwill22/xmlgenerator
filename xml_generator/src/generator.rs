@@ -1,4 +1,3 @@
-use crate::XMLGeneratorError;
 use crate::pattern::Pattern;
 use crate::xsd_type::XsdType;
 use chrono::Duration;
@@ -47,17 +46,6 @@ impl Generator {
             max_repeat,
             namespaces: vec![],
         }
-    }
-
-    pub(crate) fn validate(input_str: &str, pattern: &str) -> Result<bool, XMLGeneratorError> {
-        let regex = match Regex::new(pattern) {
-            Ok(re) => re,
-            Err(_) => return Err(XMLGeneratorError::RegexError(input_str.to_string())),
-        };
-
-        let result = regex.is_match(input_str);
-
-        Ok(result)
     }
 
     fn sample(&mut self, regex: rand_regex::Regex) -> HashSet<String> {
@@ -160,7 +148,7 @@ impl Generator {
     ) -> Option<String> {
         let samples = self.regex_samples(pattern, ascii);
         for sample in samples {
-            if xsd_type.is_valid(&sample) {
+            if xsd_type.validate(&sample) {
                 return Some(sample);
             }
         }
@@ -213,9 +201,9 @@ impl Generator {
             return match self.cross_match(specific_pattern, base_pattern, ascii) {
                 Some(output) => Some(output),
                 None => {
-                    eprintln!(
-                        "Warning: Cross match failed, using specific pattern without cross match"
-                    );
+                    eprintln!("Warning: Cross match failed");
+                    eprintln!("Base pattern:\t{}", base_pattern);
+                    eprintln!("Specific pattern:\t{}", specific_pattern);
                     self.regex(specific_pattern, ascii)
                 }
             };

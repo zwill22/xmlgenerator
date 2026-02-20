@@ -1,6 +1,8 @@
+use crate::XMLGeneratorError;
 use crate::pattern::Pattern;
 use const_format::formatcp;
 use http::Uri;
+use regex::Regex;
 use std::fmt::Display;
 
 #[derive(Default, PartialEq)]
@@ -39,12 +41,37 @@ fn check_hex(_input: &str) -> bool {
     true
 }
 
-fn check_duration(_input: &str) -> bool {
-    true
+fn validate(input_str: &str, pattern: &str) -> Result<bool, XMLGeneratorError> {
+    let regex = match Regex::new(pattern) {
+        Ok(re) => re,
+        Err(_) => return Err(XMLGeneratorError::RegexError(input_str.to_string())),
+    };
+
+    let result = regex.is_match(input_str);
+
+    Ok(result)
 }
 
-fn check_string(_input: &str, _pattern: &Pattern) -> bool {
-    true
+fn validate_duration(input: &str) -> bool {
+    // PnYnMnDTnHnMnS
+    const DURATION: &str = r"[Pp](?:[0-9]+[Yy])?(?:[0-9]+[Mm])?(?:[0-9]+[Dd])?T?(?:[0-9]+[Hh])?(?:[0-9]+[Mm])?(?:[0-9]+[Ss])?";
+
+    validate(input, DURATION).unwrap_or_else(|_| false)
+}
+
+fn validate_pattern(pattern: &Pattern, input: &str) -> bool {
+    let re = pattern.get_pattern(true);
+    let is_valid = match validate(input, re) {
+        Ok(valid) => valid,
+        Err(_) => return false,
+    };
+
+    if is_valid {
+        return true;
+    }
+
+    let extended = pattern.get_pattern(false);
+    validate(input, extended).unwrap_or_else(|_| false)
 }
 
 impl XsdType {
@@ -82,7 +109,7 @@ impl XsdType {
         Self::String(pattern)
     }
 
-    pub(crate) fn is_valid(&self, input: &str) -> bool {
+    pub(crate) fn validate(&self, input: &str) -> bool {
         match self {
             XsdType::Byte => input.parse::<i8>().is_ok(),
             XsdType::Short => input.parse::<i16>().is_ok(),
@@ -97,8 +124,8 @@ impl XsdType {
             XsdType::URI => input.parse::<Uri>().is_ok(),
             XsdType::Base64Binary => check_base64(input),
             XsdType::HexBinary => check_hex(input),
-            XsdType::Duration => check_duration(input),
-            XsdType::String(pattern) => check_string(input, pattern),
+            XsdType::Duration => validate_duration(input),
+            XsdType::String(pattern) => validate_pattern(pattern, input),
             XsdType::None => false,
         }
     }
@@ -118,14 +145,14 @@ impl From<&str> for XsdType {
         const NMTOKENS: &str = formatcp!(r"{0}(?:\s+{0})*", NMTOKEN);
         const NULL: &str = "";
 
-        const DATE : &str = "%Y-%m-%d";
+        const DATE: &str = "%Y-%m-%d";
         const DATETIME: &str = "%Y-%m-%dT%H:%M:%S";
         const G_DAY: &str = "-%d";
         const G_MONTH: &str = "--%m";
         const G_MONTH_DAY: &str = "--%m-%d";
         const G_YEAR: &str = "%Y";
         const G_YEAR_MONTH: &str = "%Y-%m";
-        const TIME : &str = "%H:%M:%S";
+        const TIME: &str = "%H:%M:%S";
 
         match s {
             // Numeric Data Types
