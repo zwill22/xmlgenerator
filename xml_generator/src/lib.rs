@@ -78,7 +78,7 @@ impl XMLGenerator {
         let schemas = build_schemas(xsd_path)?;
         self.validate(xsd_path)?;
 
-        let mut generator = Generator::new(100, 10);
+        let mut generator = Generator::new(100, 10, 100);
 
         let xsd = Xsd::new(&mut generator, &self.translator, &schemas)?;
 

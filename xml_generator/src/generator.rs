@@ -30,19 +30,21 @@ fn fake_hex() -> Option<String> {
 pub(crate) struct Generator {
     rng: ThreadRng,
     xor: XorShiftRng,
+    max_depth: usize,
     max_repeat: u32,
     regex_patterns: usize,
     namespaces: Vec<String>,
 }
 
 impl Generator {
-    pub(crate) fn new(regex_patterns: usize, max_repeat: u32) -> Generator {
+    pub(crate) fn new(regex_patterns: usize, max_repeat: u32, max_depth: usize) -> Generator {
         let rng = rand::rng();
         let xor = XorShiftRng::from_os_rng();
         Generator {
             rng,
             xor,
             regex_patterns,
+            max_depth,
             max_repeat,
             namespaces: vec![],
         }
@@ -183,7 +185,18 @@ impl Generator {
         &mut self,
         base_pattern: &Pattern,
         specific_pattern: &Pattern,
+        depth: usize,
     ) -> Option<String> {
+        if depth > self.max_depth {
+            eprintln!("Warning: Cross match failed after {} attempts", self.max_depth);
+            eprintln!("Base pattern:\t{}", base_pattern);
+            eprintln!("Specific pattern:\t{}", specific_pattern);
+            return match self.regex(specific_pattern, true) {
+                Some(output) => Some(output),
+                None => self.regex(specific_pattern, true),
+            }
+        }
+
         if base_pattern.is_empty() {
             return self.regex(specific_pattern, true);
         }
@@ -196,20 +209,15 @@ impl Generator {
             match self.cross_match(base_pattern, specific_pattern, ascii) {
                 Some(output) => return Some(output),
                 None => {}
-            }
+            };
 
-            return match self.cross_match(specific_pattern, base_pattern, ascii) {
-                Some(output) => Some(output),
-                None => {
-                    eprintln!("Warning: Cross match failed");
-                    eprintln!("Base pattern:\t{}", base_pattern);
-                    eprintln!("Specific pattern:\t{}", specific_pattern);
-                    self.regex(specific_pattern, ascii)
-                }
+            match self.cross_match(specific_pattern, base_pattern, ascii) {
+                Some(output) => return Some(output),
+                None => {}
             };
         }
 
-        unreachable!()
+        self.generate_two_patterns(base_pattern, specific_pattern, depth + 1)
     }
 
     pub(crate) fn generate_type_pattern(
@@ -233,7 +241,7 @@ impl Generator {
             XsdType::Base64Binary => self.generate_pattern(&xsd_type, pattern, ASCII),
             XsdType::HexBinary => self.generate_pattern(&xsd_type, pattern, ASCII),
             XsdType::Duration => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::String(string) => self.generate_two_patterns(&string, pattern),
+            XsdType::String(string) => self.generate_two_patterns(&string, pattern, 0),
             XsdType::None => self.regex(pattern, ASCII),
         }
     }
