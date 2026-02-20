@@ -182,6 +182,15 @@ fn get_ascii_mappings() -> HashMap<String, String> {
     mappings.insert(NEGATIVE_I.to_string(), NEGATIVE_I_SET.to_string());
     mappings.insert(NEGATIVE_C.to_string(), NEGATIVE_C_SET.to_string());
 
+    const W: &str = r"\w";
+    const W_SET: &str = r"[a-zA-Z0-9_]";
+
+    const NEGATIVE_W: &str = r"\W";
+    const NEGATIVE_W_SET: &str = r"[[\x{20}-\x{7E}]--[a-zA-Z0-9_]]";
+
+    mappings.insert(W.to_string(), W_SET.to_string());
+    mappings.insert(NEGATIVE_W.to_string(), NEGATIVE_W_SET.to_string());
+
     apply_common_mappings(&mut mappings);
 
     mappings
@@ -207,6 +216,15 @@ fn get_full_mappings() -> HashMap<String, String> {
 
     mappings.insert(NEGATIVE_I.to_string(), NEGATIVE_I_SET.to_string());
     mappings.insert(NEGATIVE_C.to_string(), NEGATIVE_C_SET.to_string());
+
+    const W: &str = r"\w";
+    const W_SET: &str = r"[[[:alpha:]][0-9]_]";
+
+    const NEGATIVE_W: &str = r"\W";
+    const NEGATIVE_W_SET: &str = r"[^[[:alnum:]]]";
+
+    mappings.insert(W.to_string(), W_SET.to_string());
+    mappings.insert(NEGATIVE_W.to_string(), NEGATIVE_W_SET.to_string());
 
     apply_common_mappings(&mut mappings);
 
