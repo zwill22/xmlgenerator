@@ -4,6 +4,7 @@ use core::fmt::Display;
 
 use regex::Regex;
 use std::collections::HashMap;
+use line_ending::LineEnding;
 
 mod test;
 
@@ -142,6 +143,23 @@ fn handle_surrogates(output: &str) -> Result<(), RegexTranslationError> {
     Ok(())
 }
 
+fn apply_common_mappings(mappings: &mut HashMap<String, String>) {
+    // Digit mapping is not recognised by Rust
+    const D: &str = r"\d";
+    const D_SET: &str = r"[0-9]";
+
+    mappings.insert(D.to_string(), D_SET.to_string());
+
+    // Whitespace
+    const S: &str = r"\s";
+    let s_set = match LineEnding::from_current_platform() {
+        LineEnding::LF => r"[\t \n]",
+        LineEnding::CRLF => r"[\t ]|(?:\r\n)",
+        LineEnding::CR => r"[\t \r]",
+    };
+
+    mappings.insert(S.to_string(), s_set.to_string());
+}
 
 fn get_ascii_mappings() -> HashMap<String, String> {
     let mut mappings = HashMap::new();
@@ -156,19 +174,15 @@ fn get_ascii_mappings() -> HashMap<String, String> {
     mappings.insert(C.to_string(), C_SET.to_string());
 
     const NEGATIVE_I: &str = r"\I";
-    const NEGATIVE_I_SET: &str = r"[[\x{0}-\x{7F}]--[:A-Z_a-z]]";
+    const NEGATIVE_I_SET: &str = r"[[\x{20}-\x{7E}]--[:A-Z_a-z]]";
 
     const NEGATIVE_C: &str = r"\C";
-    const NEGATIVE_C_SET: &str = r"[[\x{0}-\x{7F}]--[-.0-9:A-Z_a-z]]";
+    const NEGATIVE_C_SET: &str = r"[[\x{20}-\x{7E}]--[-.0-9:A-Z_a-z]]";
 
     mappings.insert(NEGATIVE_I.to_string(), NEGATIVE_I_SET.to_string());
     mappings.insert(NEGATIVE_C.to_string(), NEGATIVE_C_SET.to_string());
 
-    // Digit mapping is not recognised by Rust
-    const D: &str = r"\d";
-    const D_SET: &str = r"[0-9]";
-
-    mappings.insert(D.to_string(), D_SET.to_string());
+    apply_common_mappings(&mut mappings);
 
     mappings
 }
@@ -186,20 +200,15 @@ fn get_full_mappings() -> HashMap<String, String> {
     mappings.insert(C.to_string(), C_SET.to_string());
 
     const NEGATIVE_I: &str = r"\I";
-    const NEGATIVE_I_SET: &str = r"[[\x{0}-\x{7F}]--[:A-Z_a-z]]";
+    const NEGATIVE_I_SET: &str = r"[^[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]]";
 
     const NEGATIVE_C: &str = r"\C";
-    const NEGATIVE_C_SET: &str = r"[[\x{0}-\x{7F}]--[-.0-9:A-Z_a-z]]";
+    const NEGATIVE_C_SET: &str = r"[^[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]]";
 
     mappings.insert(NEGATIVE_I.to_string(), NEGATIVE_I_SET.to_string());
     mappings.insert(NEGATIVE_C.to_string(), NEGATIVE_C_SET.to_string());
 
-    // Digit mapping is not recognised by Rust
-    // TODO Include non-ASCII digits
-    const D: &str = r"\d";
-    const D_SET: &str = r"[0-9]";
-
-    mappings.insert(D.to_string(), D_SET.to_string());
+    apply_common_mappings(&mut mappings);
 
     mappings
 }
