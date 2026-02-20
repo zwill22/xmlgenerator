@@ -5,7 +5,6 @@ use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::namespaces::Namespaces;
 use crate::schema_version::SchemaVersion;
-use crate::tracker::Tracker;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
@@ -180,10 +179,9 @@ impl Xsd {
     fn generate_root(
         &self,
         generator: &mut Generator,
-        tracker: &mut Tracker,
         root: &Element,
     ) -> Result<XMLElement, XMLGeneratorError> {
-        let root_elements = root.generate(generator, tracker, self)?;
+        let root_elements = root.generate(generator, self)?;
 
         if root_elements.len() > 1 {
             return Err(XMLGeneratorError::MultipleRootsError);
@@ -202,10 +200,7 @@ impl Xsd {
 
     fn build_xml(&self, generator: &mut Generator) -> Result<XMLElement, XMLGeneratorError> {
         let root = self.find_root()?;
-
-        let mut tracker = Tracker::new();
-
-        self.generate_root(generator, &mut tracker, root)
+        self.generate_root(generator, root)
     }
 
     pub(crate) fn generate_xml(

@@ -3,7 +3,6 @@ use crate::element::{Element, Occurrence};
 use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::namespaces::Namespaces;
-use crate::tracker::Tracker;
 use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
@@ -80,11 +79,10 @@ impl Group {
     fn generate_element(
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        tracker: &mut Tracker,
         xsd: &Xsd,
         element: &Element,
     ) -> Result<(), XMLGeneratorError> {
-        let children = element.generate(generator, tracker, xsd)?;
+        let children = element.generate(generator, xsd)?;
 
         for child in children {
             xml_element.add_child(child)?;
@@ -97,16 +95,15 @@ impl Group {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         if self.choose {
             if let Some(element) = generator.choose(&self.elements) {
-                Self::generate_element(generator, xml_element, tracker, xsd, element)?
+                Self::generate_element(generator, xml_element, xsd, element)?
             }
         } else {
             for element in self.elements() {
-                Self::generate_element(generator, xml_element, tracker, xsd, element)?;
+                Self::generate_element(generator, xml_element, xsd, element)?;
             }
         }
 
@@ -117,13 +114,12 @@ impl Group {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         let n = self.get_occurrences();
 
         for _ in 0..n {
-            self.generate_group(generator, xml_element, tracker, xsd)?;
+            self.generate_group(generator, xml_element, xsd)?;
         }
 
         Ok(())

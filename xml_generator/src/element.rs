@@ -3,7 +3,6 @@ use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::tracker::Tracker;
 use crate::xsd::Xsd;
 use crate::xsd_type::XsdType;
 use rand::Rng;
@@ -210,10 +209,9 @@ impl Element {
     fn get_root_name(
         &self,
         generator: &mut Generator,
-        tracker: &Tracker,
         xsd: &Xsd,
     ) -> Result<String, XMLGeneratorError> {
-        let root = tracker.is_root();
+        let root = generator.is_root();
         let name = self.get_name()?;
 
         if !root {
@@ -227,7 +225,6 @@ impl Element {
     fn generate_type(
         &self,
         generator: &mut Generator,
-        tracker: &mut Tracker,
         xml_element: &mut XMLElement,
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
@@ -245,14 +242,14 @@ impl Element {
 
             for data_type in xsd.types() {
                 if data_type.name_equals(type_name) {
-                    data_type.generate(generator, xml_element, tracker, xsd)?;
+                    data_type.generate(generator, xml_element, xsd)?;
                     return Ok(());
                 }
             }
         }
 
         for content in self.data_types.iter() {
-            content.generate(generator, xml_element, tracker, xsd)?;
+            content.generate(generator, xml_element, xsd)?;
         }
 
         Ok(())
@@ -261,17 +258,16 @@ impl Element {
     fn generate_type_from_name(
         &self,
         generator: &mut Generator,
-        tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<XMLElement, XMLGeneratorError> {
         let n_namespace = generator.n_namespaces();
-        let name = self.get_root_name(generator, tracker, xsd)?;
-        tracker.add(self)?;
+        let name = self.get_root_name(generator, xsd)?;
+        generator.track(self)?;
         let mut xml_element = XMLElement::new(&name);
 
-        self.generate_type(generator, tracker, &mut xml_element, xsd)?;
+        self.generate_type(generator, &mut xml_element, xsd)?;
 
-        tracker.remove(self);
+        generator.untrack(self);
         generator.update_namespaces(n_namespace);
 
         Ok(xml_element)
@@ -280,14 +276,13 @@ impl Element {
     fn generate_element(
         &self,
         generator: &mut Generator,
-        tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         let n = self.get_occurrences();
 
         let mut elements = vec![];
         for _ in 0..n {
-            let element = self.generate_type_from_name(generator, tracker, xsd)?;
+            let element = self.generate_type_from_name(generator, xsd)?;
             elements.push(element);
         }
 
@@ -297,7 +292,6 @@ impl Element {
     fn generate_reference(
         &self,
         generator: &mut Generator,
-        tracker: &mut Tracker,
         xsd: &Xsd,
         reference: &Name,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
@@ -316,7 +310,7 @@ impl Element {
             if let Some(name) = &element.name
                 && name.eq(reference)
             {
-                return element.generate(generator, tracker, xsd);
+                return element.generate(generator, xsd);
             }
         }
 
@@ -328,12 +322,13 @@ impl Element {
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
-        tracker: &mut Tracker,
         xsd: &Xsd,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
             None => self.generate_element(generator, tracker, xsd),
             Some(reference) => self.generate_reference(generator, tracker, xsd, reference),
+            None => self.generate_element(generator, xsd),
+            Some(reference) => self.generate_reference(generator, xsd, reference),
         }
     }
 

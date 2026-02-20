@@ -1,3 +1,5 @@
+use crate::XMLGeneratorError;
+use crate::element::Element;
 use crate::pattern::Pattern;
 use crate::xsd_type::XsdType;
 use chrono::Duration;
@@ -34,6 +36,7 @@ pub(crate) struct Generator {
     max_repeat: u32,
     regex_patterns: usize,
     namespaces: Vec<String>,
+    tracker: HashSet<String>,
 }
 
 impl Generator {
@@ -47,6 +50,35 @@ impl Generator {
             max_depth,
             max_repeat,
             namespaces: vec![],
+            tracker: HashSet::new(),
+        }
+    }
+
+    pub(crate) fn is_root(&self) -> bool {
+        self.tracker.is_empty()
+    }
+
+    fn includes(&self, element: &Element) -> bool {
+        let id = element.get_id();
+        self.tracker.contains(&id)
+    }
+
+    pub(crate) fn track(&mut self, element: &Element) -> Result<(), XMLGeneratorError> {
+        if self.includes(element) {
+            return Err(XMLGeneratorError::InfiniteRecursionError);
+        }
+
+        let id = element.get_id();
+        self.tracker.insert(id);
+
+        Ok(())
+    }
+
+    pub(crate) fn untrack(&mut self, element: &Element) {
+        let id = element.get_id();
+        let result = self.tracker.remove(&id);
+        if !result {
+            panic!("Element not in hierarchy");
         }
     }
 
@@ -188,13 +220,16 @@ impl Generator {
         depth: usize,
     ) -> Option<String> {
         if depth > self.max_depth {
-            eprintln!("Warning: Cross match failed after {} attempts", self.max_depth);
+            eprintln!(
+                "Warning: Cross match failed after {} attempts",
+                self.max_depth
+            );
             eprintln!("Base pattern:\t{}", base_pattern);
             eprintln!("Specific pattern:\t{}", specific_pattern);
             return match self.regex(specific_pattern, true) {
                 Some(output) => Some(output),
                 None => self.regex(specific_pattern, true),
-            }
+            };
         }
 
         if base_pattern.is_empty() {
