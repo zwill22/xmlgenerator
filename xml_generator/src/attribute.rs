@@ -8,6 +8,7 @@ use std::cmp::PartialEq;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
+use crate::special::replace_specials;
 
 pub(crate) struct Attribute {
     name: Option<Name>,
@@ -120,7 +121,8 @@ impl Attribute {
 
         let name = self.get_name(generator)?;
         if let Some(attribute) = generator.generate_type(&self.xsd_type) {
-            xml_element.add_attribute(name.as_str(), attribute.as_str());
+            let value = replace_specials(&attribute);
+            xml_element.add_attribute(&name, &value);
             generated = true;
         }
 
@@ -139,7 +141,8 @@ impl Attribute {
             if self.type_name.is_none() {
                 let xsd_type = XsdType::string("");
                 let value = generator.generate_type(&xsd_type).unwrap();
-                xml_element.add_attribute(name.as_str(), value.as_str());
+                let attribute = replace_specials(&value);
+                xml_element.add_attribute(&name, &attribute);
             } else {
                 return Err(XMLGeneratorError::TypeGenerationError(
                     "Required attribute not generated".to_string(),

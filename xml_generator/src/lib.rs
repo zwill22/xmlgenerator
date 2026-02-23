@@ -20,6 +20,7 @@ mod schemas;
 mod type_info;
 mod xsd;
 mod xsd_type;
+mod special;
 
 pub struct XMLGenerator {
     validator: XSDValidator,

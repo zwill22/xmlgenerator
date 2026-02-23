@@ -10,6 +10,7 @@ use std::ops::Deref;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{ComplexBaseType, ComplexBaseTypeContent, SimpleBaseType};
+use crate::special::replace_specials;
 
 #[derive(Default)]
 pub(crate) struct DataType {
@@ -166,7 +167,8 @@ impl DataType {
         if let Some(type_info) = &self.type_info {
             return match type_info.generate(generator) {
                 Some(value) => {
-                    xml_element.add_attribute(name.as_str(), value.as_str());
+                    let attribute = replace_specials(&value);
+                    xml_element.add_attribute(&name, &attribute);
                     Ok(())
                 }
                 None => Err(XMLGeneratorError::DataTypeNotFoundError(
@@ -202,7 +204,8 @@ impl DataType {
                     ));
                 }
                 Some(value) => {
-                    if let Err(error) = xml_element.add_text(value) {
+                    let result = replace_specials(&value);
+                    if let Err(error) = xml_element.add_text(result) {
                         return Err(XMLGeneratorError::XMLBuilderError(error.to_string()));
                     }
                 }

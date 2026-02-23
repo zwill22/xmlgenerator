@@ -12,6 +12,7 @@ use uuid::Uuid;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{ElementType, ElementTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
+use crate::special::replace_specials;
 
 pub(crate) trait Occurrence {
     fn get_min(&self) -> usize;
@@ -234,7 +235,8 @@ impl Element {
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(output) = generator.generate_type(&self.xsd_type) {
-            xml_element.add_text(output)?;
+            let value = replace_specials(&output);
+            xml_element.add_text(value)?;
             return Ok(());
         }
 

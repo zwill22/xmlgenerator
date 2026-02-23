@@ -10,6 +10,7 @@ use std::slice::Iter;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::Schemas;
 use xsd_parser::models::schema::xs::SchemaContent;
+use crate::special::replace_specials;
 
 pub(crate) struct Xsd {
     version: SchemaVersion,
@@ -65,13 +66,14 @@ impl Xsd {
 
     pub(crate) fn apply_metadata_to(&self, element: &mut XMLElement) {
         if let Some(location) = &self.namespaces.get_default_namespace() {
+            let loc = replace_specials(&location);
             match self.namespaces.get_root_namespace() {
                 None => {
-                    element.add_attribute("xmlns", location);
+                    element.add_attribute("xmlns", &loc);
                 }
                 Some(root_namespace) => {
                     let prefix = "xmlns:".to_string() + root_namespace.as_str();
-                    element.add_attribute(prefix.as_str(), location);
+                    element.add_attribute(&prefix, &loc);
                 }
             }
         }
@@ -79,12 +81,12 @@ impl Xsd {
         for (prefix, location) in self.namespaces.get_other_namespaces() {
             if prefix == "xs" {
                 let value = location.to_string() + "-instance";
-                element.add_attribute("xmlns:xsi", value.as_str());
+                element.add_attribute("xmlns:xsi", &value);
             } else if prefix == "xml" {
                 // ignore
             } else {
                 let name = "xmlns:".to_string() + prefix;
-                element.add_attribute(name.as_str(), location);
+                element.add_attribute(&name, location);
             }
         }
     }
