@@ -1,36 +1,11 @@
 use crate::XMLGeneratorError;
-use line_ending::LineEnding;
 use regextranslator::RegexTranslator;
-
-fn check_line_ending(pattern: &str, ending: &str) -> Result<(), XMLGeneratorError> {
-    if pattern.contains(ending) {
-        return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
-    }
-
-    Ok(())
-}
-
-fn check_crlf_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
-    let stripped = pattern.replace("\\r\\n", "");
-
-    if stripped.contains("\\r") || stripped.contains("\\n") {
-        return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
-    }
-
-    Ok(())
-}
-
-fn check_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
-    match LineEnding::from_current_platform() {
-        LineEnding::LF => check_line_ending(pattern, r"\r"),
-        LineEnding::CRLF => check_crlf_endings(pattern),
-        LineEnding::CR => check_line_ending(pattern, r"\n"),
-    }
-}
+use crate::whitespace::WhiteSpace;
 
 #[derive(PartialEq, Default)]
 pub(crate) struct Pattern {
     original: String,
+    whitespace: WhiteSpace,
     ascii: Option<String>,
     full: Option<String>,
 }
@@ -38,21 +13,25 @@ pub(crate) struct Pattern {
 impl Pattern {
     pub(crate) fn new(
         regex_translator: &RegexTranslator,
+        whitespace: &WhiteSpace,
         input: &str,
     ) -> Result<Self, XMLGeneratorError> {
         let mut pattern = Self::default();
-        pattern.original = input.to_string();
-        check_line_endings(input)?;
 
-        let full_translation = regex_translator.translate(input, false)?;
-        if full_translation == input {
+        let original = whitespace.handle(input)?;
+
+        pattern.original = original.clone();
+        pattern.whitespace = whitespace.clone();
+
+        let full_translation = regex_translator.translate(&original, false)?;
+        if full_translation == original {
             return Ok(pattern);
         }
 
         pattern.full = Some(full_translation.clone());
 
-        let ascii_translation = regex_translator.translate(input, true)?;
-        if ascii_translation == input {
+        let ascii_translation = regex_translator.translate(&original, true)?;
+        if ascii_translation == original {
             return Ok(pattern);
         }
 
@@ -63,6 +42,10 @@ impl Pattern {
         pattern.ascii = Some(ascii_translation.clone());
 
         Ok(pattern)
+    }
+
+    pub(crate) fn get_whitespace(&self) -> WhiteSpace {
+        self.whitespace.clone()
     }
 
     pub(crate) fn get_pattern(&self, ascii: bool) -> &str {
@@ -88,12 +71,13 @@ impl Pattern {
     pub(crate) fn is_empty(&self) -> bool {
         self.original.is_empty()
     }
-}
 
-impl From<&str> for Pattern {
-    fn from(s: &str) -> Self {
+    pub(crate) fn from_string(s: &str, whitespace: &WhiteSpace) -> Result<Self, XMLGeneratorError> {
         let mut pattern = Self::default();
-        pattern.original = s.to_string();
+
+        let original = whitespace.handle(s)?;
+        pattern.original = original.clone();
+        pattern.whitespace = whitespace.clone();
 
         const I: &str = r"\i";
         const I_ASCII: &str = r"[:A-Z_a-z]";
@@ -105,7 +89,7 @@ impl From<&str> for Pattern {
 
         let output = s.replace(C, C_FULL).replace(I, I_FULL);
         if output == s {
-            return pattern;
+            return Ok(pattern);
         }
 
         pattern.full = Some(output.clone());
@@ -113,16 +97,16 @@ impl From<&str> for Pattern {
         let ascii = s.replace(I, I_ASCII).replace(C, C_ASCII);
 
         if ascii == s {
-            return pattern;
+            return Ok(pattern);
         }
 
         if ascii == output {
-            return pattern;
+            return Ok(pattern);
         }
 
         pattern.ascii = Some(ascii.clone());
 
-        pattern
+        Ok(pattern)
     }
 }
 

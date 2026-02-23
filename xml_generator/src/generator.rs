@@ -243,6 +243,7 @@ impl Generator {
         pattern: &Pattern,
         ascii: bool,
     ) -> Option<String> {
+
         let samples = self.regex_samples(pattern, ascii);
         for sample in samples {
             if xsd_type.validate(&sample) {

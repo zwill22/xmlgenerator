@@ -9,6 +9,7 @@ use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
 use crate::special::replace_specials;
+use crate::whitespace::WhiteSpace;
 
 pub(crate) struct Attribute {
     name: Option<Name>,
@@ -34,7 +35,7 @@ impl Attribute {
 
         if let Some(attribute_type) = &attribute_type.type_ {
             let type_name = String::from_utf8(attribute_type.local_name().to_vec()).unwrap();
-            attribute.xsd_type = XsdType::from(type_name.as_str());
+            attribute.xsd_type = XsdType::from_string(&type_name)?;
             if matches!(attribute.xsd_type, XsdType::None) {
                 attribute.type_name = Some(type_name);
             }
@@ -139,7 +140,7 @@ impl Attribute {
 
         if self.use_type == AttributeUseType::Required && !generated {
             if self.type_name.is_none() {
-                let xsd_type = XsdType::string("");
+                let xsd_type = XsdType::string("", &WhiteSpace::Collapse)?;
                 let value = generator.generate_type(&xsd_type).unwrap();
                 let attribute = replace_specials(&value);
                 xml_element.add_attribute(&name, &attribute);

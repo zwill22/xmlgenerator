@@ -1,5 +1,6 @@
 use crate::XMLGeneratorError;
 use crate::pattern::Pattern;
+use crate::whitespace::WhiteSpace;
 use const_format::formatcp;
 use http::Uri;
 use regex::Regex;
@@ -75,12 +76,13 @@ fn validate_pattern(pattern: &Pattern, input: &str) -> bool {
 }
 
 impl XsdType {
-    pub(crate) fn string(string: &str) -> Self {
-        let pattern = Pattern::from(string);
-        Self::String(pattern)
+    pub(crate) fn string(string: &str, whitespace: &WhiteSpace) -> Result<Self, XMLGeneratorError> {
+        let pattern = Pattern::from_string(string, whitespace)?;
+        let out = Self::String(pattern);
+        Ok(out)
     }
 
-    fn from_date(string: &str) -> Self {
+    fn from_date(string: &str) -> Result<Self, XMLGeneratorError> {
         const YEAR: &str = r"(?:[0-9]{3}[1-9]|[0-9]{2}[1-9][0-9]|[0-9][1-9][0-9]{2}|[1-9][0-9]{3})";
         const MONTH: &str = r"(?:0[1-9]|1[0-2])";
         const DAY: &str = r"(?:0[1-9]|1[0-9]|2[0-9]|3[0-1])";
@@ -104,9 +106,10 @@ impl XsdType {
             panic!("Raw time string not replaced")
         }
 
-        let pattern = Pattern::from(output.as_str());
+        let pattern = Pattern::from_string(&output, &WhiteSpace::Collapse)?;
 
-        Self::String(pattern)
+        let out = Self::String(pattern);
+        Ok(out)
     }
 
     pub(crate) fn validate(&self, input: &str) -> bool {
@@ -129,10 +132,29 @@ impl XsdType {
             XsdType::None => false,
         }
     }
-}
 
-impl From<&str> for XsdType {
-    fn from(s: &str) -> Self {
+    pub(crate) fn whitespace(&self) -> WhiteSpace {
+        match self {
+            XsdType::Byte => WhiteSpace::Preserve,
+            XsdType::Short => WhiteSpace::Preserve,
+            XsdType::Int => WhiteSpace::Preserve,
+            XsdType::Long => WhiteSpace::Collapse,
+            XsdType::UnsignedByte => WhiteSpace::Preserve,
+            XsdType::UnsignedShort => WhiteSpace::Preserve,
+            XsdType::UnsignedInt => WhiteSpace::Preserve,
+            XsdType::UnsignedLong => WhiteSpace::Preserve,
+            XsdType::Float => WhiteSpace::Collapse,
+            XsdType::Double => WhiteSpace::Collapse,
+            XsdType::URI => WhiteSpace::Collapse,
+            XsdType::Base64Binary => WhiteSpace::Collapse,
+            XsdType::HexBinary => WhiteSpace::Collapse,
+            XsdType::Duration => WhiteSpace::Collapse,
+            XsdType::String(pattern) => pattern.get_whitespace(),
+            XsdType::None => WhiteSpace::Preserve,
+        }
+    }
+
+    pub(crate) fn from_string(s: &str) -> Result<Self, XMLGeneratorError> {
         const NAME: &str = r"\i\c*";
         const NCNAME: &str = r"[\i-[:]][\c-[:]]*";
         const NMTOKEN: &str = r"\c+";
@@ -154,35 +176,39 @@ impl From<&str> for XsdType {
         const G_YEAR_MONTH: &str = "%Y-%m";
         const TIME: &str = "%H:%M:%S";
 
+        const COLLAPSE: WhiteSpace = WhiteSpace::Collapse;
+        const REPLACE: WhiteSpace = WhiteSpace::Replace;
+        const PRESERVE: WhiteSpace = WhiteSpace::Preserve;
+
         match s {
             // Numeric Data Types
-            "byte" => XsdType::Byte,
-            "decimal" => XsdType::string(r"[+-]?[0-9]+\.?[0-9]*"),
-            "short" => XsdType::Short,
-            "int" => XsdType::Int,
-            "long" => XsdType::Long,
-            "integer" => XsdType::string(r"[+-]?[0-9]+"),
-            "negativeInteger" => XsdType::string(r"-[1-9][0-9]+"),
-            "nonNegativeInteger" => XsdType::string(r"(?:0|\+?[1-9][0-9]*)"),
-            "nonPositiveInteger" => XsdType::string(r"(?:0|-[1-9][0-9]*)"),
-            "positiveInteger" => XsdType::string(r"\+?[1-9][0-9]*"),
-            "unsignedLong" => XsdType::UnsignedLong,
-            "unsignedInt" => XsdType::UnsignedInt,
-            "unsignedShort" => XsdType::UnsignedShort,
-            "unsignedByte" => XsdType::UnsignedByte,
+            "byte" => Ok(XsdType::Byte),
+            "decimal" => XsdType::string(r"[+-]?[0-9]+\.?[0-9]*", &COLLAPSE),
+            "short" => Ok(XsdType::Short),
+            "int" => Ok(XsdType::Int),
+            "long" => Ok(XsdType::Long),
+            "integer" => XsdType::string(r"[+-]?[0-9]+", &COLLAPSE),
+            "negativeInteger" => XsdType::string(r"-[1-9][0-9]+", &COLLAPSE),
+            "nonNegativeInteger" => XsdType::string(r"(?:0|\+?[1-9][0-9]*)", &COLLAPSE),
+            "nonPositiveInteger" => XsdType::string(r"(?:0|-[1-9][0-9]*)", &COLLAPSE),
+            "positiveInteger" => XsdType::string(r"\+?[1-9][0-9]*", &COLLAPSE),
+            "unsignedLong" => Ok(XsdType::UnsignedLong),
+            "unsignedInt" => Ok(XsdType::UnsignedInt),
+            "unsignedShort" => Ok(XsdType::UnsignedShort),
+            "unsignedByte" => Ok(XsdType::UnsignedByte),
 
             // String data types
-            "ENTITY" => XsdType::string(NCNAME),
-            "ID" => XsdType::string(NCNAME),
-            "IDREF" => XsdType::string(NCNAME),
-            "language" => XsdType::string(LANGUAGE),
-            "Name" => XsdType::string(NAME),
-            "NCName" => XsdType::string(NCNAME),
-            "NMTOKEN" => XsdType::string(NMTOKEN),
-            "normalizedString" => XsdType::string(NORMAL),
-            "QName" => XsdType::string(QNAME),
-            "string" => XsdType::string(NULL),
-            "token" => XsdType::string(TOKEN),
+            "ENTITY" => XsdType::string(NCNAME, &COLLAPSE),
+            "ID" => XsdType::string(NCNAME, &COLLAPSE),
+            "IDREF" => XsdType::string(NCNAME, &COLLAPSE),
+            "language" => XsdType::string(LANGUAGE, &COLLAPSE),
+            "Name" => XsdType::string(NAME, &COLLAPSE),
+            "NCName" => XsdType::string(NCNAME, &COLLAPSE),
+            "NMTOKEN" => XsdType::string(NMTOKEN, &COLLAPSE),
+            "normalizedString" => XsdType::string(NORMAL, &REPLACE),
+            "QName" => XsdType::string(QNAME, &COLLAPSE),
+            "string" => XsdType::string(NULL, &PRESERVE),
+            "token" => XsdType::string(TOKEN, &COLLAPSE),
 
             // Date time data types
             "date" => XsdType::from_date(DATE),
@@ -195,25 +221,25 @@ impl From<&str> for XsdType {
             "time" => XsdType::from_date(TIME),
 
             // Miscellaneous data types
-            "duration" => XsdType::Duration,
-            "anyURI" => XsdType::URI,
-            "base64Binary" => XsdType::Base64Binary,
-            "boolean" => XsdType::string(BOOLEAN),
-            "float" => XsdType::Float,
-            "double" => XsdType::Double,
-            "hexBinary" => XsdType::HexBinary,
-            "NOTATION" => XsdType::string(NULL),
+            "duration" => Ok(XsdType::Duration),
+            "anyURI" => Ok(XsdType::URI),
+            "base64Binary" => Ok(XsdType::Base64Binary),
+            "boolean" => XsdType::string(BOOLEAN, &COLLAPSE),
+            "float" => Ok(XsdType::Float),
+            "double" => Ok(XsdType::Double),
+            "hexBinary" => Ok(XsdType::HexBinary),
+            "NOTATION" => XsdType::string(NULL, &COLLAPSE),
 
             // List types
-            "ENTITIES" => XsdType::string(NC_NAMES),
-            "NMTOKENS" => XsdType::string(NMTOKENS),
-            "IDREFS" => XsdType::string(NC_NAMES),
+            "ENTITIES" => XsdType::string(NC_NAMES, &PRESERVE),
+            "NMTOKENS" => XsdType::string(NMTOKENS, &PRESERVE),
+            "IDREFS" => XsdType::string(NC_NAMES, &PRESERVE),
 
             // Just use a string for any type
-            "anyType" => XsdType::string(NULL),
-            "anySimpleType" => XsdType::string(NULL),
+            "anyType" => XsdType::string(NULL, &PRESERVE),
+            "anySimpleType" => XsdType::string(NULL, &PRESERVE),
 
-            _ => XsdType::None,
+            _ => Ok(XsdType::None),
         }
     }
 }

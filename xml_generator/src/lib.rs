@@ -21,6 +21,7 @@ mod type_info;
 mod xsd;
 mod xsd_type;
 mod special;
+mod whitespace;
 
 pub struct XMLGenerator {
     validator: XSDValidator,

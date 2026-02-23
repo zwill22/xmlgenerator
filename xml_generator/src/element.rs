@@ -72,7 +72,7 @@ impl Element {
                     return Err(XMLGeneratorError::DataTypeInformationError(e.to_string()));
                 }
             };
-            match XsdType::from(type_name.as_str()) {
+            match XsdType::from_string(&type_name)? {
                 XsdType::None => element.type_name = Some(type_name),
                 xsd_type => element.xsd_type = xsd_type,
             }

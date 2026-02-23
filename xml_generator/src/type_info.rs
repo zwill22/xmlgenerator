@@ -7,6 +7,7 @@ use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
     Facet, FacetType, Restriction, RestrictionContent, SimpleBaseTypeContent,
 };
+use crate::whitespace::WhiteSpace;
 
 #[derive(Default)]
 pub(crate) struct TypeInfo {
@@ -47,14 +48,22 @@ impl TypeInfo {
         Ok(())
     }
 
+
+    fn handle_whitespace(&mut self) -> WhiteSpace {
+        let xsd_type = &self.xsd_type;
+        xsd_type.whitespace()
+    }
+
     fn handle_pattern_facet(
         &mut self,
         translator: &RegexTranslator,
         pattern_facet: &FacetType,
     ) -> Result<(), XMLGeneratorError> {
-        let pattern = pattern_facet.value.as_str();
+        let pattern = &pattern_facet.value;
 
-        let result = Pattern::new(translator, pattern)?;
+        let whitespace = self.handle_whitespace();
+
+        let result = Pattern::new(translator, &whitespace, pattern)?;
 
         self.pattern = Some(result);
 
@@ -91,7 +100,7 @@ impl TypeInfo {
     ) -> Result<(), XMLGeneratorError> {
         if let Some(base) = &restriction.base {
             let type_name = String::from_utf8(base.local_name().to_vec()).unwrap();
-            self.xsd_type = XsdType::from(type_name.as_str());
+            self.xsd_type = XsdType::from_string(&type_name)?;
             match self.xsd_type {
                 XsdType::None => self.name = Some(type_name),
                 _ => {}

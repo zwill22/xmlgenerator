@@ -1,6 +1,7 @@
 use crate::XMLGeneratorError;
 use crate::generator::Generator;
 use crate::pattern::Pattern;
+use crate::whitespace::WhiteSpace;
 use crate::xsd_type::XsdType;
 use std::collections::HashMap;
 use std::str::from_utf8;
@@ -32,7 +33,7 @@ fn check_namespace_is_valid(ns: &str) -> bool {
         return false;
     }
 
-    XsdType::from("name").validate(ns)
+    XsdType::from_string("name").unwrap().validate(ns)
 }
 
 #[derive(Default)]
@@ -69,7 +70,7 @@ impl Namespaces {
         generator: &mut Generator,
         schemas: &Schemas,
     ) -> Result<String, XMLGeneratorError> {
-        let pattern = Pattern::from(r"[a-z]{2}");
+        let pattern = Pattern::from_string(r"[a-z]{2}", &WhiteSpace::Collapse)?;
 
         match generator.generate_regex(&pattern) {
             Some(output) => match check_namespace_exists(&output, schemas) {
