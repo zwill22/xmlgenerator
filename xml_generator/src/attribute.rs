@@ -86,7 +86,7 @@ impl Attribute {
         match name.get_prefix() {
             None => name.get_name(),
             Some(prefix) => {
-                if Some(&prefix) == current_namespace {
+                if Some(&prefix) == current_namespace && !generator.attributes_qualified() {
                     name.get_suffix()
                 } else {
                     generator.add_namespace(prefix);
@@ -127,7 +127,9 @@ impl Attribute {
         if let Some(type_name) = &self.type_name {
             for type_generator in xsd.types() {
                 if type_generator.name_equals(&type_name) {
+                    generator.track_ref(type_name.as_str());
                     type_generator.generate_attribute(generator, xml_element, &name)?;
+                    generator.untrack_ref(type_name.as_str())?;
                     generated = true;
                 }
             }

@@ -195,7 +195,7 @@ impl Element {
             let suffix = names[1];
 
             if Some(&prefix.to_string()) == current_namespace {
-                if generator.is_ref(name)? {
+                if generator.requires_full_name(name) {
                     return Ok(name.to_string());
                 }
 
@@ -247,7 +247,9 @@ impl Element {
 
             for data_type in xsd.types() {
                 if data_type.name_equals(type_name) {
+                    generator.track_ref(type_name);
                     data_type.generate(generator, xml_element, xsd)?;
+                    generator.untrack_ref(type_name)?;
                     return Ok(());
                 }
             }
@@ -315,7 +317,11 @@ impl Element {
             if let Some(name) = &element.name
                 && name.eq(reference)
             {
-                return element.generate(generator, xsd);
+                let value = name.get_name()?;
+                generator.track_ref(&value);
+                let result = element.generate(generator, xsd);
+                generator.untrack_ref(&value)?;
+                return result;
             }
         }
 
@@ -332,9 +338,7 @@ impl Element {
         match &self.reference {
             None => self.generate_element(generator, xsd),
             Some(reference) => {
-                generator.track_ref(reference)?;
                 let out = self.generate_reference(generator, xsd, reference)?;
-                generator.untrack_ref(reference)?;
                 Ok(out)
             }
         }

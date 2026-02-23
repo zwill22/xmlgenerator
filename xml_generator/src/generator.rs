@@ -1,6 +1,5 @@
 use crate::XMLGeneratorError;
 use crate::element::Element;
-use crate::name::Name;
 use crate::pattern::Pattern;
 use crate::xsd_type::XsdType;
 use chrono::Duration;
@@ -10,6 +9,8 @@ use rand::{Rng, SeedableRng};
 use rand_xorshift::XorShiftRng;
 use regex::Regex;
 use std::collections::HashSet;
+use xsd_parser::models::schema::SchemaInfo;
+use xsd_parser::models::schema::xs::FormChoiceType;
 
 fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<Output> {
     Some(Faker.fake::<Output>())
@@ -38,7 +39,9 @@ pub(crate) struct Generator {
     regex_patterns: usize,
     namespaces: Vec<String>,
     tracker: HashSet<String>,
-    references: Vec<Name>,
+    references: Vec<String>,
+    element_qualified: bool,
+    attribute_qualified: bool,
 }
 
 impl Generator {
@@ -54,6 +57,8 @@ impl Generator {
             namespaces: vec![],
             tracker: HashSet::new(),
             references: vec![],
+            element_qualified: false,
+            attribute_qualified: false,
         }
     }
 
@@ -61,12 +66,11 @@ impl Generator {
         self.tracker.is_empty()
     }
 
-    pub(crate) fn track_ref(&mut self, reference: &Name) -> Result<(), XMLGeneratorError> {
-        self.references.push(reference.clone());
-        Ok(())
+    pub(crate) fn track_ref(&mut self, reference: &str) {
+        self.references.push(reference.to_string());
     }
 
-    pub(crate) fn untrack_ref(&mut self, reference: &Name) -> Result<(), XMLGeneratorError> {
+    pub(crate) fn untrack_ref(&mut self, reference: &str) -> Result<(), XMLGeneratorError> {
         match self.references.pop() {
             Some(value) => {
                 if reference != &value {
@@ -83,17 +87,38 @@ impl Generator {
         }
     }
 
-    pub(crate) fn is_ref(&self, name: &str) -> Result<bool, XMLGeneratorError> {
-        let reference = match self.references.last() {
-            Some(reference) => reference,
-            None => return Ok(false),
-        };
+    pub(crate) fn set_qualification(&mut self, schema_info: &SchemaInfo) {
+        let schema = &schema_info.schema;
 
-        if reference.get_name()? == name {
-            return Ok(true);
+        match schema.element_form_default {
+            FormChoiceType::Qualified => self.element_qualified = true,
+            FormChoiceType::Unqualified => {}
         }
 
-        Ok(false)
+        match schema.attribute_form_default {
+            FormChoiceType::Qualified => self.attribute_qualified = true,
+            FormChoiceType::Unqualified => {}
+        }
+    }
+
+    pub(crate) fn attributes_qualified(&mut self) -> bool {
+        self.attribute_qualified
+    }
+
+    pub(crate) fn requires_full_name(&self, name: &str) -> bool {
+        if self.element_qualified {
+            return true;
+        }
+        let reference = match self.references.last() {
+            Some(reference) => reference,
+            None => return false,
+        };
+
+        if reference == name {
+            return true;
+        }
+
+        false
     }
 
     fn includes(&self, element: &Element) -> bool {

@@ -2,9 +2,9 @@ extern crate alloc;
 
 use core::fmt::Display;
 
+use line_ending::LineEnding;
 use regex::Regex;
 use std::collections::HashMap;
-use line_ending::LineEnding;
 
 mod test;
 

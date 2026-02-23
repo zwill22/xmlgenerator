@@ -263,6 +263,8 @@ impl Namespaces {
             }
         }
 
+        generator.set_qualification(schema_info);
+
         Ok(())
     }
 
