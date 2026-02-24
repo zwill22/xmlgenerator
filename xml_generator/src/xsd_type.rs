@@ -169,7 +169,7 @@ impl XsdType {
 
         const DATE: &str = "%Y-%m-%d";
         const DATETIME: &str = "%Y-%m-%dT%H:%M:%S";
-        const G_DAY: &str = "-%d";
+        const G_DAY: &str = "---%d";
         const G_MONTH: &str = "--%m";
         const G_MONTH_DAY: &str = "--%m-%d";
         const G_YEAR: &str = "%Y";
