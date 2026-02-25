@@ -23,6 +23,7 @@ create_exception!(pyxmlgenerator, MultipleXSDRootsError, PyException);
 create_exception!(pyxmlgenerator, TypeGenerationError, PyException);
 create_exception!(pyxmlgenerator, ImplementationError, PyException);
 create_exception!(pyxmlgenerator, RegexError, PyException);
+create_exception!(pyxmlgenerator, IncompatiblePatternError, PyException);
 create_exception!(pyxmlgenerator, InvalidXSDNameError, PyException);
 create_exception!(pyxmlgenerator, LineEndingsError, PyException);
 
@@ -47,6 +48,10 @@ fn handle_error(error: XMLGeneratorError) -> PyErr {
         XMLGeneratorError::MultipleRootsError => MultipleXSDRootsError::new_err("Multiple Roots"),
         XMLGeneratorError::TypeGenerationError(e) => TypeGenerationError::new_err(e),
         XMLGeneratorError::RegexError(e) => RegexError::new_err(e),
+        XMLGeneratorError::RegexMismatchError(p1, p2) => {
+            let e = format!("Incompatible patterns: {} {}", p1, p2);
+            IncompatiblePatternError::new_err(e)
+        }
         XMLGeneratorError::UnimplementedFeature(e) => ImplementationError::new_err(e),
         XMLGeneratorError::InvalidXSDNameError(e) => InvalidXSDNameError::new_err(e),
         XMLGeneratorError::LineEndingsError(e) => LineEndingsError::new_err(e),
@@ -159,6 +164,10 @@ fn pyxmlgenerator(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("TypeGenerationError", _py.get_type::<TypeGenerationError>())?;
     m.add("ImplementationError", _py.get_type::<ImplementationError>())?;
     m.add("RegexError", _py.get_type::<RegexError>())?;
+    m.add(
+        "IncompatiblePatternError",
+        _py.get_type::<IncompatiblePatternError>(),
+    )?;
     m.add("InvalidXSDNameError", _py.get_type::<InvalidXSDNameError>())?;
     m.add("LineEndingsError", _py.get_type::<LineEndingsError>())?;
     Ok(())

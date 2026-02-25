@@ -53,6 +53,13 @@ impl TypeInfo {
         let xsd_type = &self.xsd_type;
         xsd_type.whitespace()
     }
+    
+    fn check_patterns(&self, pattern: &Pattern) -> Result<(), XMLGeneratorError> {
+        match self.xsd_type.get_pattern() {
+            Some(xsd_pattern) => pattern.check_intersection(xsd_pattern),
+            None => Ok(()),
+        }
+    }
 
     fn handle_pattern_facet(
         &mut self,
@@ -64,6 +71,8 @@ impl TypeInfo {
         let whitespace = self.handle_whitespace();
 
         let result = Pattern::new(translator, &whitespace, pattern)?;
+
+        self.check_patterns(&result)?;
 
         self.pattern = Some(result);
 

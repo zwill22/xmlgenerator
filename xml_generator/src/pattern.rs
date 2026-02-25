@@ -1,6 +1,7 @@
 use crate::XMLGeneratorError;
-use regextranslator::RegexTranslator;
 use crate::whitespace::WhiteSpace;
+use regex_intersect::non_empty;
+use regextranslator::RegexTranslator;
 
 #[derive(PartialEq, Default)]
 pub(crate) struct Pattern {
@@ -107,6 +108,29 @@ impl Pattern {
         pattern.ascii = Some(ascii.clone());
 
         Ok(pattern)
+    }
+
+    pub(crate) fn check_intersection(&self, other: &Pattern) -> Result<(), XMLGeneratorError> {
+        let pattern1 = self.get_pattern(true);
+        let pattern2 = other.get_pattern(true);
+
+        let result = non_empty(pattern1, pattern2)?;
+        if result {
+            return Ok(());
+        }
+
+        let full_pattern1 = self.get_pattern(false);
+        let full_pattern2 = other.get_pattern(false);
+
+        let full_result = non_empty(pattern1, pattern2)?;
+        if !full_result {
+            return Err(XMLGeneratorError::RegexMismatchError(
+                full_pattern1.to_string(),
+                full_pattern2.to_string(),
+            ));
+        }
+
+        Ok(())
     }
 }
 

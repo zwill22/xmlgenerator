@@ -85,6 +85,8 @@ def validate_output(xml_generator, input_file: Path | str):
         pytest.skip("Invalid XSD version")
     except pyxmlgenerator.NoIndependentElementsError:
         pytest.skip("No independent elements in schema")
+    except pyxmlgenerator.IncompatiblePatternError:
+        pytest.skip("XSD defines a pattern that is incompatible with the base type")
 
     try:
         schema.validate(result)

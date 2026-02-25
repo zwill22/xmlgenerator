@@ -43,6 +43,9 @@ mod tests {
             XMLGeneratorError::UnimplementedFeature(e) => panic!("Unimplemented feature: {}", e),
             XMLGeneratorError::InvalidXSDNameError(e) => panic!("Invalid XSD name: {}", e),
             XMLGeneratorError::LineEndingsError(e) => panic!("Line endings error: {}", e),
+            XMLGeneratorError::RegexMismatchError(p1, p2) => {
+                panic!("Incompatible patterns: {} and {}", p1, p2)
+            }
         }
     }
 

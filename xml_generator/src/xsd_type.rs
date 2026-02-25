@@ -84,7 +84,7 @@ impl XsdType {
     }
 
     fn from_date(string: &str) -> Result<Self, XMLGeneratorError> {
-        const YEAR: &str = r"(?:[0-9]{3}[1-9]|[0-9]{2}[1-9][0-9]|[0-9][1-9][0-9]{2}|[1-9][0-9]{3})";
+        const YEAR: &str = r"-?(?:[0-9]{3}[1-9])|(?:[0-9]{2}[1-9][0-9])|(?:[0-9][1-9][0-9]{2})|(?:[1-9][0-9]{3})";
         const MONTH: &str = r"(?:0[1-9]|1[0-2])";
         const DAY: &str = r"(?:0[1-9]|1[0-9]|2[0-9]|3[0-1])";
 
@@ -155,9 +155,22 @@ impl XsdType {
         }
     }
 
+    pub(crate) fn get_pattern(&self) -> Option<&Pattern> {
+        match self {
+            XsdType::String(pattern) => {
+                if pattern.is_empty() {
+                    return None;
+                }
+
+                Some(pattern)
+            },
+            _ => None,
+        }
+    }
+
     pub(crate) fn from_string(s: &str) -> Result<Self, XMLGeneratorError> {
         const NAME: &str = r"\i\c*";
-        const NCNAME: &str = r"[\i-[:]][\c-[:]]*";
+        const NCNAME: &str = r"[\i--[:]][\c--[:]]*";
         const NMTOKEN: &str = r"\c+";
         const LANGUAGE: &str = "r[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*";
         const NORMAL: &str = r"[^\r\n\t]*";
@@ -183,7 +196,7 @@ impl XsdType {
         match s {
             // Numeric Data Types
             "byte" => Ok(XsdType::Byte),
-            "decimal" => XsdType::string(r"[+-]?[0-9]+\.?[0-9]*", &COLLAPSE),
+            "decimal" => XsdType::string(r"[+-]?[0-9]*\.?[0-9]*", &COLLAPSE),
             "short" => Ok(XsdType::Short),
             "int" => Ok(XsdType::Int),
             "long" => Ok(XsdType::Long),

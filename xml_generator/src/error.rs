@@ -1,3 +1,4 @@
+use regex_intersect::IntersectError;
 use regextranslator::RegexTranslationError;
 use xml_builder::XMLError;
 use xsdvalidator::XSDValidationError;
@@ -39,6 +40,8 @@ pub enum XMLGeneratorError {
     TypeGenerationError(String),
     /// Regex Compilation Error
     RegexError(String),
+    /// Regex mismatch error
+    RegexMismatchError(String, String),
     /// Line endings (platform dependent)
     LineEndingsError(String),
     /// Unimplemented Feature
