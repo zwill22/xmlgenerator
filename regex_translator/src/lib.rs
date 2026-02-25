@@ -99,12 +99,7 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
 
 fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
     // TODO Replace with const
-    let mut unicode_blocks = unicode_blocks()?;
-
-    unicode_blocks.insert("Nd".to_string(), r"[0-9]".to_string());
-    unicode_blocks.insert(r"L".to_string(), r"[[:alpha:]]".to_string());
-    unicode_blocks.insert(r"Ll".to_string(), r"[[:lower:]]".to_string());
-    unicode_blocks.insert(r"Lu".to_string(), r"[[:upper:]]".to_string());
+    let unicode_blocks = unicode_blocks()?;
 
     let mut output = HashMap::new();
 
@@ -164,6 +159,16 @@ fn apply_common_mappings(mappings: &mut HashMap<String, String>) {
 fn get_ascii_mappings() -> HashMap<String, String> {
     let mut mappings = HashMap::new();
 
+    mappings.insert(r"\p{Nd}".to_string(), r"[0-9]".to_string());
+    mappings.insert(r"\p{L}".to_string(), r"[A-Za-z]".to_string());
+    mappings.insert(r"\p{Ll}".to_string(), r"[a-z]".to_string());
+    mappings.insert(r"\p{Lu}".to_string(), r"[A-Z]".to_string());
+
+    mappings.insert(r"\P{Nd}".to_string(), r"[[\x{20}-\x{7E}]--[0-9]]".to_string());
+    mappings.insert(r"\P{L}".to_string(), r"[[\x{20}-\x{7E}]--[A-Za-z]]".to_string());
+    mappings.insert(r"\P{Ll}".to_string(), r"[[\x{20}-\x{7E}]--[a-z]]".to_string());
+    mappings.insert(r"\P{Lu}".to_string(), r"[[\x{20}-\x{7E}]--[A-Z]]".to_string());
+
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z]";
 
@@ -198,6 +203,16 @@ fn get_ascii_mappings() -> HashMap<String, String> {
 
 fn get_full_mappings() -> HashMap<String, String> {
     let mut mappings = HashMap::new();
+
+    mappings.insert(r"\p{Nd}".to_string(), r"[[:digit:]]".to_string());
+    mappings.insert(r"\p{L}".to_string(), r"[[:alpha:]]".to_string());
+    mappings.insert(r"\p{Ll}".to_string(), r"[[:lower:]]".to_string());
+    mappings.insert(r"\p{Lu}".to_string(), r"[[:upper:]]".to_string());
+
+    mappings.insert(r"\P{Nd}".to_string(), r"[^[[:digit:]]]".to_string());
+    mappings.insert(r"\P{L}".to_string(), r"[^[[:alpha:]]]".to_string());
+    mappings.insert(r"\P{Ll}".to_string(), r"[^[[:lower:]]]".to_string());
+    mappings.insert(r"\P{Lu}".to_string(), r"[^[[:upper:]]]".to_string());
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
