@@ -1,4 +1,5 @@
 use crate::XMLGeneratorError;
+use crate::error::unimplemented;
 use crate::pattern::Pattern;
 use crate::whitespace::WhiteSpace;
 use const_format::formatcp;
@@ -160,7 +161,6 @@ impl XsdType {
         const NMTOKEN: &str = r"\c+";
         const LANGUAGE: &str = "r[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*";
         const NORMAL: &str = r"[^\r\n\t]*";
-        const QNAME: &str = r"(?:[A-Z_a-z][-.0-9A-Z_a-z]*:)?[A-Z_a-z][-\.0-9A-Z_a-z]*";
         const TOKEN: &str = r"[^\s]*(?: [^\s]*)*";
         const NC_NAMES: &str = formatcp!(r"{0}(?:\s+{0})*", NCNAME);
         const BOOLEAN: &str = r"(?:true|false|0|1)";
@@ -206,7 +206,7 @@ impl XsdType {
             "NCName" => XsdType::string(NCNAME, &COLLAPSE),
             "NMTOKEN" => XsdType::string(NMTOKEN, &COLLAPSE),
             "normalizedString" => XsdType::string(NORMAL, &REPLACE),
-            "QName" => XsdType::string(QNAME, &COLLAPSE),
+            "QName" => unimplemented("QName"),
             "string" => XsdType::string(NULL, &PRESERVE),
             "token" => XsdType::string(TOKEN, &COLLAPSE),
 
