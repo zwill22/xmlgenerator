@@ -1,6 +1,6 @@
+use crate::XMLGeneratorError;
 use line_ending::LineEnding;
 use regex::Regex;
-use crate::XMLGeneratorError;
 
 fn check_line_ending(pattern: &str, ending: &str) -> Result<(), XMLGeneratorError> {
     if pattern.contains(ending) {
@@ -37,9 +37,11 @@ pub(crate) enum WhiteSpace {
 }
 
 fn replace(input: &str) -> String {
-    let whitespace = Regex::new(r"\[\^(?:\\s|\\t|\\n|\\r|\\v|\\f)+]").unwrap();
+    let whitespace = Regex::new(r"\[\^(?:\\t|\\n|\\r|\\v|\\f)+]").unwrap();
 
-    whitespace.replace_all(input, r"[\S ]").to_string()
+    let result = whitespace
+        .replace_all(input, r"[\S ]")
+        .replace(r"[^\s]", r"\S")
         .replace(r"\s", " ")
         .replace(r"\t", "")
         .replace(r"\n", " ")
@@ -58,7 +60,7 @@ impl WhiteSpace {
             WhiteSpace::Preserve => {
                 check_line_endings(s)?;
                 s.to_string()
-            },
+            }
             WhiteSpace::Replace => replace(s),
             WhiteSpace::Collapse => collapse(s),
         };
