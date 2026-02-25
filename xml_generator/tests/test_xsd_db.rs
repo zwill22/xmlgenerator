@@ -60,6 +60,9 @@ mod tests {
             XMLGeneratorError::RegexMismatchError(p1, p2) => {
                 increment(stats, "Regex mismatch", &format!("{} <-> {}", p1, p2));
             }
+            XMLGeneratorError::EncodingError => {
+                increment(stats, "Encoding error", "");
+            }
             XMLGeneratorError::LineEndingsError(e) => {
                 increment(stats, "Invalid line ending", e);
             }

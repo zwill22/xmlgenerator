@@ -46,6 +46,7 @@ mod tests {
             XMLGeneratorError::RegexMismatchError(p1, p2) => {
                 panic!("Incompatible patterns: {} and {}", p1, p2)
             }
+            XMLGeneratorError::EncodingError => panic!("Encoding error"),
         }
     }
 

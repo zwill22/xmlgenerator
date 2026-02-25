@@ -1,10 +1,10 @@
 pub use crate::error::XMLGeneratorError;
 use crate::generator::Generator;
-use crate::schemas::build_schemas;
 use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::path::PathBuf;
 use xsdvalidator::XSDValidator;
+use crate::schemas::SchemaData;
 
 mod attribute;
 mod data_type;
@@ -76,7 +76,7 @@ impl XMLGenerator {
     /// an error when generating the output XML, then an `XMLGeneratorError::XMLBuilderError`
     /// is returned.
     pub fn generate(&self, xsd_path: &PathBuf) -> Result<String, XMLGeneratorError> {
-        let schemas = build_schemas(xsd_path)?;
+        let schemas = SchemaData::new(xsd_path)?;
         self.validate(xsd_path)?;
 
         let mut generator = Generator::new(100, 10, 100);

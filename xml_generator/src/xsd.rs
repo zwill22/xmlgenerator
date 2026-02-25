@@ -5,34 +5,36 @@ use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::namespaces::Namespaces;
 use crate::schema_version::SchemaVersion;
+use crate::schemas::SchemaData;
+use crate::special::replace_specials;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
-use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
-use xsd_parser::Schemas;
+use xml_builder::{XMLBuilder, XMLElement, XMLVersion, XML};
 use xsd_parser::models::schema::xs::SchemaContent;
-use crate::special::replace_specials;
 
 pub(crate) struct Xsd {
     version: SchemaVersion,
     namespaces: Namespaces,
     data_types: Vec<DataType>,
     elements: Vec<Element>,
+    encoding: Option<String>,
 }
 
 impl Xsd {
     pub(crate) fn new(
         generator: &mut Generator,
         translator: &RegexTranslator,
-        schemas: &Schemas,
+        schemas: &SchemaData,
     ) -> Result<Xsd, XMLGeneratorError> {
         let mut xsd = Xsd {
-            version: SchemaVersion::new(schemas)?,
-            namespaces: Namespaces::new(generator, schemas)?,
+            version: schemas.get_version()?,
+            namespaces: schemas.get_namespaces(generator)?,
             data_types: vec![],
             elements: vec![],
+            encoding: schemas.get_encoding(),
         };
 
-        for (_schema_id, schema_info) in schemas.schemas() {
+        for (_, schema_info) in schemas.schemas() {
             let schema = &schema_info.schema;
             for content in &schema.content {
                 match content {
@@ -178,6 +180,22 @@ impl Xsd {
         unreachable!();
     }
 
+    fn build_xml(&self) -> Result<XML, XMLGeneratorError> {
+        let schema_version = self.get_version()?;
+
+        let mut xml_builder = XMLBuilder::new()
+            .expand_empty_tags(true)
+            .version(schema_version);
+
+        if let Some(encoding) = &self.encoding {
+            xml_builder = xml_builder.encoding(encoding.clone());
+        } else {
+            xml_builder = xml_builder.encoding("UTF-8".to_string());
+        }
+
+        Ok(xml_builder.build())
+    }
+
     fn generate_root(
         &self,
         generator: &mut Generator,
@@ -200,7 +218,7 @@ impl Xsd {
         }
     }
 
-    fn build_xml(&self, generator: &mut Generator) -> Result<XMLElement, XMLGeneratorError> {
+    fn build_root(&self, generator: &mut Generator) -> Result<XMLElement, XMLGeneratorError> {
         let root = self.find_root()?;
         self.generate_root(generator, root)
     }
@@ -209,15 +227,9 @@ impl Xsd {
         &self,
         generator: &mut Generator,
     ) -> Result<String, XMLGeneratorError> {
-        let schema_version = self.get_version()?;
+        let mut xml = self.build_xml()?;
 
-        let mut xml = XMLBuilder::new()
-            .expand_empty_tags(true)
-            .version(schema_version)
-            .encoding("UTF-8".into())
-            .build();
-
-        let root_element = self.build_xml(generator)?;
+        let root_element = self.build_root(generator)?;
         xml.set_root_element(root_element);
 
         let mut writer: Vec<u8> = Vec::new();

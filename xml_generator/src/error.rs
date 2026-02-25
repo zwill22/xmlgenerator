@@ -1,3 +1,5 @@
+use quick_xml::Error as QuickXmlError;
+use quick_xml::events::attributes::AttrError;
 use regex_intersect::IntersectError;
 use regextranslator::RegexTranslationError;
 use xml_builder::XMLError;
@@ -44,8 +46,45 @@ pub enum XMLGeneratorError {
     RegexMismatchError(String, String),
     /// Line endings (platform dependent)
     LineEndingsError(String),
+    /// Encoding error
+    EncodingError,
     /// Unimplemented Feature
     UnimplementedFeature(String),
+}
+
+impl From<QuickXmlError> for XMLGeneratorError {
+    fn from(err: QuickXmlError) -> XMLGeneratorError {
+        match err {
+            QuickXmlError::Io(error) => XMLGeneratorError::InvalidPathError(error.to_string()),
+            QuickXmlError::Syntax(error) => XMLGeneratorError::InvalidXSDError(error.to_string()),
+            QuickXmlError::IllFormed(error) => {
+                XMLGeneratorError::InvalidXSDError(error.to_string())
+            }
+            QuickXmlError::InvalidAttr(error) => {
+                XMLGeneratorError::InvalidXSDError(error.to_string())
+            }
+            QuickXmlError::Encoding(error) => XMLGeneratorError::InvalidXSDError(error.to_string()),
+            QuickXmlError::Escape(error) => XMLGeneratorError::InvalidXSDError(error.to_string()),
+            QuickXmlError::Namespace(error) => {
+                XMLGeneratorError::InvalidXSDError(error.to_string())
+            }
+        }
+    }
+}
+
+impl From<AttrError> for XMLGeneratorError {
+    fn from(err: AttrError) -> XMLGeneratorError {
+        XMLGeneratorError::InvalidXSDError(err.to_string())
+    }
+}
+
+impl From<IntersectError> for XMLGeneratorError {
+    fn from(error: IntersectError) -> XMLGeneratorError {
+        match error {
+            IntersectError::Parse(error) => XMLGeneratorError::RegexError(error.to_string()),
+            IntersectError::Error(error) => XMLGeneratorError::RegexError(error.to_string()),
+        }
+    }
 }
 
 impl From<XSDValidationError> for XMLGeneratorError {
