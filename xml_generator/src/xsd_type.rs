@@ -196,7 +196,7 @@ impl XsdType {
         match s {
             // Numeric Data Types
             "byte" => Ok(XsdType::Byte),
-            "decimal" => XsdType::string(r"[+-]?[0-9]*\.?[0-9]*", &COLLAPSE),
+            "decimal" => XsdType::string(r"[+-]?[0-9]*(?:(?:[0-9]\.)|(?:\.[0.9])|(?:[0-9]))[0-9]*", &COLLAPSE),
             "short" => Ok(XsdType::Short),
             "int" => Ok(XsdType::Int),
             "long" => Ok(XsdType::Long),
