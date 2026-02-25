@@ -138,13 +138,13 @@ impl Attribute {
             }
         }
 
-        if self.use_type == AttributeUseType::Required && !generated {
+        if !generated {
             if self.type_name.is_none() {
                 let xsd_type = XsdType::string("", &WhiteSpace::Collapse)?;
                 let value = generator.generate_type(&xsd_type).unwrap();
                 let attribute = replace_specials(&value);
                 xml_element.add_attribute(&name, &attribute);
-            } else {
+            } else if self.use_type == AttributeUseType::Required {
                 return Err(XMLGeneratorError::TypeGenerationError(
                     "Required attribute not generated".to_string(),
                 ));
