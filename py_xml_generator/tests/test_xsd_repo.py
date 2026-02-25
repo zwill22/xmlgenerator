@@ -51,15 +51,9 @@ def test_xsd_file(xml_generator, file):
     try:
         validate_schema(xml_generator, file)
     except pyxmlgenerator.XSDValidatorError:
-        return
+        pytest.skip("Unable to validate XSD")
 
-    try:
-        validate_output(xml_generator, file)
-    except pyxmlgenerator.NoElementsError:
-        return
-    except pyxmlgenerator.ImplementationError as e:
-        print(e)
-        return
+    validate_output(xml_generator, file)
 
 # def test_single_file(xml_generator):
 #     file = "msData/regex/reI57.xsd"

@@ -39,7 +39,7 @@ pub(crate) enum WhiteSpace {
 fn replace(input: &str) -> String {
     let whitespace = Regex::new(r"\[\^(?:\\t|\\n|\\r|\\v|\\f)+]").unwrap();
 
-    let result = whitespace
+    whitespace
         .replace_all(input, r"[\S ]")
         .replace(r"[^\s]", r"\S")
         .replace(r"\s", " ")
