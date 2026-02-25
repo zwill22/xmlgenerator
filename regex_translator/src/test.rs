@@ -82,9 +82,12 @@ mod tests {
         };
 
         for input_regex in regex {
-            match translator.translate(input_regex.as_str()) {
+            match translator.translate(&input_regex, true) {
                 Ok(_) => {}
-                Err(e) => handle_errors(e, input_regex.as_str()),
+                Err(_) => match translator.translate(&input_regex, false) {
+                    Ok(_) => {}
+                    Err(e) => handle_errors(e, &input_regex),
+                },
             }
         }
     }
@@ -103,7 +106,7 @@ mod tests {
         ];
 
         for string in surrogates_strings {
-            match translator.translate(string) {
+            match translator.translate(string, true) {
                 Ok(_) => panic!("No error thrown"),
                 Err(e) => match e {
                     RegexTranslationError::SurrogatesError => {}
