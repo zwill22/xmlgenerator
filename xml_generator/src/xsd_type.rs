@@ -213,13 +213,13 @@ impl XsdType {
             // String data types
             "ENTITY" => XsdType::string(NCNAME, &COLLAPSE),
             "ID" => XsdType::string(NCNAME, &COLLAPSE),
-            "IDREF" => XsdType::string(NCNAME, &COLLAPSE),
+            "IDREF" => unimplemented("IDREF"), // Requires cross-referencing
             "language" => XsdType::string(LANGUAGE, &COLLAPSE),
             "Name" => XsdType::string(NAME, &COLLAPSE),
             "NCName" => XsdType::string(NCNAME, &COLLAPSE),
             "NMTOKEN" => XsdType::string(NMTOKEN, &COLLAPSE),
             "normalizedString" => XsdType::string(NORMAL, &REPLACE),
-            "QName" => unimplemented("QName"),
+            "QName" => unimplemented("QName"), // Requires cross-referencing
             "string" => XsdType::string(NULL, &PRESERVE),
             "token" => XsdType::string(TOKEN, &COLLAPSE),
 
@@ -246,7 +246,7 @@ impl XsdType {
             // List types
             "ENTITIES" => XsdType::string(NC_NAMES, &PRESERVE),
             "NMTOKENS" => XsdType::string(NMTOKENS, &PRESERVE),
-            "IDREFS" => XsdType::string(NC_NAMES, &PRESERVE),
+            "IDREFS" => unimplemented("IDREFS"), // Requires cross-referencing
 
             // Just use a string for any type
             "anyType" => XsdType::string(NULL, &PRESERVE),
