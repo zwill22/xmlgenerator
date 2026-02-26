@@ -3,8 +3,7 @@ from pathlib import Path
 
 import pytest
 import pyxmlgenerator
-from xmlschema import XMLSchema, XMLSchemaValidationError, XMLSchemaParseError, XMLSchemaModelError
-from xmlschema.exceptions import XMLResourceParseError
+from xmlschema import XMLSchemaParseError, XMLSchemaModelError, XMLSchema10, XMLSchema11
 
 
 def get_project_root() -> Path:
@@ -31,12 +30,74 @@ def identity(file: Path, parent_path: Path) -> str:
     return out
 
 
-def print_output(schema: XMLSchema, result: str):
-    print("XSD")
-    print(schema.get_text())
-    print("XML")
-    print(result)
-    print()
+def setup_xmlschema11(filepath):
+    try:
+        schema = XMLSchema11(filepath)
+    except XMLSchemaParseError:
+        schema = None
+    except XMLSchemaModelError:
+        schema = None
+
+    return schema
+
+
+class Validator:
+    def __init__(self, filepath: str):
+        try:
+            schema = XMLSchema10(filepath)
+        except XMLSchemaModelError:
+            schema = setup_xmlschema11(filepath)
+        except XMLSchemaParseError:
+            schema = setup_xmlschema11(filepath)
+
+        self.xmlschema = schema
+
+        if self.xmlschema is None:
+            pytest.xfail("Failed to setup schema")
+
+    def print_output(self, xml: str):
+        print("XSD")
+        print(self.xmlschema.get_text())
+        print("XML")
+        print(xml)
+        print()
+
+    def validate(self, xml: str):
+        valid = self.xmlschema.is_valid(xml)
+
+        if not valid:
+            self.print_output(xml)
+
+        return valid
+
+
+def run_generator(xml_generator, filepath) -> str:
+    try:
+        result: str = xml_generator.generate(filepath)
+    except pyxmlgenerator.NoElementsError:
+        pytest.xfail("XSD does not contain any elements")
+    except pyxmlgenerator.ImplementationError as e:
+        pytest.skip(f"Unimplemented feature {e}")
+    except pyxmlgenerator.MultipleXSDRootsError:
+        pytest.xfail("XSD contains multiple roots")
+    except pyxmlgenerator.XSDParserError:
+        pytest.xfail("Unable to parse XSD")
+    except pyxmlgenerator.InfiniteRecursionError:
+        pytest.xfail("Infinite recursion found in XSD")
+    except pyxmlgenerator.InvalidXSDNameError:
+        pytest.xfail("Invalid XSD naming")
+    except pyxmlgenerator.DataTypesFormatError:
+        pytest.xfail("Data types format error")
+    except pyxmlgenerator.LineEndingsError:
+        pytest.xfail("Line endings error")
+    except pyxmlgenerator.InvalidXSDVersionError:
+        pytest.xfail("Invalid XSD version")
+    except pyxmlgenerator.NoIndependentElementsError:
+        pytest.xfail("No independent elements in schema")
+    except pyxmlgenerator.IncompatiblePatternError:
+        pytest.xfail("XSD defines a pattern that is incompatible with the base type")
+
+    return result
 
 
 def validate_output(xml_generator, input_file: Path | str):
@@ -56,49 +117,12 @@ def validate_output(xml_generator, input_file: Path | str):
     cwd = Path.cwd()
     os.chdir(file_dir)
 
-    try:
-        schema = XMLSchema(filepath)
-    except XMLSchemaModelError:
-        pytest.skip("Invalid schema")
-    except XMLSchemaParseError:
-        pytest.skip("Unable to parse schema")
+    validator = Validator(filepath)
 
-    try:
-        result: str = xml_generator.generate(filepath)
-    except pyxmlgenerator.NoElementsError:
-        pytest.skip("XSD does not contain any elements")
-    except pyxmlgenerator.ImplementationError as e:
-        pytest.xfail(f"Unimplemented feature {e}")
-    except pyxmlgenerator.MultipleXSDRootsError:
-        pytest.skip("XSD contains multiple roots")
-    except pyxmlgenerator.XSDParserError:
-        pytest.skip("Unable to parse XSD")
-    except pyxmlgenerator.InfiniteRecursionError:
-        pytest.skip("Infinite recursion found in XSD")
-    except pyxmlgenerator.InvalidXSDNameError:
-        pytest.skip("Invalid XSD naming")
-    except pyxmlgenerator.DataTypesFormatError:
-        pytest.skip("Data types format error")
-    except pyxmlgenerator.LineEndingsError:
-        pytest.skip("Line endings error")
-    except pyxmlgenerator.InvalidXSDVersionError:
-        pytest.skip("Invalid XSD version")
-    except pyxmlgenerator.NoIndependentElementsError:
-        pytest.skip("No independent elements in schema")
-    except pyxmlgenerator.IncompatiblePatternError:
-        pytest.skip("XSD defines a pattern that is incompatible with the base type")
+    result = run_generator(xml_generator, filepath)
 
-    try:
-        schema.validate(result)
-    except XMLSchemaValidationError as e:
-        print()
-        print("Result does not match schema:")
-        print_output(schema, result)
-        raise e
-    except XMLResourceParseError as e:
-        print()
-        print("Unable to parse XML:")
-        print_output(schema, result)
-        raise e
-    finally:
-        os.chdir(cwd)
+    valid = validator.validate(result)
+
+    os.chdir(cwd)
+
+    assert valid
