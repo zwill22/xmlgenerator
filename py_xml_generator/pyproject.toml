@@ -1,5 +1,5 @@
 [build-system]
-requires = ["maturin>=1.9,<2.0"]
+requires = ["maturin>=1.10.2,<2.0"]
 build-backend = "maturin"
 
 [project]
@@ -10,7 +10,6 @@ readme = "../README.md"
 authors = [
     { name = "Z M Williams", email = "z.m.will@icloud.com" },
 ]
-license = { file = "../LICENSE" }
 keywords = ["XML", "Testing"]
 classifiers = [
     "License :: OSI Approved :: MIT License",

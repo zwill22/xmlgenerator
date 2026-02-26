@@ -35,6 +35,26 @@ Cargo dependencies:
 - [PyO3](https://github.com/PyO3/pyo3) - Python Bindings
 - [Polars](https://pola.rs) - Reading tabular data
 
+## Build
+
+To build the Rust `xmlgenerator` library, simply run:
+```bash
+cargo build
+```
+To run the Rust test suite, use:
+```bash
+cargo test
+```
+
+To build the Python wrapper `pyxmlgenerator`, run:
+```bash
+uv sync --package pyxmlgenerator 
+```
+To run the Python test suite, use:
+```bash
+uv run pytest
+```
+
 ## Usage (Rust)
 
 The following is an example of a simplified program which reads a list of filepaths from command-line arguments and generates example XML output strings for each valid XSD.
