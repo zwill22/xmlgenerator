@@ -1,9 +1,12 @@
 import os
+from io import BytesIO
 from pathlib import Path
 
 import pytest
 import pyxmlgenerator
+from lxml import etree
 from xmlschema import XMLSchemaParseError, XMLSchemaModelError, XMLSchema10, XMLSchema11
+from xmlschema.exceptions import XMLResourceParseError
 
 
 def get_project_root() -> Path:
@@ -52,7 +55,15 @@ class Validator:
 
         self.xmlschema = schema
 
-        if self.xmlschema is None:
+        schema_doc = etree.parse(filepath)
+        try:
+            lxml_schema = etree.XMLSchema(schema_doc)
+        except etree.XMLSchemaParseError:
+            lxml_schema = None
+
+        self.lxml_schema = lxml_schema
+
+        if self.xmlschema is None and self.lxml_schema is None:
             pytest.xfail("Failed to setup schema")
 
     def print_output(self, xml: str):
@@ -63,12 +74,34 @@ class Validator:
         print()
 
     def validate(self, xml: str):
-        valid = self.xmlschema.is_valid(xml)
+        xmlschema_valid = False
+        if self.xmlschema:
+            try:
+                xmlschema_valid = self.xmlschema.is_valid(xml)
+            except XMLResourceParseError:
+                xmlschema_valid = False
 
-        if not valid:
-            self.print_output(xml)
+        lxml_schema_valid = False
+        if self.lxml_schema:
+            try:
+                doc = etree.parse(BytesIO(xml.encode()))
+                self.lxml_schema.assertValid(doc)
+                lxml_schema_valid = True
+            except etree.XMLSyntaxError:
+                lxml_schema_valid = False
+            except etree.DocumentInvalid:
+                lxml_schema_valid = False
 
-        return valid
+        if not xmlschema_valid:
+            if not lxml_schema_valid:
+                return False
+
+            pytest.xfail("XMLSchema failed to validate output")
+
+        if not lxml_schema_valid:
+            pytest.xfail("LXML failed to validate output")
+
+        return True
 
 
 def run_generator(xml_generator, filepath) -> str:

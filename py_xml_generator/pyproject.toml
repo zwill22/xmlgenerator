@@ -26,6 +26,7 @@ dev = [
     "pytest>=8.4.1",
     "ruff>=0.12.7",
     "xmlschema>=4.1.0",
+    "lxml>=6.0.2",
 ]
 
 [tool.pytest.ini_options]
