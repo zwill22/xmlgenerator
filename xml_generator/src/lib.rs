@@ -22,6 +22,7 @@ mod xsd;
 mod xsd_type;
 mod special;
 mod whitespace;
+mod datetime;
 
 pub struct XMLGenerator {
     validator: XSDValidator,

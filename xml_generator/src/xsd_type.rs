@@ -1,4 +1,5 @@
 use crate::XMLGeneratorError;
+use crate::datetime::Datetime;
 use crate::error::unimplemented;
 use crate::pattern::Pattern;
 use crate::whitespace::WhiteSpace;
@@ -29,6 +30,7 @@ pub(crate) enum XsdType {
     HexBinary,    // A hexidecimal binary value
     Duration,     // A duration of time
 
+    DateTime(Datetime),
     String(Pattern), // A string type with a pattern
 
     #[default]
@@ -84,32 +86,9 @@ impl XsdType {
     }
 
     fn from_date(string: &str) -> Result<Self, XMLGeneratorError> {
-        const YEAR: &str = r"(-?(?:[0-9]{3}[1-9])|(?:[0-9]{2}[1-9][0-9])|(?:[0-9][1-9][0-9]{2})|(?:[1-9][0-9]{3}))";
-        const MONTH: &str = r"(?:0[1-9]|1[0-2])";
-        const DAY: &str = r"(?:0[1-9]|1[0-9]|2[0-9]|3[0-1])";
+        let datetime = Datetime::from(string);
 
-        const HOUR: &str = r"(?:0[1-9]|1[0-9]|2[0-3])";
-        const MINUTE: &str = r"[0-5][0-9]";
-        const SECOND: &str = r"[0-5][0-9]";
-
-        const MONTH_NAME: &str = r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)";
-
-        let output = string
-            .replace("%Y", YEAR)
-            .replace("%m", MONTH)
-            .replace("%d", DAY)
-            .replace("%H", HOUR)
-            .replace("%M", MINUTE)
-            .replace("%S", SECOND)
-            .replace("%b", MONTH_NAME);
-
-        if output.contains("%") {
-            panic!("Raw time string not replaced")
-        }
-
-        let pattern = Pattern::from_string(&output, &WhiteSpace::Collapse)?;
-
-        let out = Self::String(pattern);
+        let out = Self::DateTime(datetime);
         Ok(out)
     }
 
@@ -129,6 +108,7 @@ impl XsdType {
             XsdType::Base64Binary => check_base64(input),
             XsdType::HexBinary => check_hex(input),
             XsdType::Duration => validate_duration(input),
+            XsdType::DateTime(_) => unimplemented!("Datetime validation"),
             XsdType::String(pattern) => validate_pattern(pattern, input),
             XsdType::None => false,
         }
@@ -150,6 +130,7 @@ impl XsdType {
             XsdType::Base64Binary => WhiteSpace::Collapse,
             XsdType::HexBinary => WhiteSpace::Collapse,
             XsdType::Duration => WhiteSpace::Collapse,
+            XsdType::DateTime(_) => WhiteSpace::Collapse,
             XsdType::String(pattern) => pattern.get_whitespace(),
             XsdType::None => WhiteSpace::Preserve,
         }
@@ -163,7 +144,7 @@ impl XsdType {
                 }
 
                 Some(pattern)
-            },
+            }
             _ => None,
         }
     }
@@ -274,6 +255,9 @@ impl Display for XsdType {
             XsdType::Base64Binary => "Base64Binary".to_string(),
             XsdType::HexBinary => "HexBinary".to_string(),
             XsdType::Duration => "Duration".to_string(),
+            XsdType::DateTime(datetime) => {
+                format!("Datetime with pattern: {}", datetime)
+            }
             XsdType::String(pattern) => {
                 if pattern.is_empty() {
                     "String".to_string()

@@ -1,4 +1,5 @@
 use crate::XMLGeneratorError;
+use crate::datetime::Datetime;
 use crate::element::Element;
 use crate::pattern::Pattern;
 use crate::xsd_type::XsdType;
@@ -185,6 +186,10 @@ impl Generator {
         self.regex(pattern, true)
     }
 
+    fn fake_datetime(&mut self, datetime: &Datetime) -> Option<String> {
+        datetime.generate(&mut self.rng)
+    }
+
     fn fake_string(&mut self, pattern: &Pattern, ascii: bool) -> Option<String> {
         if pattern.is_empty() {
             return fake::<String>();
@@ -209,6 +214,7 @@ impl Generator {
             XsdType::Base64Binary => fake_base64(),
             XsdType::HexBinary => fake_hex(),
             XsdType::Duration => fake::<Duration>(),
+            XsdType::DateTime(datetime) => self.fake_datetime(datetime),
             XsdType::String(pattern) => self.fake_string(pattern, ascii),
             XsdType::None => None,
         }
@@ -273,6 +279,34 @@ impl Generator {
         None
     }
 
+    fn generate_date_with_pattern(
+        &mut self,
+        datetime: &Datetime,
+        pattern: &Pattern,
+        depth: usize,
+    ) -> Option<String> {
+        if depth > self.max_depth {
+            eprintln!("Warning: Failed to generate data after {} attempts", depth);
+            eprintln!("Datetime: {}", datetime);
+            eprintln!("Pattern: {}", pattern);
+            return None;
+        }
+
+        if pattern.is_empty() {
+            return datetime.generate(&mut self.rng);
+        }
+
+        for _ in 1..self.regex_patterns {
+            if let Some(out_date) = datetime.generate(&mut self.rng)
+                && let Some(output) = Generator::find_match(pattern, &out_date, true)
+            {
+                return Some(output);
+            }
+        }
+
+        self.generate_date_with_pattern(datetime, pattern, depth + 1)
+    }
+
     fn generate_two_patterns(
         &mut self,
         base_pattern: &Pattern,
@@ -334,6 +368,7 @@ impl Generator {
             XsdType::Base64Binary => self.generate_pattern(&xsd_type, pattern, ASCII),
             XsdType::HexBinary => self.generate_pattern(&xsd_type, pattern, ASCII),
             XsdType::Duration => self.generate_pattern(&xsd_type, pattern, ASCII),
+            XsdType::DateTime(datetime) => self.generate_date_with_pattern(datetime, pattern, 0),
             XsdType::String(string) => self.generate_two_patterns(&string, pattern, 0),
             XsdType::None => self.regex(pattern, ASCII),
         }
