@@ -275,6 +275,15 @@ fn replace_negation_patterns(input: &str) -> Result<String, RegexTranslationErro
     Ok(result)
 }
 
+fn replace_or_patterns(input: &str) -> Result<String, RegexTranslationError> {
+    const OR: &str = r"\[(\w)\|(\w)]";
+    let regex = Regex::new(OR)?;
+
+    let result = regex.replace_all(input, "[$1$2]").to_string();
+
+    Ok(result)
+}
+
 fn replace_character_reference(
     pattern: &str,
     input: &str,
@@ -357,6 +366,9 @@ impl RegexTranslator {
 
         // Replace decimal character reference &#{}; -> \u{}
         output = replace_decimal_character_reference(output.as_str())?;
+
+        // Replace OR sequence [a|b] with [ab]
+        output = replace_or_patterns(output.as_str())?;
 
         Ok(output)
     }
