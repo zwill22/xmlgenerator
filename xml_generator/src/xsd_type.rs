@@ -84,7 +84,7 @@ impl XsdType {
     }
 
     fn from_date(string: &str) -> Result<Self, XMLGeneratorError> {
-        const YEAR: &str = r"-?(?:[0-9]{3}[1-9])|(?:[0-9]{2}[1-9][0-9])|(?:[0-9][1-9][0-9]{2})|(?:[1-9][0-9]{3})";
+        const YEAR: &str = r"(-?(?:[0-9]{3}[1-9])|(?:[0-9]{2}[1-9][0-9])|(?:[0-9][1-9][0-9]{2})|(?:[1-9][0-9]{3}))";
         const MONTH: &str = r"(?:0[1-9]|1[0-2])";
         const DAY: &str = r"(?:0[1-9]|1[0-9]|2[0-9]|3[0-1])";
 
@@ -196,14 +196,14 @@ impl XsdType {
         match s {
             // Numeric Data Types
             "byte" => Ok(XsdType::Byte),
-            "decimal" => XsdType::string(r"[+-]?[0-9]*(?:(?:[0-9]\.)|(?:\.[0.9])|(?:[0-9]))[0-9]*", &COLLAPSE),
+            "decimal" => XsdType::string(r"(\+|-)?([0-9]+(\.[0-9]*)?|\.[0-9]+)", &COLLAPSE),
             "short" => Ok(XsdType::Short),
             "int" => Ok(XsdType::Int),
             "long" => Ok(XsdType::Long),
             "integer" => XsdType::string(r"[+-]?[0-9]+", &COLLAPSE),
             "negativeInteger" => XsdType::string(r"-[1-9][0-9]+", &COLLAPSE),
-            "nonNegativeInteger" => XsdType::string(r"(?:0|\+?[1-9][0-9]*)", &COLLAPSE),
-            "nonPositiveInteger" => XsdType::string(r"(?:0|-[1-9][0-9]*)", &COLLAPSE),
+            "nonNegativeInteger" => XsdType::string(r"0|(?:\+?[1-9][0-9]*)", &COLLAPSE),
+            "nonPositiveInteger" => XsdType::string(r"0|(?:-[1-9][0-9]*)", &COLLAPSE),
             "positiveInteger" => XsdType::string(r"\+?[1-9][0-9]*", &COLLAPSE),
             "unsignedLong" => Ok(XsdType::UnsignedLong),
             "unsignedInt" => Ok(XsdType::UnsignedInt),

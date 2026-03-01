@@ -158,4 +158,9 @@ def validate_output(xml_generator, input_file: Path | str):
 
     os.chdir(cwd)
 
-    assert valid
+    try:
+        assert valid
+    except AssertionError as e:
+        print("Invalid XML")
+        validator.print_output(result)
+        raise e
