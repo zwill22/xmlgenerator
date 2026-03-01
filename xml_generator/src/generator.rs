@@ -155,7 +155,7 @@ impl Generator {
     fn regex_samples(&mut self, pattern: &Pattern, ascii: bool) -> HashSet<String> {
         let re = pattern.get_pattern(ascii);
 
-        let regex = match rand_regex::Regex::compile(&re, self.max_repeat) {
+        let regex = match rand_regex::Regex::compile(re, self.max_repeat) {
             Ok(regex) => regex,
             Err(_) => return HashSet::new(),
         };
@@ -243,7 +243,6 @@ impl Generator {
         pattern: &Pattern,
         ascii: bool,
     ) -> Option<String> {
-
         let samples = self.regex_samples(pattern, ascii);
         for sample in samples {
             if xsd_type.validate(&sample) {
@@ -266,11 +265,8 @@ impl Generator {
     ) -> Option<String> {
         let samples1 = self.regex_samples(pattern1, ascii);
         for sample in samples1 {
-            match Generator::find_match(pattern2, &sample, ascii) {
-                Some(output) => {
-                    return Some(output);
-                }
-                None => {}
+            if let Some(output) = Generator::find_match(pattern2, &sample, ascii) {
+                return Some(output);
             }
         }
 
@@ -305,14 +301,12 @@ impl Generator {
         }
 
         for ascii in [true, false] {
-            match self.cross_match(base_pattern, specific_pattern, ascii) {
-                Some(output) => return Some(output),
-                None => {}
+            if let Some(output) = self.cross_match(base_pattern, specific_pattern, ascii) {
+                return Some(output);
             };
 
-            match self.cross_match(specific_pattern, base_pattern, ascii) {
-                Some(output) => return Some(output),
-                None => {}
+            if let Some(output) = self.cross_match(specific_pattern, base_pattern, ascii) {
+                return Some(output);
             };
         }
 

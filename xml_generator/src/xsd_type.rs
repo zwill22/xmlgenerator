@@ -58,7 +58,7 @@ fn validate_duration(input: &str) -> bool {
     // PnYnMnDTnHnMnS
     const DURATION: &str = r"[Pp](?:[0-9]+[Yy])?(?:[0-9]+[Mm])?(?:[0-9]+[Dd])?T?(?:[0-9]+[Hh])?(?:[0-9]+[Mm])?(?:[0-9]+[Ss])?";
 
-    validate(input, DURATION).unwrap_or_else(|_| false)
+    validate(input, DURATION).unwrap_or(false)
 }
 
 fn validate_pattern(pattern: &Pattern, input: &str) -> bool {
