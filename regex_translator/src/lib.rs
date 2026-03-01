@@ -71,8 +71,39 @@ const fn get_file() -> &'static str {
     include_str!("../data/unicode_blocks.txt")
 }
 
+const fn get_data() -> &'static str {
+    include_str!("../data/unicode_data.txt")
+}
+
+fn get_unicode_data() -> Result<HashMap<String, Vec<String>>, RegexTranslationError> {
+    const DATA: &str = get_data();
+
+    let mut lists: HashMap<String, Vec<String>> = HashMap::new();
+    for line in DATA.lines() {
+        let values = line.split(";").collect::<Vec<_>>();
+        if values.len() != 15 {
+            return Err(RegexTranslationError::DataError("Invalid line".to_string()));
+        }
+
+        let code = values.first().unwrap().to_string();
+
+        let group = values.get(2).unwrap().to_string();
+
+        match lists.get_mut(&group) {
+            Some(list) => {
+                list.push(code);
+            }
+            None => {
+                lists.insert(group, vec![code]);
+            }
+        }
+    }
+
+    Ok(lists)
+}
+
 fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
-    const DATA: &'static str = get_file();
+    const DATA: &str = get_file();
 
     let mut map = HashMap::new();
     for line in DATA.lines() {
@@ -97,9 +128,37 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
     Ok(map)
 }
 
+fn unicode_sets() -> Result<HashMap<String, String>, RegexTranslationError> {
+    let data = get_unicode_data()?;
+
+    let mut map = HashMap::new();
+    for (key, values) in data {
+        let mut string = r"[".to_owned();
+        for value in values {
+            string.push_str(&format!(r"\x{{{}}}", value));
+        }
+        string.push(']');
+
+        map.insert(key.to_string(), string);
+    }
+
+    Ok(map)
+}
+
+fn unicode_definitions() -> Result<HashMap<String, String>, RegexTranslationError> {
+    let mut blocks = unicode_blocks()?;
+    let sets = unicode_sets()?;
+
+    for (k, v) in sets {
+        blocks.insert(k, v);
+    }
+
+    Ok(blocks)
+}
+
 fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
     // TODO Replace with const
-    let unicode_blocks = unicode_blocks()?;
+    let unicode_blocks = unicode_definitions()?;
 
     let mut output = HashMap::new();
 
@@ -159,16 +218,6 @@ fn apply_common_mappings(mappings: &mut HashMap<String, String>) {
 fn get_ascii_mappings() -> HashMap<String, String> {
     let mut mappings = HashMap::new();
 
-    mappings.insert(r"\p{Nd}".to_string(), r"[0-9]".to_string());
-    mappings.insert(r"\p{L}".to_string(), r"[A-Za-z]".to_string());
-    mappings.insert(r"\p{Ll}".to_string(), r"[a-z]".to_string());
-    mappings.insert(r"\p{Lu}".to_string(), r"[A-Z]".to_string());
-
-    mappings.insert(r"\P{Nd}".to_string(), r"[[\x{20}-\x{7E}]--[0-9]]".to_string());
-    mappings.insert(r"\P{L}".to_string(), r"[[\x{20}-\x{7E}]--[A-Za-z]]".to_string());
-    mappings.insert(r"\P{Ll}".to_string(), r"[[\x{20}-\x{7E}]--[a-z]]".to_string());
-    mappings.insert(r"\P{Lu}".to_string(), r"[[\x{20}-\x{7E}]--[A-Z]]".to_string());
-
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z]";
 
@@ -203,16 +252,6 @@ fn get_ascii_mappings() -> HashMap<String, String> {
 
 fn get_full_mappings() -> HashMap<String, String> {
     let mut mappings = HashMap::new();
-
-    mappings.insert(r"\p{Nd}".to_string(), r"[[:digit:]]".to_string());
-    mappings.insert(r"\p{L}".to_string(), r"[[:alpha:]]".to_string());
-    mappings.insert(r"\p{Ll}".to_string(), r"[[:lower:]]".to_string());
-    mappings.insert(r"\p{Lu}".to_string(), r"[[:upper:]]".to_string());
-
-    mappings.insert(r"\P{Nd}".to_string(), r"[^[[:digit:]]]".to_string());
-    mappings.insert(r"\P{L}".to_string(), r"[^[[:alpha:]]]".to_string());
-    mappings.insert(r"\P{Ll}".to_string(), r"[^[[:lower:]]]".to_string());
-    mappings.insert(r"\P{Lu}".to_string(), r"[^[[:upper:]]]".to_string());
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";

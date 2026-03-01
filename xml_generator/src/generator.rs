@@ -73,7 +73,7 @@ impl Generator {
     pub(crate) fn untrack_ref(&mut self, reference: &str) -> Result<(), XMLGeneratorError> {
         match self.references.pop() {
             Some(value) => {
-                if reference != &value {
+                if reference != value {
                     return Err(XMLGeneratorError::InvalidXSDError(
                         "Unknown reference".to_string(),
                     ));
