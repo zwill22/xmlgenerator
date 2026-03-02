@@ -67,6 +67,19 @@ fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
     }
 }
 
+fn is_surrogate(code: &str) -> bool {
+    let z = u32::from_str_radix(code, 16).unwrap();
+
+    const MIN_STR: &str = "D800";
+    const MAX_STR: &str = "DFFF";
+    const RADIX: u32 = 16;
+
+    let min = u32::from_str_radix(MIN_STR, RADIX).unwrap();
+    let max = u32::from_str_radix(MAX_STR, RADIX).unwrap();
+
+    min <= z && z <= max
+}
+
 const fn get_file() -> &'static str {
     include_str!("../data/unicode_blocks.txt")
 }
@@ -75,7 +88,7 @@ const fn get_data() -> &'static str {
     include_str!("../data/unicode_data.txt")
 }
 
-fn get_unicode_data() -> Result<HashMap<String, Vec<String>>, RegexTranslationError> {
+fn get_unicode_categories() -> Result<HashMap<String, Vec<String>>, RegexTranslationError> {
     const DATA: &str = get_data();
 
     let mut lists: HashMap<String, Vec<String>> = HashMap::new();
@@ -86,6 +99,9 @@ fn get_unicode_data() -> Result<HashMap<String, Vec<String>>, RegexTranslationEr
         }
 
         let code = values.first().unwrap().to_string();
+        if is_surrogate(&code) {
+            continue;
+        }
 
         for i in [2, 4] {
             let group = values.get(i).unwrap().to_string();
@@ -136,7 +152,7 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
         let max_char = range.last().unwrap().to_string();
         let name = values.last().unwrap().to_string();
 
-        if name.contains("surrogates") {
+        if name.contains("Surrogates") {
             continue;
         }
 
@@ -149,7 +165,7 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
 }
 
 fn unicode_categories() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let data = get_unicode_data()?;
+    let data = get_unicode_categories()?;
 
     let mut map = HashMap::new();
     for (key, values) in data {
@@ -172,7 +188,6 @@ fn unicode_definitions() -> Result<HashMap<String, String>, RegexTranslationErro
     for (k, v) in sets {
         blocks.insert(k, v);
     }
-
     Ok(blocks)
 }
 
@@ -184,15 +199,19 @@ fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationErr
 
     for (k, v) in unicode_blocks {
         // Unicode block (set)
-        let block = format!(r"\p{{{}}}", k);
+        let block = format!(r"\p{{Is{}}}", k);
 
         output.insert(block, v.to_string());
 
         // Set negation
-        let neg_block = format!(r"\P{{{}}}", k);
+        let neg_block = format!(r"\P{{Is{}}}", k);
         let neg_set = format!(r"[^{}]", v);
 
         output.insert(neg_block, neg_set);
+    }
+
+    for (k, v) in &output {
+        println!("{} {}", k, v.len())
     }
 
     Ok(output)
