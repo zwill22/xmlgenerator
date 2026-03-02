@@ -67,37 +67,6 @@ fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
     }
 }
 
-fn get_xsd_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut mappings = HashMap::new();
-    mappings.insert("L", vec!["Lu", "Ll", "Lt", "Lm", "Lo"]);
-    mappings.insert("M", vec!["Mn", "Mc", "Me"]);
-    mappings.insert("N", vec!["Nd", "Nl", "No"]);
-    mappings.insert("P", vec!["Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po"]);
-    mappings.insert("Z", vec!["Zs", "Zl", "Zp"]);
-    mappings.insert("S", vec!["Sm", "Sc", "Sk", "So"]);
-    mappings.insert("C", vec!["Cc", "Cf", "Co", "Cn"]);
-
-    let mut out = HashMap::new();
-    for (k, values) in mappings {
-        let set_name = format!(r"\p{{{}}}", k);
-        let mut set = "[".to_string();
-        for value in values {
-            let subset = format!(r"\p{{{}}}", value);
-            set.push_str(&subset);
-        }
-        set.push(']');
-
-        out.insert(set_name, set.clone());
-
-        let comp_set_name = format!(r"\P{{{}}}", k);
-        let comp_set = format!(r"[^{}]", set);
-
-        out.insert(comp_set_name, comp_set);
-    }
-
-    Ok(out)
-}
-
 const fn get_file() -> &'static str {
     include_str!("../data/unicode_blocks.txt")
 }
@@ -118,14 +87,16 @@ fn get_unicode_data() -> Result<HashMap<String, Vec<String>>, RegexTranslationEr
 
         let code = values.first().unwrap().to_string();
 
-        let group = values.get(2).unwrap().to_string();
+        for i in [2, 4] {
+            let group = values.get(i).unwrap().to_string();
 
-        match lists.get_mut(&group) {
-            Some(list) => {
-                list.push(code);
-            }
-            None => {
-                lists.insert(group, vec![code]);
+            match lists.get_mut(&group) {
+                Some(list) => {
+                    list.push(code.clone());
+                }
+                None => {
+                    lists.insert(group, vec![code.clone()]);
+                }
             }
         }
     }
@@ -138,16 +109,34 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
 
     let mut map = HashMap::new();
     for line in DATA.lines() {
-        let values = line.split_whitespace().collect::<Vec<_>>();
-        if values.len() != 4 {
+        if line.starts_with("#") {
             continue;
         }
 
-        let min_char = values[0];
-        let max_char = values[2];
-        let name = values[3];
+        if line.is_empty() {
+            continue;
+        }
+        let values = line
+            .split(";")
+            .map(|c| {
+                c.split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join("")
+                    .replace("-", "")
+            })
+            .collect::<Vec<_>>();
 
-        if name.contains("Surrogates") {
+        if values.len() != 2 {
+            continue;
+        }
+
+        let range: Vec<_> = values.first().unwrap().split(".").collect();
+
+        let min_char = range.first().unwrap().to_string();
+        let max_char = range.last().unwrap().to_string();
+        let name = values.last().unwrap().to_string();
+
+        if name.contains("surrogates") {
             continue;
         }
 
@@ -159,7 +148,7 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
     Ok(map)
 }
 
-fn unicode_sets() -> Result<HashMap<String, String>, RegexTranslationError> {
+fn unicode_categories() -> Result<HashMap<String, String>, RegexTranslationError> {
     let data = get_unicode_data()?;
 
     let mut map = HashMap::new();
@@ -178,7 +167,7 @@ fn unicode_sets() -> Result<HashMap<String, String>, RegexTranslationError> {
 
 fn unicode_definitions() -> Result<HashMap<String, String>, RegexTranslationError> {
     let mut blocks = unicode_blocks()?;
-    let sets = unicode_sets()?;
+    let sets = unicode_categories()?;
 
     for (k, v) in sets {
         blocks.insert(k, v);
@@ -389,7 +378,6 @@ fn replace_decimal_character_reference(input: &str) -> Result<String, RegexTrans
 
 #[derive(Default)]
 pub struct RegexTranslator {
-    xsd_unicode_mappings: HashMap<String, String>,
     unicode_mappings: HashMap<String, String>,
     ascii_mappings: HashMap<String, String>,
     full_mappings: HashMap<String, String>,
@@ -398,7 +386,6 @@ pub struct RegexTranslator {
 impl RegexTranslator {
     pub fn new() -> Result<Self, RegexTranslationError> {
         let translator = Self {
-            xsd_unicode_mappings: get_xsd_unicode_mappings()?,
             unicode_mappings: get_unicode_mappings()?,
             ascii_mappings: get_ascii_mappings(),
             full_mappings: get_full_mappings(),
@@ -410,11 +397,6 @@ impl RegexTranslator {
     fn replace(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {
         let mut output = input.to_string();
 
-        for (k, v) in &self.xsd_unicode_mappings {
-            if input.contains(k) {
-                output = output.replace(k, v);
-            }
-        }
         for (k, v) in self.unicode_mappings.iter() {
             if input.contains(k) {
                 output = output.replace(k, v);
