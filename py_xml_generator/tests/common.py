@@ -129,6 +129,8 @@ def run_generator(xml_generator, filepath) -> str:
         pytest.xfail("No independent elements in schema")
     except pyxmlgenerator.IncompatiblePatternError:
         pytest.xfail("XSD defines a pattern that is incompatible with the base type")
+    except pyxmlgenerator.XSDEncodingError:
+        pytest.xfail("No encoding specified in XSD")
 
     return result
 
