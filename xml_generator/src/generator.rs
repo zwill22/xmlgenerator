@@ -297,15 +297,7 @@ impl Generator {
         &mut self,
         datetime: &Datetime,
         pattern: &Pattern,
-        depth: usize,
     ) -> Option<String> {
-        if depth > self.max_depth {
-            eprintln!("Warning: Failed to generate data after {} attempts", depth);
-            eprintln!("Datetime: {}", datetime);
-            eprintln!("Pattern: {}", pattern);
-            return None;
-        }
-
         if pattern.is_empty() {
             return datetime.generate(&mut self.rng);
         }
@@ -318,7 +310,7 @@ impl Generator {
             }
         }
 
-        self.generate_date_with_pattern(datetime, pattern, depth + 1)
+        self.generate_date_with_pattern(datetime, pattern)
     }
 
     fn generate_two_patterns(
@@ -327,17 +319,9 @@ impl Generator {
         specific_pattern: &Pattern,
         depth: usize,
     ) -> Option<String> {
+        // TODO Implement proper error
         if depth > self.max_depth {
-            eprintln!(
-                "Warning: Cross match failed after {} attempts",
-                self.max_depth
-            );
-            eprintln!("Base pattern:\t{}", base_pattern);
-            eprintln!("Specific pattern:\t{}", specific_pattern);
-            return match self.regex(specific_pattern, true) {
-                Some(output) => Some(output),
-                None => self.regex(specific_pattern, true),
-            };
+            panic!("No pattern generated after {} attempts", self.max_depth);
         }
 
         if base_pattern.is_empty() {
@@ -368,22 +352,22 @@ impl Generator {
     ) -> Option<String> {
         const ASCII: bool = true;
         match xsd_type {
-            XsdType::Byte => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::Short => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::Int => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::Long => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::UnsignedByte => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::UnsignedShort => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::UnsignedInt => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::UnsignedLong => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::Float => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::Double => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::URI => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::Base64Binary => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::HexBinary => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::Duration => self.generate_pattern(&xsd_type, pattern, ASCII),
-            XsdType::DateTime(datetime) => self.generate_date_with_pattern(datetime, pattern, 0),
-            XsdType::String(string) => self.generate_two_patterns(&string, pattern, 0),
+            XsdType::Byte => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::Short => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::Int => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::Long => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::UnsignedByte => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::UnsignedShort => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::UnsignedInt => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::UnsignedLong => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::Float => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::Double => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::URI => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::Base64Binary => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::HexBinary => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::Duration => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::DateTime(datetime) => self.generate_date_with_pattern(datetime, pattern),
+            XsdType::String(string) => self.generate_two_patterns(string, pattern, 0),
             XsdType::None => self.regex(pattern, ASCII),
         }
     }
