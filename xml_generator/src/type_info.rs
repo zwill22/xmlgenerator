@@ -2,12 +2,12 @@ use crate::XMLGeneratorError;
 use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::pattern::Pattern;
+use crate::whitespace::WhiteSpace;
 use crate::xsd_type::XsdType;
 use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
     Facet, FacetType, Restriction, RestrictionContent, SimpleBaseTypeContent,
 };
-use crate::whitespace::WhiteSpace;
 
 #[derive(Default)]
 pub(crate) struct TypeInfo {
@@ -48,12 +48,11 @@ impl TypeInfo {
         Ok(())
     }
 
-
     fn handle_whitespace(&mut self) -> WhiteSpace {
         let xsd_type = &self.xsd_type;
         xsd_type.whitespace()
     }
-    
+
     fn check_patterns(&self, pattern: &Pattern) -> Result<(), XMLGeneratorError> {
         match self.xsd_type.get_pattern() {
             Some(xsd_pattern) => pattern.check_intersection(xsd_pattern),

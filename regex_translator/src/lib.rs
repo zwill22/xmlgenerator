@@ -67,6 +67,37 @@ fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
     }
 }
 
+fn get_xsd_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
+    let mut mappings = HashMap::new();
+    mappings.insert("L", vec!["Lu", "Ll", "Lt", "Lm", "Lo"]);
+    mappings.insert("M", vec!["Mn", "Mc", "Me"]);
+    mappings.insert("N", vec!["Nd", "Nl", "No"]);
+    mappings.insert("P", vec!["Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po"]);
+    mappings.insert("Z", vec!["Zs", "Zl", "Zp"]);
+    mappings.insert("S", vec!["Sm", "Sc", "Sk", "So"]);
+    mappings.insert("C", vec!["Cc", "Cf", "Co", "Cn"]);
+
+    let mut out = HashMap::new();
+    for (k, values) in mappings {
+        let set_name = format!(r"\p{{{}}}", k);
+        let mut set = "[".to_string();
+        for value in values {
+            let subset = format!(r"\p{{{}}}", value);
+            set.push_str(&subset);
+        }
+        set.push(']');
+
+        out.insert(set_name, set.clone());
+
+        let comp_set_name = format!(r"\P{{{}}}", k);
+        let comp_set = format!(r"[^{}]", set);
+
+        out.insert(comp_set_name, comp_set);
+    }
+
+    Ok(out)
+}
+
 const fn get_file() -> &'static str {
     include_str!("../data/unicode_blocks.txt")
 }

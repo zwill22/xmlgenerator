@@ -1,20 +1,37 @@
-use regex::Regex;
+use crate::whitespace::WhiteSpace;
 
-pub(crate) fn replace_specials(input: &str) -> String {
-    let regex = Regex::new(r"&#x(\w+);").unwrap();
-
-    let out1 = regex
-        .replace_all(input, r"\x{$1}")
+pub(crate) fn replace_specials(input: &str, whitepace: &WhiteSpace) -> String {
+    let out1 = input
         .replace("&amp;", "&")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
-        .replace("&quot", "\"")
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace("\"", "&quot;");
+        .replace("&quot", "\"");
 
-    let regex2 = Regex::new(r"\\x\{(\w+)}").unwrap();
+    let mut output = "".to_string();
+    for c in out1.chars() {
+        if c.eq(&'&') {
+            output.push_str("&amp;");
+        } else if c.eq(&'<') {
+            output.push_str("&lt;");
+        } else if c.eq(&'>') {
+            output.push_str("&gt;");
+        } else if c.eq(&'"') {
+            output.push_str("&quot;");
+        } else if c.is_whitespace() {
+            match whitepace {
+                WhiteSpace::Preserve => output.push(c),
+                WhiteSpace::Replace => output.push(' '),
+                WhiteSpace::Collapse => {},
+            }
+        } else if c.is_control() {
+            let code = c as u32;
 
-    regex2.replace_all(&out1, r"&#x$1;").to_string()
+            let char_str = format!("&#x{:04x};", code);
+            output.push_str(&char_str);
+        } else {
+            output.push(c);
+        }
+    }
+
+    output
 }

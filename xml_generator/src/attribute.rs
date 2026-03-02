@@ -122,16 +122,16 @@ impl Attribute {
 
         let name = self.get_name(generator)?;
         if let Some(attribute) = generator.generate_type(&self.xsd_type) {
-            let value = replace_specials(&attribute);
+            let value = replace_specials(&attribute, &self.xsd_type.whitespace());
             xml_element.add_attribute(&name, &value);
             generated = true;
         }
 
         if let Some(type_name) = &self.type_name {
             for type_generator in xsd.types() {
-                if type_generator.name_equals(&type_name) {
+                if type_generator.name_equals(type_name) {
                     generator.track_ref(type_name.as_str());
-                    type_generator.generate_attribute(generator, xml_element, &name)?;
+                    type_generator.generate_attribute(generator, xml_element, xsd, &name)?;
                     generator.untrack_ref(type_name.as_str())?;
                     generated = true;
                 }
@@ -142,7 +142,7 @@ impl Attribute {
             if self.type_name.is_none() {
                 let xsd_type = XsdType::string("", &WhiteSpace::Collapse)?;
                 let value = generator.generate_type(&xsd_type).unwrap();
-                let attribute = replace_specials(&value);
+                let attribute = replace_specials(&value, &xsd_type.whitespace());
                 xml_element.add_attribute(&name, &attribute);
             } else if self.use_type == AttributeUseType::Required {
                 return Err(XMLGeneratorError::TypeGenerationError(

@@ -11,6 +11,7 @@ use regextranslator::RegexTranslator;
 use std::slice::Iter;
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion, XML};
 use xsd_parser::models::schema::xs::SchemaContent;
+use crate::whitespace::WhiteSpace;
 
 pub(crate) struct Xsd {
     version: SchemaVersion,
@@ -68,7 +69,7 @@ impl Xsd {
 
     pub(crate) fn apply_metadata_to(&self, element: &mut XMLElement) {
         if let Some(location) = &self.namespaces.get_default_namespace() {
-            let loc = replace_specials(&location);
+            let loc = replace_specials(&location, &WhiteSpace::Preserve);
             match self.namespaces.get_root_namespace() {
                 None => {
                     element.add_attribute("xmlns", &loc);

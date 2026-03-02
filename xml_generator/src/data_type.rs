@@ -3,14 +3,15 @@ use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::group::Group;
 use crate::namespaces::Namespaces;
+use crate::special::replace_specials;
 use crate::type_info::TypeInfo;
+use crate::whitespace::WhiteSpace;
 use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::ops::Deref;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{ComplexBaseType, ComplexBaseTypeContent, SimpleBaseType};
-use crate::special::replace_specials;
 
 #[derive(Default)]
 pub(crate) struct DataType {
@@ -167,7 +168,7 @@ impl DataType {
         if let Some(type_info) = &self.type_info {
             return match type_info.generate(generator) {
                 Some(value) => {
-                    let attribute = replace_specials(&value);
+                    let attribute = replace_specials(&value, &WhiteSpace::Collapse);
                     xml_element.add_attribute(&name, &attribute);
                     Ok(())
                 }
@@ -204,7 +205,7 @@ impl DataType {
                     ));
                 }
                 Some(value) => {
-                    let result = replace_specials(&value);
+                    let result = replace_specials(&value, &WhiteSpace::Preserve);
                     if let Err(error) = xml_element.add_text(result) {
                         return Err(XMLGeneratorError::XMLBuilderError(error.to_string()));
                     }

@@ -2,6 +2,7 @@ use crate::XMLGeneratorError;
 use crate::datetime::Datetime;
 use crate::element::Element;
 use crate::pattern::Pattern;
+use crate::whitespace::check_line_endings;
 use crate::xsd_type::XsdType;
 use chrono::Duration;
 use fake::{Fake, Faker};
@@ -153,6 +154,13 @@ impl Generator {
             .collect::<HashSet<String>>()
     }
 
+    fn check_valid(&mut self, sample: &str) -> bool {
+        match check_line_endings(sample) {
+            Ok(()) => true,
+            Err(_) => false,
+        }
+    }
+
     fn regex_samples(&mut self, pattern: &Pattern, ascii: bool) -> HashSet<String> {
         let re = pattern.get_pattern(ascii);
 
@@ -161,7 +169,13 @@ impl Generator {
             Err(_) => return HashSet::new(),
         };
 
-        self.sample(regex)
+        let samples = self.sample(regex);
+
+        samples
+            .iter()
+            .filter(|s| self.check_valid(s))
+            .cloned()
+            .collect()
     }
 
     fn regex(&mut self, pattern: &Pattern, ascii: bool) -> Option<String> {

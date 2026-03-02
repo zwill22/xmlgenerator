@@ -235,7 +235,7 @@ impl Element {
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(output) = generator.generate_type(&self.xsd_type) {
-            let value = replace_specials(&output);
+            let value = replace_specials(&output, &self.xsd_type.whitespace());
             xml_element.add_text(value)?;
             return Ok(());
         }
