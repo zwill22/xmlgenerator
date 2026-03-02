@@ -389,6 +389,7 @@ fn replace_decimal_character_reference(input: &str) -> Result<String, RegexTrans
 
 #[derive(Default)]
 pub struct RegexTranslator {
+    xsd_unicode_mappings: HashMap<String, String>,
     unicode_mappings: HashMap<String, String>,
     ascii_mappings: HashMap<String, String>,
     full_mappings: HashMap<String, String>,
@@ -397,6 +398,7 @@ pub struct RegexTranslator {
 impl RegexTranslator {
     pub fn new() -> Result<Self, RegexTranslationError> {
         let translator = Self {
+            xsd_unicode_mappings: get_xsd_unicode_mappings()?,
             unicode_mappings: get_unicode_mappings()?,
             ascii_mappings: get_ascii_mappings(),
             full_mappings: get_full_mappings(),
@@ -408,22 +410,27 @@ impl RegexTranslator {
     fn replace(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {
         let mut output = input.to_string();
 
+        for (k, v) in &self.xsd_unicode_mappings {
+            if input.contains(k) {
+                output = output.replace(k, v);
+            }
+        }
         for (k, v) in self.unicode_mappings.iter() {
             if input.contains(k) {
-                output = output.as_str().replace(k, v.as_str());
+                output = output.replace(k, v);
             }
         }
 
         if ascii {
             for (k, v) in self.ascii_mappings.iter() {
                 if input.contains(k) {
-                    output = output.as_str().replace(k, v.as_str());
+                    output = output.replace(k, v);
                 }
             }
         } else {
             for (k, v) in self.full_mappings.iter() {
                 if input.contains(k) {
-                    output = output.as_str().replace(k, v.as_str());
+                    output = output.replace(k, v);
                 }
             }
         }
