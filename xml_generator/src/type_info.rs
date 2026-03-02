@@ -3,6 +3,7 @@ use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::pattern::Pattern;
 use crate::whitespace::WhiteSpace;
+use crate::xsd::Xsd;
 use crate::xsd_type::XsdType;
 use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
@@ -109,9 +110,8 @@ impl TypeInfo {
         if let Some(base) = &restriction.base {
             let type_name = String::from_utf8(base.local_name().to_vec()).unwrap();
             self.xsd_type = XsdType::from_string(&type_name)?;
-            match self.xsd_type {
-                XsdType::None => self.name = Some(type_name),
-                _ => {}
+            if self.xsd_type == XsdType::None {
+                self.name = Some(type_name)
             }
         }
 
@@ -130,20 +130,37 @@ impl TypeInfo {
         Ok(())
     }
 
-    pub(crate) fn generate(&self, generator: &mut Generator) -> Option<String> {
+    pub(crate) fn generate(
+        &self,
+        generator: &mut Generator,
+        xsd: &Xsd,
+    ) -> Result<Option<String>, XMLGeneratorError> {
         if !self.enumerations.is_empty() {
             if self.pattern.is_some() {
                 panic!("Type info includes enumeration and pattern data");
             }
-
-            return generator.choose(&self.enumerations).cloned();
+            
+            let out = generator.choose(&self.enumerations).cloned();
+            
+            return Ok(out);
         }
 
         if let Some(pattern) = &self.pattern {
-            return generator.generate_type_pattern(&self.xsd_type, pattern);
+            if let Some(name) = &self.name {
+                for data_type in xsd.types() {
+                    if data_type.name_equals(name) {
+                        return unimplemented("User defined base types with pattern");
+                    }
+                }
+            }
+
+            let out = generator.generate_type_pattern(&self.xsd_type, pattern);
+            return Ok(out);
         }
 
-        generator.generate_type(&self.xsd_type)
+        let output = generator.generate_type(&self.xsd_type);
+        
+        Ok(output)
     }
 
     pub(crate) fn get_name(&self) -> String {

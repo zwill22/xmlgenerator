@@ -151,6 +151,7 @@ impl DataType {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
+        xsd: &Xsd,
         name: &String,
     ) -> Result<(), XMLGeneratorError> {
         if !self.groups.is_empty() {
@@ -166,7 +167,7 @@ impl DataType {
         }
 
         if let Some(type_info) = &self.type_info {
-            return match type_info.generate(generator) {
+            return match type_info.generate(generator, xsd)? {
                 Some(value) => {
                     let attribute = replace_specials(&value, &WhiteSpace::Collapse);
                     xml_element.add_attribute(&name, &attribute);
@@ -197,8 +198,7 @@ impl DataType {
                 ));
             }
 
-            let output = type_info.generate(generator);
-            match output {
+            match type_info.generate(generator, xsd)? {
                 None => {
                     return Err(XMLGeneratorError::TypeGenerationError(
                         "No output generated".to_string(),

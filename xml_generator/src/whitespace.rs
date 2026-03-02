@@ -20,7 +20,7 @@ fn check_crlf_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
     Ok(())
 }
 
-fn check_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
+pub(crate) fn check_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
     match LineEnding::from_current_platform() {
         LineEnding::LF => check_line_ending(pattern, r"\r"),
         LineEnding::CRLF => check_crlf_endings(pattern),
