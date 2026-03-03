@@ -54,23 +54,15 @@ impl Pattern {
     }
 
     pub(crate) fn get_pattern(&self, ascii: bool) -> &str {
-        if ascii {
-            if let Some(ascii) = &self.ascii {
-                return ascii;
-            }
-
-            if let Some(full) = &self.full {
-                return full;
-            }
-
-            &self.original
-        } else {
-            if let Some(full) = &self.full {
-                return full;
-            }
-
-            &self.original
+        if ascii && let Some(out) = &self.ascii {
+            return out;
         }
+
+        if let Some(full) = &self.full {
+            return full;
+        }
+
+        &self.original
     }
 
     pub(crate) fn is_empty(&self) -> bool {

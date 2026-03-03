@@ -244,7 +244,7 @@ impl Generator {
 
     fn find_match(pattern: &Pattern, input: &str, ascii: bool) -> Option<String> {
         let re = pattern.get_pattern(ascii);
-        for mat in Regex::new(&re).unwrap().find_iter(input) {
+        for mat in Regex::new(re).unwrap().find_iter(input) {
             let string = mat.as_str();
 
             if string.is_empty() {
@@ -305,6 +305,7 @@ impl Generator {
         for _ in 1..self.regex_patterns {
             if let Some(out_date) = datetime.generate(&mut self.rng)
                 && let Some(output) = Generator::find_match(pattern, &out_date, true)
+                && datetime.matches(&output)
             {
                 return Some(output);
             }
