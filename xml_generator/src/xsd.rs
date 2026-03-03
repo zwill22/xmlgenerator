@@ -67,9 +67,9 @@ impl Xsd {
         Ok(xsd)
     }
 
-    pub(crate) fn apply_metadata_to(&self, element: &mut XMLElement) {
+    pub(crate) fn apply_metadata_to(&self, element: &mut XMLElement) -> Result<(), XMLGeneratorError> {
         if let Some(location) = &self.namespaces.get_default_namespace() {
-            let loc = replace_specials(&location, &WhiteSpace::Preserve);
+            let loc = replace_specials(&location, &WhiteSpace::Preserve)?;
             match self.namespaces.get_root_namespace() {
                 None => {
                     element.add_attribute("xmlns", &loc);
@@ -92,6 +92,8 @@ impl Xsd {
                 element.add_attribute(&name, location);
             }
         }
+
+        Ok(())
     }
 
     pub(crate) fn get_version(&self) -> Result<XMLVersion, XMLGeneratorError> {
@@ -210,7 +212,7 @@ impl Xsd {
 
         match root_elements.into_iter().next() {
             Some(mut root_element) => {
-                self.apply_metadata_to(&mut root_element);
+                self.apply_metadata_to(&mut root_element)?;
                 Ok(root_element)
             }
             None => Err(XMLGeneratorError::TypeGenerationError(

@@ -169,8 +169,8 @@ impl DataType {
         if let Some(type_info) = &self.type_info {
             return match type_info.generate(generator, xsd)? {
                 Some(value) => {
-                    let attribute = replace_specials(&value, &WhiteSpace::Collapse);
-                    xml_element.add_attribute(&name, &attribute);
+                    let attribute = replace_specials(&value, &WhiteSpace::Collapse)?;
+                    xml_element.add_attribute(name, &attribute);
                     Ok(())
                 }
                 None => Err(XMLGeneratorError::DataTypeNotFoundError(
@@ -205,7 +205,7 @@ impl DataType {
                     ));
                 }
                 Some(value) => {
-                    let result = replace_specials(&value, &WhiteSpace::Preserve);
+                    let result = replace_specials(&value, &WhiteSpace::Preserve)?;
                     if let Err(error) = xml_element.add_text(result) {
                         return Err(XMLGeneratorError::XMLBuilderError(error.to_string()));
                     }
