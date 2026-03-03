@@ -120,7 +120,7 @@ fn get_unicode_categories() -> Result<HashMap<String, Vec<String>>, RegexTransla
     Ok(lists)
 }
 
-fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
+fn unicode_blocks(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
     const DATA: &str = get_file();
 
     let mut map = HashMap::new();
@@ -134,12 +134,7 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
         }
         let values = line
             .split(";")
-            .map(|c| {
-                c.split_whitespace()
-                    .collect::<Vec<_>>()
-                    .join("")
-                    .replace("-", "")
-            })
+            .map(|c| c.split_whitespace().collect::<Vec<_>>().join(""))
             .collect::<Vec<_>>();
 
         if values.len() != 2 {
@@ -151,6 +146,14 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
         let min_char = range.first().unwrap().to_string();
         let max_char = range.last().unwrap().to_string();
         let name = values.last().unwrap().to_string();
+
+        if ascii {
+            let min_val = u32::from_str_radix(&min_char, 16).unwrap();
+            let max_val = u32::from_str_radix(&max_char, 16).unwrap();
+            if min_val > 128 || max_val > 128 {
+                break;
+            }
+        }
 
         if name.contains("Surrogates") {
             continue;
@@ -164,16 +167,26 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
     Ok(map)
 }
 
-fn unicode_categories() -> Result<HashMap<String, String>, RegexTranslationError> {
+fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
     let data = get_unicode_categories()?;
 
     let mut map = HashMap::new();
     for (key, values) in data {
         let mut string = r"[".to_owned();
         for value in values {
+            if ascii {
+                let val = u32::from_str_radix(&value, 16).unwrap();
+                if val > 128 {
+                    continue;
+                }
+            }
             string.push_str(&format!(r"\x{{{}}}", value));
         }
         string.push(']');
+
+        if string == "[]" {
+            continue;
+        }
 
         map.insert(key.to_string(), string);
     }
@@ -181,9 +194,9 @@ fn unicode_categories() -> Result<HashMap<String, String>, RegexTranslationError
     Ok(map)
 }
 
-fn unicode_definitions() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut blocks = unicode_blocks()?;
-    let sets = unicode_categories()?;
+fn unicode_definitions(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
+    let mut blocks = unicode_blocks(ascii)?;
+    let sets = unicode_categories(ascii)?;
 
     for (k, v) in sets {
         blocks.insert(k, v);
@@ -191,9 +204,17 @@ fn unicode_definitions() -> Result<HashMap<String, String>, RegexTranslationErro
     Ok(blocks)
 }
 
-fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
+fn get_comp_set(set: &str, ascii: bool) -> String {
+    if ascii {
+        return format!(r"[[\x{{0}}-\x{{7F}}]--{}]", set);
+    }
+
+    format!(r"[^{}]", set)
+}
+
+fn get_unicode_mappings(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
     // TODO Replace with const
-    let unicode_blocks = unicode_definitions()?;
+    let unicode_blocks = unicode_definitions(ascii)?;
 
     let mut output = HashMap::new();
 
@@ -204,14 +225,10 @@ fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationErr
         output.insert(block, v.to_string());
 
         // Set negation
-        let neg_block = format!(r"\P{{Is{}}}", k);
-        let neg_set = format!(r"[^{}]", v);
+        let comp_block = format!(r"\P{{Is{}}}", k);
+        let comp_set = get_comp_set(&v, ascii);
 
-        output.insert(neg_block, neg_set);
-    }
-
-    for (k, v) in &output {
-        println!("{} {}", k, v.len())
+        output.insert(comp_block, comp_set);
     }
 
     Ok(output)
@@ -254,8 +271,8 @@ fn apply_common_mappings(mappings: &mut HashMap<String, String>) {
     mappings.insert(S.to_string(), s_set.to_string());
 }
 
-fn get_ascii_mappings() -> HashMap<String, String> {
-    let mut mappings = HashMap::new();
+fn get_ascii_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
+    let mut mappings = get_unicode_mappings(true)?;
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z]";
@@ -286,11 +303,11 @@ fn get_ascii_mappings() -> HashMap<String, String> {
 
     apply_common_mappings(&mut mappings);
 
-    mappings
+    Ok(mappings)
 }
 
-fn get_full_mappings() -> HashMap<String, String> {
-    let mut mappings = HashMap::new();
+fn get_full_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
+    let mut mappings = get_unicode_mappings(false)?;
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
@@ -321,7 +338,7 @@ fn get_full_mappings() -> HashMap<String, String> {
 
     apply_common_mappings(&mut mappings);
 
-    mappings
+    Ok(mappings)
 }
 
 fn validate_output(output: &str) -> Result<(), RegexTranslationError> {
@@ -397,17 +414,15 @@ fn replace_decimal_character_reference(input: &str) -> Result<String, RegexTrans
 
 #[derive(Default)]
 pub struct RegexTranslator {
-    unicode_mappings: HashMap<String, String>,
     ascii_mappings: HashMap<String, String>,
-    full_mappings: HashMap<String, String>,
+    unicode_mappings: HashMap<String, String>,
 }
 
 impl RegexTranslator {
     pub fn new() -> Result<Self, RegexTranslationError> {
         let translator = Self {
-            unicode_mappings: get_unicode_mappings()?,
-            ascii_mappings: get_ascii_mappings(),
-            full_mappings: get_full_mappings(),
+            ascii_mappings: get_ascii_mappings()?,
+            unicode_mappings: get_full_mappings()?,
         };
 
         Ok(translator)
@@ -416,12 +431,6 @@ impl RegexTranslator {
     fn replace(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {
         let mut output = input.to_string();
 
-        for (k, v) in self.unicode_mappings.iter() {
-            if input.contains(k) {
-                output = output.replace(k, v);
-            }
-        }
-
         if ascii {
             for (k, v) in self.ascii_mappings.iter() {
                 if input.contains(k) {
@@ -429,7 +438,7 @@ impl RegexTranslator {
                 }
             }
         } else {
-            for (k, v) in self.full_mappings.iter() {
+            for (k, v) in self.unicode_mappings.iter() {
                 if input.contains(k) {
                     output = output.replace(k, v);
                 }
@@ -449,6 +458,20 @@ impl RegexTranslator {
         output = replace_or_patterns(output.as_str())?;
 
         Ok(output)
+    }
+
+    pub fn requires_unicode(&self, pattern: &str) -> bool {
+        for def in self.unicode_mappings.keys() {
+            if self.ascii_mappings.contains_key(def) {
+                continue;
+            }
+
+            if pattern.contains(def) {
+                return true;
+            }
+        }
+
+        false
     }
 
     pub fn translate(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {

@@ -31,6 +31,10 @@ impl Pattern {
 
         pattern.full = Some(full_translation.clone());
 
+        if regex_translator.requires_unicode(&original) {
+            return Ok(pattern);
+        }
+
         let ascii_translation = regex_translator.translate(&original, true)?;
         if ascii_translation == original {
             return Ok(pattern);
