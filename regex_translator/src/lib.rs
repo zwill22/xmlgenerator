@@ -103,15 +103,20 @@ fn get_unicode_categories() -> Result<HashMap<String, Vec<String>>, RegexTransla
             continue;
         }
 
-        for i in [2, 4] {
-            let group = values.get(i).unwrap().to_string();
+        let group = values.get(2).unwrap().to_string();
+        if group.is_empty() {
+            continue;
+        }
 
-            match lists.get_mut(&group) {
+        let supergroup = group.chars().next().unwrap().to_string();
+
+        for item in [group, supergroup].iter() {
+            match lists.get_mut(item) {
                 Some(list) => {
                     list.push(code.clone());
                 }
                 None => {
-                    lists.insert(group, vec![code.clone()]);
+                    lists.insert(item.to_string(), vec![code.clone()]);
                 }
             }
         }
@@ -159,9 +164,10 @@ fn unicode_blocks(ascii: bool) -> Result<HashMap<String, String>, RegexTranslati
             continue;
         }
 
+        let key = format!("Is{}", name);
         let range = format!(r"[\u{{{}}}-\u{{{}}}]", min_char, max_char);
 
-        map.insert(name.to_string(), range.clone());
+        map.insert(key, range);
     }
 
     Ok(map)
@@ -220,12 +226,12 @@ fn get_unicode_mappings(ascii: bool) -> Result<HashMap<String, String>, RegexTra
 
     for (k, v) in unicode_blocks {
         // Unicode block (set)
-        let block = format!(r"\p{{Is{}}}", k);
+        let block = format!(r"\p{{{}}}", k);
 
         output.insert(block, v.to_string());
 
         // Set negation
-        let comp_block = format!(r"\P{{Is{}}}", k);
+        let comp_block = format!(r"\P{{{}}}", k);
         let comp_set = get_comp_set(&v, ascii);
 
         output.insert(comp_block, comp_set);
