@@ -40,6 +40,7 @@
 0250..02AF; IPA Extensions
 02B0..02FF; Spacing Modifier Letters
 0300..036F; Combining Diacritical Marks
+0370..03FF; Greek
 0370..03FF; Greek and Coptic
 0400..04FF; Cyrillic
 0500..052F; Cyrillic Supplement
@@ -109,6 +110,7 @@
 2070..209F; Superscripts and Subscripts
 20A0..20CF; Currency Symbols
 20D0..20FF; Combining Diacritical Marks for Symbols
+20D0..20FF; Combining Marks for Symbols
 2100..214F; Letterlike Symbols
 2150..218F; Number Forms
 2190..21FF; Arrows
@@ -185,6 +187,7 @@ D7B0..D7FF; Hangul Jamo Extended-B
 D800..DB7F; High Surrogates
 DB80..DBFF; High Private Use Surrogates
 DC00..DFFF; Low Surrogates
+E000..F8FF; Private Use
 E000..F8FF; Private Use Area
 F900..FAFF; CJK Compatibility Ideographs
 FB00..FB4F; Alphabetic Presentation Forms

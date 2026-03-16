@@ -22,17 +22,6 @@ fn fake<Input: fake::Dummy<Faker> + ToString>() -> Option<String> {
     make_fake::<Input>().map(|output| output.to_string())
 }
 
-fn fake_base64() -> Option<String> {
-    Some(fake::base64::Base64.fake())
-}
-
-fn fake_hex() -> Option<String> {
-    let fake_string = fake::<String>().unwrap();
-    let fake_hex_from_string = hex::encode(fake_string.as_bytes());
-
-    Some(fake_hex_from_string)
-}
-
 pub(crate) struct Generator {
     rng: ThreadRng,
     xor: XorShiftRng,
@@ -224,9 +213,9 @@ impl Generator {
             XsdType::UnsignedLong => fake::<u64>(),
             XsdType::Float => fake::<f32>(),
             XsdType::Double => fake::<f64>(),
-            XsdType::URI => fake::<http::Uri>(),
-            XsdType::Base64Binary => fake_base64(),
-            XsdType::HexBinary => fake_hex(),
+            XsdType::Uri => fake::<http::Uri>(),
+            // XsdType::Base64Binary => fake_base64(),
+            // XsdType::HexBinary => fake_hex(),
             XsdType::Duration => fake::<Duration>(),
             XsdType::DateTime(datetime) => self.fake_datetime(datetime),
             XsdType::String(pattern) => self.fake_string(pattern, ascii),
@@ -363,9 +352,9 @@ impl Generator {
             XsdType::UnsignedLong => self.generate_pattern(xsd_type, pattern, ASCII),
             XsdType::Float => self.generate_pattern(xsd_type, pattern, ASCII),
             XsdType::Double => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::URI => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::Base64Binary => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::HexBinary => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::Uri => self.generate_pattern(xsd_type, pattern, ASCII),
+            // XsdType::Base64Binary => self.generate_pattern(xsd_type, pattern, ASCII),
+            // XsdType::HexBinary => self.generate_pattern(xsd_type, pattern, ASCII),
             XsdType::Duration => self.generate_pattern(xsd_type, pattern, ASCII),
             XsdType::DateTime(datetime) => self.generate_date_with_pattern(datetime, pattern),
             XsdType::String(string) => self.generate_two_patterns(string, pattern, 0),

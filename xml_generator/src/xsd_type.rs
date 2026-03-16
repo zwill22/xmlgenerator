@@ -25,9 +25,12 @@ pub(crate) enum XsdType {
     Double, // A 64-bit floating point number
 
     // Miscellaneous types
-    URI,          // Any URI value
-    Base64Binary, // A base64 value
-    HexBinary,    // A hexidecimal binary value
+    Uri,          // Any URI value
+    
+    // TODO Implement these types properly
+    // Base64Binary, // A base64 value
+    // HexBinary,    // A hexidecimal binary value
+    
     Duration,     // A duration of time
 
     DateTime(Datetime),
@@ -35,14 +38,6 @@ pub(crate) enum XsdType {
 
     #[default]
     None, // No recognised type
-}
-
-fn check_base64(_input: &str) -> bool {
-    true
-}
-
-fn check_hex(_input: &str) -> bool {
-    true
 }
 
 fn validate(input_str: &str, pattern: &str) -> Result<bool, XMLGeneratorError> {
@@ -104,9 +99,9 @@ impl XsdType {
             XsdType::UnsignedLong => input.parse::<u64>().is_ok(),
             XsdType::Float => input.parse::<f32>().is_ok(),
             XsdType::Double => input.parse::<f64>().is_ok(),
-            XsdType::URI => input.parse::<Uri>().is_ok(),
-            XsdType::Base64Binary => check_base64(input),
-            XsdType::HexBinary => check_hex(input),
+            XsdType::Uri => input.parse::<Uri>().is_ok(),
+            // XsdType::Base64Binary => unimplemented!("Base64Binary"),
+            // XsdType::HexBinary => unimplemented!("HexBinary"),
             XsdType::Duration => validate_duration(input),
             XsdType::DateTime(_) => unimplemented!("Datetime validation"),
             XsdType::String(pattern) => validate_pattern(pattern, input),
@@ -126,9 +121,9 @@ impl XsdType {
             XsdType::UnsignedLong => WhiteSpace::Preserve,
             XsdType::Float => WhiteSpace::Collapse,
             XsdType::Double => WhiteSpace::Collapse,
-            XsdType::URI => WhiteSpace::Collapse,
-            XsdType::Base64Binary => WhiteSpace::Collapse,
-            XsdType::HexBinary => WhiteSpace::Collapse,
+            XsdType::Uri => WhiteSpace::Collapse,
+            // XsdType::Base64Binary => WhiteSpace::Collapse,
+            // XsdType::HexBinary => WhiteSpace::Collapse,
             XsdType::Duration => WhiteSpace::Collapse,
             XsdType::DateTime(_) => WhiteSpace::Collapse,
             XsdType::String(pattern) => pattern.get_whitespace(),
@@ -138,6 +133,9 @@ impl XsdType {
 
     pub(crate) fn get_pattern(&self) -> Option<&Pattern> {
         match self {
+            XsdType::DateTime(datetime) => {
+                Some(datetime.get_pattern())
+            }
             XsdType::String(pattern) => {
                 if pattern.is_empty() {
                     return None;
@@ -216,12 +214,12 @@ impl XsdType {
 
             // Miscellaneous data types
             "duration" => Ok(XsdType::Duration),
-            "anyURI" => Ok(XsdType::URI),
-            "base64Binary" => Ok(XsdType::Base64Binary),
+            "anyURI" => Ok(XsdType::Uri),
+            "base64Binary" => unimplemented("base64Binary"),
             "boolean" => XsdType::string(BOOLEAN, &COLLAPSE),
             "float" => Ok(XsdType::Float),
             "double" => Ok(XsdType::Double),
-            "hexBinary" => Ok(XsdType::HexBinary),
+            "hexBinary" => unimplemented("hexBinary"),
             "NOTATION" => XsdType::string(NULL, &COLLAPSE),
 
             // List types
@@ -251,9 +249,9 @@ impl Display for XsdType {
             XsdType::UnsignedLong => "UnsignedLong".to_string(),
             XsdType::Float => "Float".to_string(),
             XsdType::Double => "Double".to_string(),
-            XsdType::URI => "URI".to_string(),
-            XsdType::Base64Binary => "Base64Binary".to_string(),
-            XsdType::HexBinary => "HexBinary".to_string(),
+            XsdType::Uri => "URI".to_string(),
+            // XsdType::Base64Binary => "Base64Binary".to_string(),
+            // XsdType::HexBinary => "HexBinary".to_string(),
             XsdType::Duration => "Duration".to_string(),
             XsdType::DateTime(datetime) => {
                 format!("Datetime with pattern: {}", datetime)

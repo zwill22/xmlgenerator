@@ -76,6 +76,9 @@ mod tests {
         if str.is_empty() {
             panic!("Empty string is not allowed");
         }
+
+        //println!("{}", str.replace(">", ">\n").replace("</", "\n</"));
+        //println!("{}", str);
     }
 
     fn run_generator(
@@ -143,6 +146,13 @@ mod tests {
         fn add(&mut self, s: &str) {
             self.count += 1;
             self.types.insert(s.to_string());
+        }
+
+        #[allow(unused)]
+        fn print(&self) {
+            for error in &self.types {
+                println!("{}", error);
+            }
         }
     }
 
@@ -212,5 +222,13 @@ mod tests {
 
             eprintln!("File:\t{}", path.display());
         }
+    }
+
+    #[test]
+    fn test_one_file() {
+        let file = "saxonData/XmlVersions/xv008.xsd";
+        println!("{}", file);
+
+        test_single_file(file);
     }
 }
