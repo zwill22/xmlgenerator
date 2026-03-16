@@ -37,7 +37,6 @@ fn generate_day(rng: &mut ThreadRng, year: i32, month: i32) -> i32 {
 }
 
 impl Datetime {
-
     pub(crate) fn get_pattern(&self) -> &Pattern {
         &self.pattern
     }

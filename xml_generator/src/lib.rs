@@ -1,13 +1,14 @@
 pub use crate::error::XMLGeneratorError;
 use crate::generator::Generator;
+use crate::schemas::SchemaData;
 use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::path::PathBuf;
 use xsdvalidator::XSDValidator;
-use crate::schemas::SchemaData;
 
 mod attribute;
 mod data_type;
+mod datetime;
 mod element;
 pub mod error;
 mod generator;
@@ -17,12 +18,11 @@ mod namespaces;
 mod pattern;
 mod schema_version;
 mod schemas;
+mod special;
 mod type_info;
+mod whitespace;
 mod xsd;
 mod xsd_type;
-mod special;
-mod whitespace;
-mod datetime;
 
 pub struct XMLGenerator {
     validator: XSDValidator,

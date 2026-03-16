@@ -55,7 +55,7 @@ fn get_encoding(path: &Path) -> Result<Option<String>, XMLGeneratorError> {
                     Some(encoding) => {
                         let value: String = str::from_utf8(encoding?.as_ref()).unwrap().to_string();
                         if value.is_empty() {
-                            return Err(XMLGeneratorError::EncodingError)
+                            return Err(XMLGeneratorError::EncodingError);
                         }
 
                         Ok(Some(value))

@@ -175,10 +175,8 @@ fn unicode_blocks(ascii: bool) -> Result<HashMap<String, String>, RegexTranslati
         let min_char = range.low;
         let max_char = range.high;
 
-        if ascii {
-            if min_char as u32 > 128 || max_char as u32 > 128 {
-                break;
-            }
+        if ascii && (min_char as u32 > 128 || max_char as u32 > 128) {
+            break;
         }
 
         let key = format!("Is{}", name);
@@ -197,10 +195,8 @@ fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTrans
     for (key, values) in data {
         let mut string = r"[".to_owned();
         for value in values {
-            if ascii {
-                if value as u32 > 128 {
-                    continue;
-                }
+            if ascii && value as u32 > 128 {
+                continue;
             }
             string.push_str(value.escape_unicode().to_string().as_str());
         }

@@ -262,11 +262,8 @@ impl Generator {
         vec.choose(&mut self.rng)
     }
 
-    pub(crate) fn generate_enumeration(&mut self, enumerations: &Vec<String>) -> Option<String> {
-        let out = match self.choose(enumerations) {
-            None => return None,
-            Some(enumeration) => enumeration,
-        };
+    pub(crate) fn generate_enumeration(&mut self, enumerations: &[String]) -> Option<String> {
+        let out = self.choose(enumerations)?;
 
         parse(out)
     }

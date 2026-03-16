@@ -7,11 +7,11 @@ use crate::namespaces::Namespaces;
 use crate::schema_version::SchemaVersion;
 use crate::schemas::SchemaData;
 use crate::special::replace_specials;
+use crate::whitespace::WhiteSpace;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
-use xml_builder::{XMLBuilder, XMLElement, XMLVersion, XML};
+use xml_builder::{XML, XMLBuilder, XMLElement, XMLVersion};
 use xsd_parser::models::schema::xs::SchemaContent;
-use crate::whitespace::WhiteSpace;
 
 pub(crate) struct Xsd {
     version: SchemaVersion,
@@ -67,9 +67,12 @@ impl Xsd {
         Ok(xsd)
     }
 
-    pub(crate) fn apply_metadata_to(&self, element: &mut XMLElement) -> Result<(), XMLGeneratorError> {
+    pub(crate) fn apply_metadata_to(
+        &self,
+        element: &mut XMLElement,
+    ) -> Result<(), XMLGeneratorError> {
         if let Some(location) = &self.namespaces.get_default_namespace() {
-            let loc = replace_specials(&location, &WhiteSpace::Preserve)?;
+            let loc = replace_specials(location, &WhiteSpace::Preserve)?;
             match self.namespaces.get_root_namespace() {
                 None => {
                     element.add_attribute("xmlns", &loc);

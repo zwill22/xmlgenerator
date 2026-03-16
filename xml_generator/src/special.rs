@@ -1,7 +1,10 @@
-use crate::whitespace::WhiteSpace;
 use crate::XMLGeneratorError;
+use crate::whitespace::WhiteSpace;
 
-pub(crate) fn replace_specials(input: &str, whitepace: &WhiteSpace) -> Result<String, XMLGeneratorError> {
+pub(crate) fn replace_specials(
+    input: &str,
+    whitepace: &WhiteSpace,
+) -> Result<String, XMLGeneratorError> {
     let out1 = input
         .replace("&amp;", "&")
         .replace("&lt;", "<")
@@ -22,10 +25,12 @@ pub(crate) fn replace_specials(input: &str, whitepace: &WhiteSpace) -> Result<St
             match whitepace {
                 WhiteSpace::Preserve => output.push(c),
                 WhiteSpace::Replace => output.push(' '),
-                WhiteSpace::Collapse => {},
+                WhiteSpace::Collapse => {}
             }
         } else if c.is_control() {
-            return Err(XMLGeneratorError::UnimplementedFeature("Control characters".to_string()))
+            return Err(XMLGeneratorError::UnimplementedFeature(
+                "Control characters".to_string(),
+            ));
         } else {
             output.push(c);
         }

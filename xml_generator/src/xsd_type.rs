@@ -25,13 +25,12 @@ pub(crate) enum XsdType {
     Double, // A 64-bit floating point number
 
     // Miscellaneous types
-    Uri,          // Any URI value
-    
+    Uri, // Any URI value
+
     // TODO Implement these types properly
     // Base64Binary, // A base64 value
     // HexBinary,    // A hexidecimal binary value
-    
-    Duration,     // A duration of time
+    Duration, // A duration of time
 
     DateTime(Datetime),
     String(Pattern), // A string type with a pattern
@@ -70,7 +69,7 @@ fn validate_pattern(pattern: &Pattern, input: &str) -> bool {
     }
 
     let extended = pattern.get_pattern(false);
-    validate(input, extended).unwrap_or_else(|_| false)
+    validate(input, extended).unwrap_or(false)
 }
 
 impl XsdType {
@@ -133,9 +132,7 @@ impl XsdType {
 
     pub(crate) fn get_pattern(&self) -> Option<&Pattern> {
         match self {
-            XsdType::DateTime(datetime) => {
-                Some(datetime.get_pattern())
-            }
+            XsdType::DateTime(datetime) => Some(datetime.get_pattern()),
             XsdType::String(pattern) => {
                 if pattern.is_empty() {
                     return None;

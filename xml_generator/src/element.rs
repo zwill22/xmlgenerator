@@ -3,6 +3,7 @@ use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
+use crate::special::replace_specials;
 use crate::xsd::Xsd;
 use crate::xsd_type::XsdType;
 use rand::Rng;
@@ -12,7 +13,6 @@ use uuid::Uuid;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::xs::{ElementType, ElementTypeContent};
 use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
-use crate::special::replace_specials;
 
 pub(crate) trait Occurrence {
     fn get_min(&self) -> usize;

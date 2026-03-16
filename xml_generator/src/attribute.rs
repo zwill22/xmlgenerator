@@ -2,14 +2,14 @@ use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
+use crate::special::replace_specials;
+use crate::whitespace::WhiteSpace;
 use crate::xsd::Xsd;
 use crate::xsd_type::XsdType;
 use std::cmp::PartialEq;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
 use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
-use crate::special::replace_specials;
-use crate::whitespace::WhiteSpace;
 
 pub(crate) struct Attribute {
     name: Option<Name>,
