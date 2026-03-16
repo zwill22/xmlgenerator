@@ -139,9 +139,9 @@ impl TypeInfo {
             if self.pattern.is_some() {
                 panic!("Type info includes enumeration and pattern data");
             }
-            
-            let out = generator.choose(&self.enumerations).cloned();
-            
+
+            let out = generator.generate_enumeration(&self.enumerations);
+
             return Ok(out);
         }
 
@@ -159,7 +159,7 @@ impl TypeInfo {
         }
 
         let output = generator.generate_type(&self.xsd_type);
-        
+
         Ok(output)
     }
 

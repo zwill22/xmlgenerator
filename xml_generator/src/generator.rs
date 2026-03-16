@@ -22,6 +22,40 @@ fn fake<Input: fake::Dummy<Faker> + ToString>() -> Option<String> {
     make_fake::<Input>().map(|output| output.to_string())
 }
 
+fn parse(string: &str) -> Option<String> {
+    let regex = Regex::new(r"&#x(\w+);").unwrap();
+
+    let mut tmp = string.to_string();
+    for capture in regex.captures_iter(string) {
+        let full_match = capture.get(0).unwrap();
+        let partial = capture.get(1).unwrap();
+
+        println!("Full match: {}", full_match.as_str());
+        println!("Capture: {}", partial.as_str());
+
+        const HEX: u32 = 16;
+        let value = match u32::from_str_radix(partial.as_str(), HEX) {
+            Ok(v) => v,
+            Err(_) => return None,
+        };
+
+        let c = match char::from_u32(value) {
+            Some(c) => c.to_string(),
+            None => return None,
+        };
+
+        tmp = tmp.replace(full_match.as_str(), c.as_str());
+    }
+
+    let out1 = string
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot", "\"");
+
+    Some(out1)
+}
+
 pub(crate) struct Generator {
     rng: ThreadRng,
     xor: XorShiftRng,
@@ -229,6 +263,15 @@ impl Generator {
 
     pub(crate) fn choose<'a, Item>(&mut self, vec: &'a [Item]) -> Option<&'a Item> {
         vec.choose(&mut self.rng)
+    }
+
+    pub(crate) fn generate_enumeration(&mut self, enumerations: &Vec<String>) -> Option<String> {
+        let out = match self.choose(enumerations) {
+            None => return None,
+            Some(enumeration) => enumeration,
+        };
+
+        parse(out)
     }
 
     fn find_match(pattern: &Pattern, input: &str, ascii: bool) -> Option<String> {
