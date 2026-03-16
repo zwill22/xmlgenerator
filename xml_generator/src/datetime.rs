@@ -37,6 +37,11 @@ fn generate_day(rng: &mut ThreadRng, year: i32, month: i32) -> i32 {
 }
 
 impl Datetime {
+
+    pub(crate) fn get_pattern(&self) -> &Pattern {
+        &self.pattern
+    }
+
     pub(crate) fn generate(&self, rng: &mut ThreadRng) -> Option<String> {
         if self.strf_time.is_empty() {
             return None;
@@ -72,7 +77,7 @@ impl Datetime {
         if self.strf_time.contains("%M") {
             let minute = rng.random_range(0..60);
             let minute_str = format!("{:02}", minute);
-            output = output.replace("%m", &minute_str);
+            output = output.replace("%M", &minute_str);
         }
 
         if self.strf_time.contains("%S") {
