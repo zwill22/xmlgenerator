@@ -7,6 +7,7 @@ mod tests {
     use std::collections::HashSet;
 
     use std::path::PathBuf;
+    use rstest::{fixture, rstest};
     use workspace_root::get_workspace_root;
     use xsdtestdata::get_test_data;
 
@@ -20,14 +21,10 @@ mod tests {
         let name = node.tag_name().name().trim().to_string();
 
         if name == "pattern" {
-            for attribute in node.attributes() {
-                parse_attribute(regex, &attribute);
-            }
+            node.attributes().for_each(|attr| parse_attribute(regex, &attr));
         }
 
-        for child in node.children() {
-            parse_node(regex, child);
-        }
+        node.children().for_each(|child| parse_node(regex, child));
     }
 
     fn parse_file(regex: &mut HashSet<String>, filepath: &PathBuf) {
@@ -36,16 +33,13 @@ mod tests {
             Err(e) => panic!("{}", e),
         };
 
-        let xml_tree = match Document::parse(xml_string.as_str()) {
-            Ok(t) => t,
-            Err(e) => panic!("{}", e),
-        };
+        let xml_tree = Document::parse(xml_string.as_str()).expect("Error parsing XML");
 
         let root = xml_tree.root();
         parse_node(regex, root);
     }
 
-    fn get_regex_strings(root: &PathBuf, archive: &PathBuf) -> HashSet<String> {
+    fn get_regex_patterns(root: &PathBuf, archive: &PathBuf) -> HashSet<String> {
         let mut regex = HashSet::new();
 
         let test_data = get_test_data(root, archive, true);
@@ -70,33 +64,47 @@ mod tests {
         }
     }
 
-    #[test]
-    fn it_works() {
+    #[fixture]
+    #[once]
+    fn translator() -> RegexTranslator {
+        RegexTranslator::new().expect("Unable to initialise RegexTranslator")
+    }
+
+    fn test_pattern(translator: &RegexTranslator, pattern: &str) {
+        match translator.translate(&pattern, true) {
+            Ok(_) => return,
+            Err(_) => match translator.translate(&pattern, false) {
+                Ok(_) => return,
+                Err(e) => handle_errors(e, &pattern),
+            },
+        }
+    }
+
+    #[rstest]
+    fn it_works(
+        translator: &RegexTranslator,
+    ) {
         let root = get_workspace_root();
         let db_root = root.as_path().join("xsdtests-master");
         let archive = root.as_path().join("xsdtests.zip");
 
-        let regex = get_regex_strings(&db_root, &archive);
-        let translator = match RegexTranslator::new() {
-            Ok(t) => t,
-            Err(e) => panic!("Unable to initialise RegexTranslator: {}", e),
-        };
+        let patterns = get_regex_patterns(&db_root, &archive);
 
-        for input_regex in regex {
-            match translator.translate(&input_regex, true) {
-                Ok(_) => {}
-                Err(_) => match translator.translate(&input_regex, false) {
-                    Ok(_) => {}
-                    Err(e) => handle_errors(e, &input_regex),
-                },
-            }
+        patterns.iter().for_each(|pattern| test_pattern(translator, pattern));
+    }
+
+    fn handle_surrogate_string(translator: &RegexTranslator, surrogate: &str) {
+        match translator.translate(surrogate, true) {
+            Ok(_) => panic!("No error thrown"),
+            Err(e) => match e {
+                RegexTranslationError::SurrogatesError => {}
+                _ => panic!("Invalid error thrown"),
+            },
         }
     }
 
-    #[test]
-    fn check_surrogates() {
-        let translator = RegexTranslator::new().unwrap();
-
+    #[rstest]
+    fn check_surrogates(translator: &RegexTranslator) {
         let surrogates_strings = vec![
             r"\p{IsHighSurrogates}",
             r"\p{IsHighPrivateUseSurrogates}",
@@ -106,14 +114,6 @@ mod tests {
             r"\P{IsLowSurrogates}",
         ];
 
-        for string in surrogates_strings {
-            match translator.translate(string, true) {
-                Ok(_) => panic!("No error thrown"),
-                Err(e) => match e {
-                    RegexTranslationError::SurrogatesError => {}
-                    _ => panic!("Invalid error thrown"),
-                },
-            }
-        }
+        surrogates_strings.iter().for_each(|string| handle_surrogate_string(translator, string));
     }
 }

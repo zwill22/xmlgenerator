@@ -19,7 +19,7 @@ impl Encodings {
     }
 
     fn get(&self, index: usize) -> Option<&'static Encoding> {
-        if index >= self.list.len() {
+        if index as u32 >= self.list.len() as u32 {
             return None;
         }
 

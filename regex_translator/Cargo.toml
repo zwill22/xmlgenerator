@@ -18,3 +18,4 @@ xsdtestdata = { workspace = true }
 file_to_string = { workspace = true }
 roxmltree = "0.21.1"
 workspace_root = "0.2.0"
+rstest = "0.26.1"
