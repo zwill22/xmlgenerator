@@ -5,6 +5,8 @@ use core::fmt::Display;
 use line_ending::LineEnding;
 use regex::Regex;
 use std::collections::HashMap;
+use unic_ucd_block::BlockIter;
+use unic_ucd_category::GeneralCategory;
 
 mod test;
 
@@ -67,8 +69,8 @@ fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
     }
 }
 
-fn is_surrogate(code: &str) -> bool {
-    let z = u32::from_str_radix(code, 16).unwrap();
+fn is_surrogate(character: char) -> bool {
+
 
     const MIN_STR: &str = "D800";
     const MAX_STR: &str = "DFFF";
@@ -77,46 +79,63 @@ fn is_surrogate(code: &str) -> bool {
     let min = u32::from_str_radix(MIN_STR, RADIX).unwrap();
     let max = u32::from_str_radix(MAX_STR, RADIX).unwrap();
 
+    let z = character as u32;
+
     min <= z && z <= max
 }
 
-const fn get_file() -> &'static str {
-    include_str!("../data/unicode_blocks.txt")
-}
+fn get_unicode_categories() -> Result<HashMap<String, Vec<char>>, RegexTranslationError> {
+    let mut lists: HashMap<String, Vec<char>> = HashMap::new();
 
-const fn get_data() -> &'static str {
-    include_str!("../data/unicode_data.txt")
-}
+    for block in BlockIter::new() {
+        for character in block.range.iter() {
+            if is_surrogate(character) {
+                continue;
+            }
+            let category = match GeneralCategory::of(character) {
+                GeneralCategory::UppercaseLetter => "Lu",
+                GeneralCategory::LowercaseLetter => "Ll",
+                GeneralCategory::TitlecaseLetter => "Lt",
+                GeneralCategory::ModifierLetter => "Lm",
+                GeneralCategory::OtherLetter => "Lo",
+                GeneralCategory::NonspacingMark => "Mn",
+                GeneralCategory::SpacingMark => "Mc",
+                GeneralCategory::EnclosingMark => "Me",
+                GeneralCategory::DecimalNumber => "Nd",
+                GeneralCategory::LetterNumber => "Nl",
+                GeneralCategory::OtherNumber => "No",
+                GeneralCategory::ConnectorPunctuation => "Pc",
+                GeneralCategory::DashPunctuation => "Pd",
+                GeneralCategory::OpenPunctuation => "Ps",
+                GeneralCategory::ClosePunctuation => "Pe",
+                GeneralCategory::InitialPunctuation => "Pi",
+                GeneralCategory::FinalPunctuation => "Pf",
+                GeneralCategory::OtherPunctuation => "Po",
+                GeneralCategory::MathSymbol => "Sm",
+                GeneralCategory::CurrencySymbol => "Sc",
+                GeneralCategory::ModifierSymbol => "Sk",
+                GeneralCategory::OtherSymbol => "So",
+                GeneralCategory::SpaceSeparator => "Zs",
+                GeneralCategory::LineSeparator => "Zl",
+                GeneralCategory::ParagraphSeparator => "Zp",
+                GeneralCategory::Control => "Cc",
+                GeneralCategory::Format => "Cf",
+                GeneralCategory::Surrogate => "Cs",
+                GeneralCategory::PrivateUse => "Co",
+                GeneralCategory::Unassigned => "Cn",
+            }
+            .to_string();
 
-fn get_unicode_categories() -> Result<HashMap<String, Vec<String>>, RegexTranslationError> {
-    const DATA: &str = get_data();
+            let supergroup = category.chars().next().unwrap().to_string();
 
-    let mut lists: HashMap<String, Vec<String>> = HashMap::new();
-    for line in DATA.lines() {
-        let values = line.split(";").collect::<Vec<_>>();
-        if values.len() != 15 {
-            return Err(RegexTranslationError::DataError("Invalid line".to_string()));
-        }
-
-        let code = values.first().unwrap().to_string();
-        if is_surrogate(&code) {
-            continue;
-        }
-
-        let group = values.get(2).unwrap().to_string();
-        if group.is_empty() {
-            continue;
-        }
-
-        let supergroup = group.chars().next().unwrap().to_string();
-
-        for item in [group, supergroup].iter() {
-            match lists.get_mut(item) {
-                Some(list) => {
-                    list.push(code.clone());
-                }
-                None => {
-                    lists.insert(item.to_string(), vec![code.clone()]);
+            for item in [category, supergroup].iter() {
+                match lists.get_mut(item) {
+                    Some(list) => {
+                        list.push(character);
+                    }
+                    None => {
+                        lists.insert(item.to_string(), vec![character]);
+                    }
                 }
             }
         }
@@ -125,49 +144,44 @@ fn get_unicode_categories() -> Result<HashMap<String, Vec<String>>, RegexTransla
     Ok(lists)
 }
 
+fn add(map: &mut HashMap<String, String>, key: &str, value: &str) {
+    map.insert(key.to_string(), value.to_string());
+
+    let mut alternative_names = HashMap::new();
+    alternative_names.insert(
+        "IsCombiningDiacriticalMarksforSymbols".to_string(),
+        "IsCombiningMarksforSymbols".to_string(),
+    );
+
+    alternative_names.insert("IsGreekAndCoptic".to_string(), "IsGreek".to_string());
+    alternative_names.insert("IsPrivateUseArea".to_string(), "IsPrivateUse".to_string());
+
+    if alternative_names.contains_key(key) {
+        let alt_key = &alternative_names[key];
+        map.insert(alt_key.to_string(), value.to_string());
+    }
+}
+
 fn unicode_blocks(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
-    const DATA: &str = get_file();
-
     let mut map = HashMap::new();
-    for line in DATA.lines() {
-        if line.starts_with("#") {
-            continue;
-        }
 
-        if line.is_empty() {
-            continue;
-        }
-        let values = line
-            .split(";")
-            .map(|c| c.split_whitespace().collect::<Vec<_>>().join(""))
-            .collect::<Vec<_>>();
+    for block in BlockIter::new() {
+        let name = block.name.split_whitespace().collect::<Vec<_>>().join("");
+        let range = block.range;
 
-        if values.len() != 2 {
-            continue;
-        }
-
-        let range: Vec<_> = values.first().unwrap().split(".").collect();
-
-        let min_char = range.first().unwrap().to_string();
-        let max_char = range.last().unwrap().to_string();
-        let name = values.last().unwrap().to_string();
+        let min_char = range.low;
+        let max_char = range.high;
 
         if ascii {
-            let min_val = u32::from_str_radix(&min_char, 16).unwrap();
-            let max_val = u32::from_str_radix(&max_char, 16).unwrap();
-            if min_val > 128 || max_val > 128 {
+            if min_char as u32 > 128 || max_char as u32 > 128 {
                 break;
             }
         }
 
-        if name.contains("Surrogates") {
-            continue;
-        }
-
         let key = format!("Is{}", name);
-        let range = format!(r"[\u{{{}}}-\u{{{}}}]", min_char, max_char);
+        let range = format!(r"[{}-{}]", min_char, max_char);
 
-        map.insert(key, range);
+        add(&mut map, &key, &range);
     }
 
     Ok(map)
@@ -181,12 +195,11 @@ fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTrans
         let mut string = r"[".to_owned();
         for value in values {
             if ascii {
-                let val = u32::from_str_radix(&value, 16).unwrap();
-                if val > 128 {
+                if value as u32 > 128 {
                     continue;
                 }
             }
-            string.push_str(&format!(r"\x{{{}}}", value));
+            string.push_str(value.escape_unicode().to_string().as_str());
         }
         string.push(']');
 

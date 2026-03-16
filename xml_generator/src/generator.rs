@@ -30,9 +30,6 @@ fn parse(string: &str) -> Option<String> {
         let full_match = capture.get(0).unwrap();
         let partial = capture.get(1).unwrap();
 
-        println!("Full match: {}", full_match.as_str());
-        println!("Capture: {}", partial.as_str());
-
         const HEX: u32 = 16;
         let value = match u32::from_str_radix(partial.as_str(), HEX) {
             Ok(v) => v,
@@ -47,7 +44,7 @@ fn parse(string: &str) -> Option<String> {
         tmp = tmp.replace(full_match.as_str(), c.as_str());
     }
 
-    let out1 = string
+    let out1 = tmp
         .replace("&amp;", "&")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
