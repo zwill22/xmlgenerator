@@ -65,6 +65,7 @@ mod tests {
             RegexTranslationError::RegexError(e) => panic!("{}", e),
             RegexTranslationError::FileReadError(e) => panic!("{}", e),
             RegexTranslationError::DataError(e) => panic!("{}", e),
+            RegexTranslationError::UnicodeError(e) => panic!("{}", e),
             RegexTranslationError::SurrogatesError => println!("Surrogates in input: {}", input),
         }
     }

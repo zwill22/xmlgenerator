@@ -5,6 +5,7 @@ use core::fmt::Display;
 use line_ending::LineEnding;
 use regex::Regex;
 use std::collections::HashMap;
+use std::num::ParseIntError;
 use unic_ucd_block::BlockIter;
 use unic_ucd_category::GeneralCategory;
 
@@ -16,6 +17,7 @@ pub enum RegexTranslationError {
     RegexError(String),
     FileReadError(String),
     DataError(String),
+    UnicodeError(String),
     SurrogatesError,
 }
 
@@ -51,6 +53,12 @@ impl From<regex::Error> for RegexTranslationError {
     }
 }
 
+impl From<ParseIntError> for RegexTranslationError {
+    fn from(e: ParseIntError) -> Self {
+        RegexTranslationError::UnicodeError(e.to_string())
+    }
+}
+
 impl Display for RegexTranslationError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
@@ -59,6 +67,7 @@ impl Display for RegexTranslationError {
             RegexTranslationError::FileReadError(e) => write!(f, "File read error: {}", e),
             RegexTranslationError::DataError(e) => write!(f, "Data error: {}", e),
             RegexTranslationError::SurrogatesError => write!(f, "Surrogate error"),
+            RegexTranslationError::UnicodeError(e) => write!(f, "Unicode error: {}", e),
         }
     }
 }
@@ -70,18 +79,12 @@ fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
 }
 
 fn is_surrogate(character: char) -> bool {
-
-
-    const MIN_STR: &str = "D800";
-    const MAX_STR: &str = "DFFF";
-    const RADIX: u32 = 16;
-
-    let min = u32::from_str_radix(MIN_STR, RADIX).unwrap();
-    let max = u32::from_str_radix(MAX_STR, RADIX).unwrap();
+    const MIN: u32 = 55296; // 0xD800
+    const MAX: u32 = 55296; // 0xDFFF
 
     let z = character as u32;
 
-    min <= z && z <= max
+    MIN <= z && z <= MAX
 }
 
 fn get_unicode_categories() -> Result<HashMap<String, Vec<char>>, RegexTranslationError> {
@@ -371,15 +374,6 @@ fn validate_output(output: &str) -> Result<(), RegexTranslationError> {
     }
 }
 
-fn parse_radix_string(input: &str, radix: u32) -> Result<u32, RegexTranslationError> {
-    match u32::from_str_radix(input, radix) {
-        Ok(v) => Ok(v),
-        Err(_) => Err(RegexTranslationError::RegexError(
-            "Error converting hex string to integer.".to_string(),
-        )),
-    }
-}
-
 fn replace_negation_patterns(input: &str) -> Result<String, RegexTranslationError> {
     const NEGATION: &str = r"\[(\S*?[\S--[-]])-(\[\S*?])]";
     let regex = Regex::new(NEGATION)?;
@@ -410,10 +404,17 @@ fn replace_character_reference(
         let full_match = captures.get(0).unwrap().as_str();
         let partial_match = captures.get(1).unwrap().as_str();
 
-        let value = parse_radix_string(partial_match, radix)?;
-        let hex_str = format!(r"\u{:>04x}", value);
+        let value = u32::from_str_radix(partial_match, radix)?;
+        let character = match char::from_u32(value) {
+            Some(c) => c,
+            None => {
+                return Err(RegexTranslationError::DataError(
+                    "Unable to parse character reference.".to_string(),
+                ));
+            }
+        };
 
-        output = output.replace(full_match, &hex_str);
+        output = output.replace(full_match, character.escape_unicode().to_string().as_str());
     }
 
     Ok(output)

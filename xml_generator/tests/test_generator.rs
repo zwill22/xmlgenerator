@@ -86,8 +86,10 @@ mod tests {
             let filepath = file.unwrap().path();
 
             match run_generator(&generator, &filepath) {
-                Ok(_) => {}
-                Err(err) => panic!("XMLGenerator error: {:?}", err),
+                Ok(out) => println!("{}", out),
+                Err(err) => {
+                    panic!("XMLGenerator error: {:?}", err)
+                }
             }
         }
 
