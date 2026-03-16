@@ -418,6 +418,20 @@ fn replace_decimal_character_reference(input: &str) -> Result<String, RegexTrans
     replace_character_reference(PATTERN, input, DEC)
 }
 
+fn dot_replace(input: &str) -> Result<String, RegexTranslationError> {
+    // Remove groups
+    const DOT_GROUP: &str = r"\[([\S+?--\\])\.(\S+?)\]";
+    let regex = Regex::new(DOT_GROUP)?;
+    let tmp = regex.replace_all(input, r"[$1\.$2]").to_string();
+
+    const DOT: &str = r"([^\\]|^)\.";
+    let regex = Regex::new(DOT)?;
+
+    let result = regex.replace_all(&tmp, r"$1[\x{20}-\x{7E}]").to_string();
+
+    Ok(result.to_string())
+}
+
 #[derive(Default)]
 pub struct RegexTranslator {
     ascii_mappings: HashMap<String, String>,
@@ -443,6 +457,7 @@ impl RegexTranslator {
                     output = output.replace(k, v);
                 }
             }
+            output = dot_replace(&output)?;
         } else {
             for (k, v) in self.unicode_mappings.iter() {
                 if input.contains(k) {
