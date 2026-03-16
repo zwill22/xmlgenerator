@@ -38,6 +38,12 @@ jobs:
       - name: Set up Rust
         run: rustup show
 
+      - name: Setup clang
+        if: ${{ env.ACT }}
+        uses: rlalik/setup-cpp-compiler@master
+        with:
+          compiler: clang-latest
+
       - name: Setup cmake
         if: ${{ env.ACT }}
         uses: jwlawson/actions-setup-cmake@v2
@@ -52,11 +58,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          uv sync --all-extras --dev --active --no-install-package pyxmlgenerator
-          uv pip install maturin
-
-      - name: Install xmlgenerator
-        run: uv run --no-project maturin develop --uv
+          uv sync --all-packages --all-extras
 
       - name: Run tests
-        run: uv run --no-project pytest -v
+        run: uv run pytest -v

@@ -26,12 +26,16 @@ jobs:
     - name: Setup Rust
       run: rustup update
 
+    - name: Setup clang
+      if: ${{ env.ACT }}
+      uses: rlalik/setup-cpp-compiler@master
+      with:
+        compiler: clang-latest
 
     - name: Setup cmake
       uses: jwlawson/actions-setup-cmake@v2
       with:
         cmake-version: '3.22'
-
 
     - name: Build
       run: cargo build --verbose
