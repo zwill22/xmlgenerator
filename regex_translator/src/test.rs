@@ -6,10 +6,10 @@ mod tests {
     use roxmltree::{Attribute, Document};
     use std::collections::HashSet;
 
-    use std::path::PathBuf;
     use rstest::{fixture, rstest};
+    use std::path::PathBuf;
     use workspace_root::get_workspace_root;
-    use xsdtestdata::get_test_data;
+    use xsdtestdata::XsdTestData;
 
     fn parse_attribute(regex: &mut HashSet<String>, attribute: &Attribute) {
         if attribute.name().trim().to_lowercase() == "value" {
@@ -21,7 +21,8 @@ mod tests {
         let name = node.tag_name().name().trim().to_string();
 
         if name == "pattern" {
-            node.attributes().for_each(|attr| parse_attribute(regex, &attr));
+            node.attributes()
+                .for_each(|attr| parse_attribute(regex, &attr));
         }
 
         node.children().for_each(|child| parse_node(regex, child));
@@ -39,19 +40,6 @@ mod tests {
         parse_node(regex, root);
     }
 
-    fn get_regex_patterns(root: &PathBuf, archive: &PathBuf) -> HashSet<String> {
-        let mut regex = HashSet::new();
-
-        let test_data = get_test_data(root, archive, true);
-
-        for (filepath, listed_as_valid) in test_data {
-            if listed_as_valid {
-                parse_file(&mut regex, &filepath);
-            }
-        }
-
-        regex
-    }
 
     fn handle_errors(error: RegexTranslationError, input: &str) {
         match error {
@@ -64,12 +52,6 @@ mod tests {
         }
     }
 
-    #[fixture]
-    #[once]
-    fn translator() -> RegexTranslator {
-        RegexTranslator::new().expect("Unable to initialise RegexTranslator")
-    }
-
     fn test_pattern(translator: &RegexTranslator, pattern: &str) {
         match translator.translate(&pattern, true) {
             Ok(_) => return,
@@ -80,17 +62,49 @@ mod tests {
         }
     }
 
-    #[rstest]
-    fn it_works(
-        translator: &RegexTranslator,
-    ) {
+    fn patterns(test_data: &XsdTestData, data_set: &str) -> HashSet<String> {
+        let mut values = HashSet::new();
+        test_data.iter().for_each(|test_data| {
+            if test_data.get_data_set() != data_set {
+                return;
+            }
+
+            parse_file(&mut values, test_data.get_path());
+        });
+
+        values
+    }
+
+    #[fixture]
+    #[once]
+    fn translator() -> RegexTranslator {
+        RegexTranslator::new().expect("Unable to initialise RegexTranslator")
+    }
+
+    #[fixture]
+    #[once]
+    fn test_data() -> XsdTestData {
         let root = get_workspace_root();
-        let db_root = root.as_path().join("xsdtests-master");
+        let db_root = root.join("xsdtests-master");
         let archive = root.as_path().join("xsdtests.zip");
 
-        let patterns = get_regex_patterns(&db_root, &archive);
+        XsdTestData::new(&db_root, &archive)
+    }
 
-        patterns.iter().for_each(|pattern| test_pattern(translator, pattern));
+
+    #[rstest]
+    #[case::oracle_data("oracleData")]
+    #[case::wg_data("wgData")]
+    #[case::ibm_data("ibmData")]
+    #[case::ms_data("msData")]
+    #[case::saxon_data("saxonData")]
+    #[case::sun_data("sunData")]
+    #[case::nist_data("nistData")]
+    #[case::boeing_data("boeingData")]
+    #[case::common("common")]
+    fn it_works(translator: &RegexTranslator, test_data: &XsdTestData, #[case] data_set: String) {
+        patterns(test_data, &data_set).iter()
+            .for_each(|pattern| test_pattern(translator, pattern));
     }
 
     fn handle_surrogate_string(translator: &RegexTranslator, surrogate: &str) {
@@ -114,6 +128,8 @@ mod tests {
             r"\P{IsLowSurrogates}",
         ];
 
-        surrogates_strings.iter().for_each(|string| handle_surrogate_string(translator, string));
+        surrogates_strings
+            .iter()
+            .for_each(|string| handle_surrogate_string(translator, string));
     }
 }
