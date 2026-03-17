@@ -1,9 +1,10 @@
+use std::collections::HashSet;
 use file_to_string::read_file;
 use reqwest::blocking;
 use roxmltree::{Document, Node, ParsingOptions};
-use std::collections::HashSet;
 use std::fs::{File, canonicalize};
 use std::io::Write;
+use std::ops::{AddAssign};
 use std::path::{Path, PathBuf};
 use zip::read::root_dir_common_filter;
 
@@ -16,17 +17,29 @@ pub enum XSDTestDataError {
     FileReadError(String),
 }
 
-struct Schema {
+#[derive(Clone)]
+pub struct XsdData {
+    key: String,
+    data_set: String,
     path: PathBuf,
     valid: bool,
 }
 
-impl Schema {
-    fn new(schema_path: &PathBuf, validity: bool) -> Self {
-        Schema {
-            path: schema_path.clone(),
-            valid: validity,
-        }
+impl XsdData {
+    pub fn is_valid(&self) -> bool {
+        self.valid
+    }
+
+    pub fn get_data_set(&self) -> &str {
+        &self.data_set
+    }
+
+    pub fn get_key(&self) -> &str {
+        &self.key
+    }
+
+    pub fn get_path(&self) -> &PathBuf {
+        &self.path
     }
 }
 
@@ -67,10 +80,7 @@ fn check_repo(db_root: &PathBuf, archive_path: &PathBuf) {
 
     let archive = get_archive_file(archive_path);
 
-    match extract_repo(db_root, &archive) {
-        Ok(_) => {}
-        Err(e) => panic!("failed to extract archive file: {:?}", e),
-    }
+    extract_repo(db_root, &archive).expect("failed to extract repo archive");
 }
 
 fn parse_with_dtd(contents: &'_ String) -> Result<Document<'_>, XSDTestDataError> {
@@ -110,18 +120,34 @@ fn get_validity(node: &Node) -> Option<bool> {
     }
 
     let valid_str = get_attribute(node, "validity".to_string());
-    if valid_str == "valid" {
-        Some(true)
-    } else if valid_str == "invalid" {
-        return Some(false);
-    } else if valid_str == "indeterminate" {
-        return None;
-    } else {
-        panic!("Unknown validity: {}", valid_str);
+    match valid_str.as_str() {
+        "valid" => Some(true),
+        "invalid" => Some(false),
+        "indeterminate" => None,
+        _ => panic!("Unknown validity:: {}", valid_str),
     }
 }
 
-fn get_test_info(node: &Node, filepath: &PathBuf, tag_name: String) -> Option<Schema> {
+fn get_key_and_group(root: &PathBuf, full_path: &PathBuf) -> (String, String) {
+    let path = full_path
+        .strip_prefix(root)
+        .unwrap();
+
+    let mut group= "other".to_string();
+    for component in path.components() {
+        group = component.as_os_str().to_str().unwrap().to_string();
+        break;
+    }
+
+    (path.to_string_lossy().to_string(), group)
+}
+
+fn get_test_info(
+    node: &Node,
+    filepath: &PathBuf,
+    tag_name: String,
+    db_root: &PathBuf,
+) -> Option<XsdData> {
     let mut schema_path = None;
     let mut valid = None;
 
@@ -151,80 +177,116 @@ fn get_test_info(node: &Node, filepath: &PathBuf, tag_name: String) -> Option<Sc
         return None;
     }
 
-    let schema = Schema::new(&schema_path.unwrap(), valid.unwrap());
+    let filepath = schema_path.unwrap();
+    let validity = valid.unwrap();
 
-    Some(schema)
+    let (path, group) = get_key_and_group(&db_root, &filepath);
+
+    let data = XsdData {
+        key: path,
+        data_set: group,
+        path: filepath,
+        valid: validity,
+    };
+
+    Some(data)
 }
 
-fn get_schema_info(node: &Node, path: &PathBuf) -> Option<Schema> {
-    get_test_info(node, path, "schemaDocument".to_string())
+fn get_schema_info(
+    node: &Node,
+    path: &PathBuf,
+    db_root: &PathBuf,
+) -> Option<XsdData> {
+    get_test_info(node, path, "schemaDocument".to_string(), db_root)
 }
 
-fn get_schema_test(results: &mut Vec<Schema>, node: &Node<'_, '_>, path: &PathBuf) {
-    match get_schema_info(node, path) {
+fn get_schema_test(
+    results: &mut XsdTestData,
+    node: &Node<'_, '_>,
+    path: &PathBuf,
+    db_root: &PathBuf,
+) {
+    match get_schema_info(node, path, db_root) {
         Some(info) => results.push(info),
         None => return,
     }
 }
 
-fn get_instance_info(node: &Node, path: &PathBuf) -> Option<Schema> {
-    get_test_info(node, path, "instanceDocument".to_string())
+fn get_instance_info(
+    node: &Node,
+    path: &PathBuf,
+    db_root: &PathBuf,
+) -> Option<XsdData> {
+    get_test_info(
+        node,
+        path,
+        "instanceDocument".to_string(),
+        db_root,
+    )
 }
 
-fn get_test_group(results: &mut Vec<Schema>, test_group: &Node, path: &PathBuf) {
-    for child in test_group.children() {
+fn get_test_group(
+    test_group: &Node,
+    path: &PathBuf,
+    db_root: &PathBuf,
+) -> XsdTestData {
+    let mut data = XsdTestData::default();
+    test_group.children().for_each(|child| {
         let tag_name = child.tag_name().name();
 
         if tag_name == "schemaTest" {
-            get_schema_test(results, &child, path);
+            get_schema_test(&mut data, &child, path, db_root);
         } else if tag_name == "instanceTest" {
-            get_instance_test(results, &child, path);
+            if let Some(new_data) = get_instance_test(&child, path, db_root) {
+                data += &new_data;
+            }
         }
-    }
+    });
+
+    data
 }
 
-fn read_test_set_file(schemas: &mut Vec<Schema>, filepath: &PathBuf) {
-    let filedata = match read_file(&filepath) {
-        Ok(s) => s,
-        Err(e) => panic!("failed to read file: {:?}", e),
-    };
+fn read_test_set_file(filepath: &PathBuf, db_root: &PathBuf) -> XsdTestData {
+    let filedata = read_file(&filepath).expect("failed to read file");
+    let mut data = XsdTestData::default();
 
     let document = match parse(&filedata) {
         Ok(d) => d,
-        Err(_) => return,
+        Err(_) => return data,
     };
 
     let root = document.root_element();
-    for child in root.children() {
+    root.children().for_each(|child| {
         let tag_name = child.tag_name().name();
 
         if tag_name == "testGroup" {
-            get_test_group(schemas, &child, &filepath)
+            data += &get_test_group(&child, &filepath, db_root);
         }
-    }
+    });
+
+    data
 }
 
-fn get_instance_test(schemas: &mut Vec<Schema>, node: &Node, path: &PathBuf) {
-    let instance = match get_instance_info(node, path) {
+fn get_instance_test(
+    node: &Node,
+    path: &PathBuf,
+    db_root: &PathBuf,
+) -> Option<XsdTestData> {
+    let instance = match get_instance_info(node, path, db_root) {
         Some(info) => info,
-        None => return,
+        None => return None,
     };
 
     if instance.path == *path {
-        return;
+        return None;
     }
 
     if instance.valid {
-        read_test_set_file(schemas, &instance.path);
+        let data = read_test_set_file(&instance.path, db_root);
+        return Some(data);
     }
-}
 
-fn read_test_set(root_path: &PathBuf, extension: &String) -> Vec<Schema> {
-    let filepath = root_path.join(extension);
-    let mut schemas = Vec::new();
-    read_test_set_file(&mut schemas, &filepath);
-
-    schemas
+    None
 }
 
 fn get_attribute(node: &Node, name: String) -> String {
@@ -237,98 +299,189 @@ fn get_attribute(node: &Node, name: String) -> String {
     panic!("attribute not found");
 }
 
-fn join(output: &mut HashSet<(PathBuf, bool)>, new_results: &Vec<Schema>, ignore: &Vec<PathBuf>) {
-    for result in new_results {
-        if ignore.contains(&result.path) {
-            continue;
-        }
-        output.insert((result.path.clone(), result.valid));
-    }
-}
-
-fn parse_test_data(
-    filepath: &PathBuf,
-    db_root_path: &PathBuf,
-    ignore: &Vec<PathBuf>,
-) -> HashSet<(PathBuf, bool)> {
-    let filedata = read_file(&filepath).expect("failed to read file");
-    let document = parse(&filedata).expect("failed to parse xml");
-
-    let mut output = HashSet::new();
-    let root = document.root_element();
-    for child in root.children() {
-        let tag = child.tag_name().name();
-        if tag == "testSetRef" {
-            let test_path = get_attribute(&child, "href".to_string());
-            let result = read_test_set(db_root_path, &test_path);
-            join(&mut output, &result, ignore);
-        }
-    }
-
-    output
-}
-
 fn file_path(db_root: &PathBuf, path_string: &str) -> PathBuf {
     db_root.join(path_string)
 }
 
-pub fn get_test_data(
-    db_path: &PathBuf,
-    archive_path: &PathBuf,
-    extra: bool,
-) -> HashSet<(PathBuf, bool)> {
-    let ignore = vec![
-        file_path(&db_path, "msData/particles/particlesZ012.xsd"),
-        file_path(&db_path, "msData/particles/particlesZ015.xsd"),
-        file_path(&db_path, "msData/particles/particlesZ020.xsd"),
-    ];
-    check_repo(&db_path, &archive_path);
+#[derive(Default)]
+pub struct XsdTestData {
+    data: Vec<XsdData>,
+}
 
-    let suite = db_path.join("suite.xml");
-    let mut data = parse_test_data(&suite, &db_path, &ignore);
-
-    if !extra {
-        return data;
+impl XsdTestData {
+    fn total(&self) -> usize {
+        self.data.len()
     }
 
-    let extra_suite = db_path.join("extra-suite.xml");
-    let extra_data = parse_test_data(&extra_suite, &db_path, &ignore);
+    fn contains(&self, data: &XsdData) -> bool {
+        let key = &data.key;
+        self.data.iter().any(|d| d.key == *key)
+    }
 
-    data.extend(extra_data);
+    fn push(&mut self, data: XsdData) {
+        if self.contains(&data) {
+            return;
+        }
 
-    data
+        self.data.push(data);
+    }
+}
+
+impl AddAssign<&XsdTestData> for XsdTestData {
+    fn add_assign(&mut self, rhs: &XsdTestData) {
+        for data in rhs.data.iter() {
+            self.push(data.clone())
+        }
+    }
+}
+
+impl XsdTestData {
+    fn add(&mut self, results: &XsdTestData, ignore: &Vec<PathBuf>) {
+        results.data.iter().for_each(|result| {
+            if ignore.contains(&result.path) {
+                return;
+            }
+
+            self.push(result.clone())
+        })
+    }
+
+    fn add_test_set(root_path: &PathBuf, extension: &String) -> Self {
+        let filepath = root_path.join(extension);
+        let data = read_test_set_file(&filepath, root_path);
+
+        data
+    }
+
+    fn parse_test_data(
+        test_suite: &PathBuf,
+        db_path: &PathBuf,
+        ignore: &Vec<PathBuf>,
+    ) -> XsdTestData {
+        let filedata = read_file(&test_suite).expect("failed to read file");
+        let document = parse(&filedata).expect("failed to parse xml");
+
+        let mut output = XsdTestData::default();
+        let root = document.root_element();
+        root.children().for_each(|child| {
+            let tag = child.tag_name().name();
+            if tag == "testSetRef" {
+                let test_path = get_attribute(&child, "href".to_string());
+                let result = Self::add_test_set(db_path, &test_path);
+                output.add(&result, ignore);
+            }
+        });
+
+        output
+    }
+
+    pub fn new(db_path: &PathBuf, archive_path: &PathBuf) -> XsdTestData {
+        // TODO Remove ignores
+        let ignore = vec![
+            file_path(&db_path, "msData/particles/particlesZ012.xsd"),
+            file_path(&db_path, "msData/particles/particlesZ015.xsd"),
+            file_path(&db_path, "msData/particles/particlesZ020.xsd"),
+        ];
+        check_repo(&db_path, &archive_path);
+
+        let suite = db_path.join("suite.xml");
+        let mut data = XsdTestData::parse_test_data(&suite, &db_path, &ignore);
+
+        let extra_suite = db_path.join("extra-suite.xml");
+        let extra_data = XsdTestData::parse_test_data(&extra_suite, &db_path, &ignore);
+
+        data += &extra_data;
+
+        data
+    }
+
+    pub fn print_stats(&self) {
+        let total = self.total();
+        let valid = self.data.iter().filter(|data| data.valid).count();
+        let invalid = total - valid;
+
+        println!("Test data\n");
+
+        println!("\t{:24}{:8}", "Valid schemas", valid);
+        println!("\t{:24}{:8}", "Invalid schemas", invalid);
+        println!("\t{:24}{:8}", "Total schemas", total);
+
+        let mut data_sets = HashSet::new();
+        self.data.iter().for_each(|data| {
+            let data_set = &data.data_set;
+            data_sets.insert(data_set);
+        });
+        println!("\t{:24}{:8}", "Data sets", data_sets.len());
+
+        println!();
+
+        println!("\t{:36}{:8}{:8}{:8}", "Data set", "Valid", "Invalid", "Total");
+
+        for data_set in data_sets {
+            let valid = self.data.iter().filter(|data| {
+                data.data_set == **data_set && data.valid
+            }).count();
+
+            let invalid = self.data.iter().filter(|data| {
+                data.data_set == **data_set && !data.valid
+            }).count();
+
+            println!("\t{:36}{:8}{:8}{:8}", data_set, valid, invalid, valid + invalid);
+        }
+    }
+
+    fn get_index(&self, index: usize) -> Option<&XsdData> {
+        if index < self.total() {
+            Some(&self.data[index])
+        } else {
+            None
+        }
+    }
+
+    pub fn get(&self, key: &str) -> Option<&XsdData> {
+        self.data.iter().find(|data| data.key == key)
+    }
+}
+
+pub struct XsdTestDataIterator<'a> {
+    test_data: &'a XsdTestData,
+    index: usize,
+}
+
+impl<'a> Iterator for XsdTestDataIterator<'a> {
+    type Item = &'a XsdData;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.test_data.get_index(self.index) {
+            Some(data) => {
+                self.index += 1;
+                Some(data)
+            }
+            None => None,
+        }
+    }
+}
+
+impl XsdTestData {
+    pub fn iter(&'_ self) -> XsdTestDataIterator<'_> {
+        XsdTestDataIterator {
+            test_data: &self,
+            index: 0,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::get_test_data;
+    use crate::XsdTestData;
     use workspace_root::get_workspace_root;
 
     #[test]
     fn get_suite() {
         let db = get_workspace_root().join("xsdtests-master");
         let archive = get_workspace_root().join("xsdtests.zip");
-        let extra = true;
 
-        let data = get_test_data(&db, &archive, extra);
+        let data = XsdTestData::new(&db, &archive);
 
-        let mut valid = 0;
-        let mut invalid = 0;
-        for (_path, validity) in data {
-            if validity {
-                valid += 1;
-            } else {
-                invalid += 1;
-            }
-        }
-
-        if extra {
-            println!("\tXSD Test suite (extended)");
-        } else {
-            println!("\tXSD Test suite");
-        }
-        println!("\t{:24}{:6}", "Valid schemas", valid);
-        println!("\t{:24}{:6}", "Invalid schemas", invalid);
-        println!("\t{:24}{:6}", "Total schemas", valid + invalid);
+        data.print_stats()
     }
 }
