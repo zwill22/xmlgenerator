@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
     use std::path::{Path, PathBuf};
+    use rstest::{fixture, rstest};
     use workspace_root::get_workspace_root;
-    use xsdtestdata::get_test_data;
+    use xsdtestdata::{XsdTestData};
     use xsdvalidator::{XSDValidationError, XSDValidator};
 
     fn check_error(error: &XSDValidationError, path: &Path) {
@@ -25,9 +25,7 @@ mod tests {
     }
 
     fn test_valid_file(validator: &XSDValidator, path: &PathBuf) {
-        let result = validator.validate(path);
-
-        match result {
+        match validator.validate(path) {
             Ok(value) => {
                 if !value {
                     panic!("Invalid XSD: {:?}", path);
@@ -45,26 +43,43 @@ mod tests {
         }
     }
 
-    fn validate(validator: &XSDValidator, files: &HashSet<(PathBuf, bool)>) {
-        for (path, valid) in files {
-            if *valid {
-                test_valid_file(&validator, &path);
-            } else {
-                test_invalid_file(&validator, &path);
-            }
-        }
+    #[fixture]
+    #[once]
+    fn validator() -> XSDValidator {
+        XSDValidator::new(false)
     }
 
-    #[test]
-    fn test_xsd() {
-        let validator = XSDValidator::new(false);
-
+    #[fixture]
+    #[once]
+    fn test_data() -> XsdTestData {
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");
         let archive_path = root.join("xsd_tests.zip");
 
-        let test_files = get_test_data(&db_root, &archive_path, true);
+        XsdTestData::new(&db_root, &archive_path)
+    }
 
-        validate(&validator, &test_files);
+    #[rstest]
+    #[case::oracle_data("oracleData")]
+    #[case::wg_data("wgData")]
+    #[case::ibm_data("ibmData")]
+    #[case::ms_data("msData")]
+    #[case::saxon_data("saxonData")]
+    #[case::sun_data("sunData")]
+    #[case::nist_data("nistData")]
+    #[case::boeing_data("boeingData")]
+    #[case::common("common")]
+    fn test_database_validation(validator: &XSDValidator, test_data: &XsdTestData, #[case] data_set: String) {
+        for data in test_data.iter() {
+            if data.get_data_set() != data_set.as_str() {
+                return;
+            }
+            let file = data.get_path();
+            if data.is_valid() {
+                test_valid_file(validator, file);
+            } else {
+                test_invalid_file(validator, file);
+            }
+        }
     }
 }
