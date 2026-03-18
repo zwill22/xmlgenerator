@@ -1,10 +1,10 @@
-use std::collections::HashSet;
 use file_to_string::read_file;
 use reqwest::blocking;
 use roxmltree::{Document, Node, ParsingOptions};
+use std::collections::HashSet;
 use std::fs::{File, canonicalize};
 use std::io::Write;
-use std::ops::{AddAssign};
+use std::ops::AddAssign;
 use std::path::{Path, PathBuf};
 use zip::read::root_dir_common_filter;
 
@@ -129,11 +129,9 @@ fn get_validity(node: &Node) -> Option<bool> {
 }
 
 fn get_key_and_group(root: &PathBuf, full_path: &PathBuf) -> (String, String) {
-    let path = full_path
-        .strip_prefix(root)
-        .unwrap();
+    let path = full_path.strip_prefix(root).unwrap();
 
-    let mut group= "other".to_string();
+    let mut group = "other".to_string();
     for component in path.components() {
         group = component.as_os_str().to_str().unwrap().to_string();
         break;
@@ -192,11 +190,7 @@ fn get_test_info(
     Some(data)
 }
 
-fn get_schema_info(
-    node: &Node,
-    path: &PathBuf,
-    db_root: &PathBuf,
-) -> Option<XsdData> {
+fn get_schema_info(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XsdData> {
     get_test_info(node, path, "schemaDocument".to_string(), db_root)
 }
 
@@ -212,24 +206,11 @@ fn get_schema_test(
     }
 }
 
-fn get_instance_info(
-    node: &Node,
-    path: &PathBuf,
-    db_root: &PathBuf,
-) -> Option<XsdData> {
-    get_test_info(
-        node,
-        path,
-        "instanceDocument".to_string(),
-        db_root,
-    )
+fn get_instance_info(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XsdData> {
+    get_test_info(node, path, "instanceDocument".to_string(), db_root)
 }
 
-fn get_test_group(
-    test_group: &Node,
-    path: &PathBuf,
-    db_root: &PathBuf,
-) -> XsdTestData {
+fn get_test_group(test_group: &Node, path: &PathBuf, db_root: &PathBuf) -> XsdTestData {
     let mut data = XsdTestData::default();
     test_group.children().for_each(|child| {
         let tag_name = child.tag_name().name();
@@ -267,11 +248,7 @@ fn read_test_set_file(filepath: &PathBuf, db_root: &PathBuf) -> XsdTestData {
     data
 }
 
-fn get_instance_test(
-    node: &Node,
-    path: &PathBuf,
-    db_root: &PathBuf,
-) -> Option<XsdTestData> {
+fn get_instance_test(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XsdTestData> {
     let instance = match get_instance_info(node, path, db_root) {
         Some(info) => info,
         None => return None,
@@ -415,18 +392,31 @@ impl XsdTestData {
 
         println!();
 
-        println!("\t{:36}{:8}{:8}{:8}", "Data set", "Valid", "Invalid", "Total");
+        println!(
+            "\t{:36}{:8}{:8}{:8}",
+            "Data set", "Valid", "Invalid", "Total"
+        );
 
         for data_set in data_sets {
-            let valid = self.data.iter().filter(|data| {
-                data.data_set == **data_set && data.valid
-            }).count();
+            let valid = self
+                .data
+                .iter()
+                .filter(|data| data.data_set == **data_set && data.valid)
+                .count();
 
-            let invalid = self.data.iter().filter(|data| {
-                data.data_set == **data_set && !data.valid
-            }).count();
+            let invalid = self
+                .data
+                .iter()
+                .filter(|data| data.data_set == **data_set && !data.valid)
+                .count();
 
-            println!("\t{:36}{:8}{:8}{:8}", data_set, valid, invalid, valid + invalid);
+            println!(
+                "\t{:36}{:8}{:8}{:8}",
+                data_set,
+                valid,
+                invalid,
+                valid + invalid
+            );
         }
     }
 

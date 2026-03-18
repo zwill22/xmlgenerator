@@ -1,9 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use std::path::{Path, PathBuf};
     use rstest::{fixture, rstest};
+    use std::path::{Path, PathBuf};
     use workspace_root::get_workspace_root;
-    use xsdtestdata::{XsdTestData};
+    use xsdtestdata::XsdTestData;
     use xsdvalidator::{XSDValidationError, XSDValidator};
 
     fn check_error(error: &XSDValidationError, path: &Path) {
@@ -69,7 +69,11 @@ mod tests {
     #[case::nist_data("nistData")]
     #[case::boeing_data("boeingData")]
     #[case::common("common")]
-    fn test_database_validation(validator: &XSDValidator, test_data: &XsdTestData, #[case] data_set: String) {
+    fn test_database_validation(
+        validator: &XSDValidator,
+        test_data: &XsdTestData,
+        #[case] data_set: String,
+    ) {
         for data in test_data.iter() {
             if data.get_data_set() != data_set.as_str() {
                 return;

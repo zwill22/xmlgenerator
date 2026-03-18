@@ -40,7 +40,6 @@ mod tests {
         parse_node(regex, root);
     }
 
-
     fn handle_errors(error: RegexTranslationError, input: &str) {
         match error {
             RegexTranslationError::InvalidInput(e) => println!("{}", e),
@@ -91,7 +90,6 @@ mod tests {
         XsdTestData::new(&db_root, &archive)
     }
 
-
     #[rstest]
     #[case::oracle_data("oracleData")]
     #[case::wg_data("wgData")]
@@ -103,7 +101,8 @@ mod tests {
     #[case::boeing_data("boeingData")]
     #[case::common("common")]
     fn it_works(translator: &RegexTranslator, test_data: &XsdTestData, #[case] data_set: String) {
-        patterns(test_data, &data_set).iter()
+        patterns(test_data, &data_set)
+            .iter()
             .for_each(|pattern| test_pattern(translator, pattern));
     }
 
