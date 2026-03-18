@@ -321,9 +321,16 @@ impl Element {
             {
                 let value = name.get_name()?;
                 generator.track_ref(&value);
-                let result = element.generate(generator, xsd);
+                let n = self.get_occurrences();
+
+                let mut output = vec![];
+                for _ in 0..n {
+                    let out = element.generate(generator, xsd)?;
+                    output.extend(out);
+                }
                 generator.untrack_ref(&value)?;
-                return result;
+
+                return Ok(output);
             }
         }
 
