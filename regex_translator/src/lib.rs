@@ -156,7 +156,7 @@ fn add(map: &mut HashMap<String, String>, key: &str, value: &str) {
         "IsCombiningMarksforSymbols".to_string(),
     );
 
-    alternative_names.insert("IsGreekAndCoptic".to_string(), "IsGreek".to_string());
+    alternative_names.insert("IsGreekandCoptic".to_string(), "IsGreek".to_string());
     alternative_names.insert("IsPrivateUseArea".to_string(), "IsPrivateUse".to_string());
 
     if alternative_names.contains_key(key) {
