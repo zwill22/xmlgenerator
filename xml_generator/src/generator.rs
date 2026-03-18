@@ -2,7 +2,7 @@ use crate::XMLGeneratorError;
 use crate::datetime::Datetime;
 use crate::element::Element;
 use crate::pattern::Pattern;
-use crate::whitespace::{check_line_endings, WhiteSpace};
+use crate::whitespace::{WhiteSpace, check_line_endings};
 use crate::xsd_type::XsdType;
 use chrono::Duration;
 use fake::{Fake, Faker};
@@ -380,14 +380,14 @@ impl Generator {
             return match self.regex(specific_pattern, true) {
                 Some(output) => Some(output),
                 None => self.regex(specific_pattern, false),
-            }
+            };
         }
 
         if specific_pattern.is_empty() || specific_pattern == base_pattern {
             return match self.regex(base_pattern, true) {
                 Some(output) => Some(output),
                 None => self.regex(base_pattern, false),
-            }
+            };
         }
 
         for ascii in [true, false] {

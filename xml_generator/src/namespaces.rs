@@ -130,16 +130,13 @@ impl Namespaces {
         None
     }
 
-    fn set_target_namespace(
-        &mut self,
-        target_location: &str,
-    ) -> Result<(), XMLGeneratorError> {
+    fn set_target_namespace(&mut self, target_location: &str) -> Result<(), XMLGeneratorError> {
         // A target namespace is provided but does not match any given namespace
         // There are two options here:
         // 1. Throw an error, do not accept an unnamed target namespace (easy, but may not be standard)
         // 2. Assign target namespace a random name and prefix all elements with this prefix
         // TODO Consider the above
-        match self.find(&target_location) {
+        match self.find(target_location) {
             None => Err(XMLGeneratorError::DataTypesFormatError(
                 "No target namespace found.".to_string(),
             )),
@@ -155,7 +152,7 @@ impl Namespaces {
     }
 
     fn check_target_namespace(&self, ns: &str, target: &str) -> Result<(), XMLGeneratorError> {
-        if let Some(new_target) = self.find(&ns)
+        if let Some(new_target) = self.find(ns)
             && new_target.eq(target)
         {
             return Err(XMLGeneratorError::DataTypesFormatError(
@@ -166,10 +163,7 @@ impl Namespaces {
         Ok(())
     }
 
-    fn add_target_namespace(
-        &mut self,
-        ns: &str,
-    ) -> Result<(), XMLGeneratorError> {
+    fn add_target_namespace(&mut self, ns: &str) -> Result<(), XMLGeneratorError> {
         if let Some(default_ns) = &self.default_namespace
             && default_ns.eq(&ns)
         {

@@ -5,9 +5,9 @@ use crate::pattern::Pattern;
 use crate::whitespace::WhiteSpace;
 use const_format::formatcp;
 use http::Uri;
+use language_tags::LanguageTag;
 use regex::Regex;
 use std::fmt::Display;
-use language_tags::LanguageTag;
 
 #[derive(Default, PartialEq)]
 pub(crate) enum XsdType {
