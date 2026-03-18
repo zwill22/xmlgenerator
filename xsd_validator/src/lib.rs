@@ -5,6 +5,7 @@ use crate::warning_handler::WarningHandler;
 use libxml2_rs::{xmlCleanupParser, xmlInitParser};
 use std::env::{current_dir, set_current_dir};
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 mod error;
 mod parser;
@@ -14,17 +15,23 @@ pub mod tracker;
 mod warning_handler;
 
 pub struct XSDValidator {
-    print_warnings: bool,
+    lock: Mutex<()>,
+    warnings: bool,
 }
 
 impl XSDValidator {
     pub fn new(print_warnings: bool) -> XSDValidator {
         unsafe { xmlInitParser() };
 
-        XSDValidator { print_warnings }
+        XSDValidator {
+            lock: Mutex::new(()),
+            warnings: print_warnings
+        }
     }
 
+    // TODO New XsdValidator
     fn validate_file(&self, path: &PathBuf) -> Result<bool, XSDValidationError> {
+        let _guard = self.lock.lock().unwrap();
         recursion_check(path)?;
         let mut errors: Vec<String> = Vec::new();
 
@@ -33,7 +40,7 @@ impl XSDValidator {
 
         let mut warning_handler = WarningHandler::new();
 
-        if !self.print_warnings {
+        if !self.warnings {
             warning_handler.redirect()?;
         }
 
@@ -43,7 +50,7 @@ impl XSDValidator {
 
         for error in &errors {
             if error.to_lowercase().contains("skipping") {
-                if self.print_warnings {
+                if self.warnings {
                     eprintln!("{}", error);
                 }
             } else {
