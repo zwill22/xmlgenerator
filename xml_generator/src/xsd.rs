@@ -86,6 +86,10 @@ impl Xsd {
 
         for (prefix, location) in self.namespaces.get_other_namespaces() {
             if prefix == "xs" {
+                if self.namespaces.get_other_namespaces().contains_key("xsi") {
+                    continue;
+                }
+
                 let value = location.to_string() + "-instance";
                 element.add_attribute("xmlns:xsi", &value);
             } else if prefix == "xml" {
