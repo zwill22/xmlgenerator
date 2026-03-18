@@ -228,8 +228,7 @@ impl Generator {
     }
 
     fn get_language_pattern() -> Pattern {
-        const LANGUAGE_PATTERN: &str = "([a-zA-Z]{2}|[iI]-[a-zA-Z]+|[xX]-[a-zA-Z]{1,8})(-[a-zA-Z]{1,8})*";
-
+        const LANGUAGE_PATTERN: &str = "[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*";
         Pattern::from_string(LANGUAGE_PATTERN, &WhiteSpace::Collapse).unwrap()
     }
 
