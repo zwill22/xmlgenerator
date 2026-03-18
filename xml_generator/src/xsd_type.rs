@@ -7,6 +7,7 @@ use const_format::formatcp;
 use http::Uri;
 use regex::Regex;
 use std::fmt::Display;
+use language_tags::LanguageTag;
 
 #[derive(Default, PartialEq)]
 pub(crate) enum XsdType {
@@ -31,6 +32,7 @@ pub(crate) enum XsdType {
     // Base64Binary, // A base64 value
     // HexBinary,    // A hexidecimal binary value
     Duration, // A duration of time
+    Language, // An RFC 1766 language string
 
     DateTime(Datetime),
     String(Pattern), // A string type with a pattern
@@ -55,6 +57,13 @@ fn validate_duration(input: &str) -> bool {
     const DURATION: &str = r"[Pp](?:[0-9]+[Yy])?(?:[0-9]+[Mm])?(?:[0-9]+[Dd])?T?(?:[0-9]+[Hh])?(?:[0-9]+[Mm])?(?:[0-9]+[Ss])?";
 
     validate(input, DURATION).unwrap_or(false)
+}
+
+fn validate_language(input: &str) -> bool {
+    match LanguageTag::parse(input) {
+        Ok(tag) => tag.is_valid(),
+        Err(_) => false,
+    }
 }
 
 fn validate_pattern(pattern: &Pattern, input: &str) -> bool {
@@ -102,6 +111,7 @@ impl XsdType {
             // XsdType::Base64Binary => unimplemented!("Base64Binary"),
             // XsdType::HexBinary => unimplemented!("HexBinary"),
             XsdType::Duration => validate_duration(input),
+            XsdType::Language => validate_language(input),
             XsdType::DateTime(_) => unimplemented!("Datetime validation"),
             XsdType::String(pattern) => validate_pattern(pattern, input),
             XsdType::None => false,
@@ -124,6 +134,7 @@ impl XsdType {
             // XsdType::Base64Binary => WhiteSpace::Collapse,
             // XsdType::HexBinary => WhiteSpace::Collapse,
             XsdType::Duration => WhiteSpace::Collapse,
+            XsdType::Language => WhiteSpace::Collapse,
             XsdType::DateTime(_) => WhiteSpace::Collapse,
             XsdType::String(pattern) => pattern.get_whitespace(),
             XsdType::None => WhiteSpace::Preserve,
@@ -148,7 +159,6 @@ impl XsdType {
         const NAME: &str = r"\i\c*";
         const NCNAME: &str = r"[\i--[:]][\c--[:]]*";
         const NMTOKEN: &str = r"\c+";
-        const LANGUAGE: &str = "r[a-zA-Z]{1,8}(-[a-zA-Z0-9]{1,8})*";
         const NORMAL: &str = r"[^\r\n\t]*";
         const TOKEN: &str = r"[^\s]*(?: [^\s]*)*";
         const NC_NAMES: &str = formatcp!(r"{0}(?:\s+{0})*", NCNAME);
@@ -190,7 +200,7 @@ impl XsdType {
             "ENTITY" => XsdType::string(NCNAME, &COLLAPSE),
             "ID" => XsdType::string(NCNAME, &COLLAPSE),
             "IDREF" => unimplemented("IDREF"), // Requires cross-referencing
-            "language" => XsdType::string(LANGUAGE, &COLLAPSE),
+            "language" => Ok(XsdType::Language),
             "Name" => XsdType::string(NAME, &COLLAPSE),
             "NCName" => XsdType::string(NCNAME, &COLLAPSE),
             "NMTOKEN" => XsdType::string(NMTOKEN, &COLLAPSE),
@@ -250,6 +260,7 @@ impl Display for XsdType {
             // XsdType::Base64Binary => "Base64Binary".to_string(),
             // XsdType::HexBinary => "HexBinary".to_string(),
             XsdType::Duration => "Duration".to_string(),
+            XsdType::Language => "Language".to_string(),
             XsdType::DateTime(datetime) => {
                 format!("Datetime with pattern: {}", datetime)
             }

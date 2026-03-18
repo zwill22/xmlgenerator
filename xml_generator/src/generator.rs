@@ -2,7 +2,7 @@ use crate::XMLGeneratorError;
 use crate::datetime::Datetime;
 use crate::element::Element;
 use crate::pattern::Pattern;
-use crate::whitespace::check_line_endings;
+use crate::whitespace::{check_line_endings, WhiteSpace};
 use crate::xsd_type::XsdType;
 use chrono::Duration;
 use fake::{Fake, Faker};
@@ -220,6 +220,31 @@ impl Generator {
         self.regex(pattern, true)
     }
 
+    fn generate_language(&mut self, pattern: &Pattern) -> Option<String> {
+        match self.regex(pattern, false) {
+            Some(s) => Some(s),
+            None => self.generate_language(pattern),
+        }
+    }
+
+    fn get_language_pattern() -> Pattern {
+        const LANGUAGE_PATTERN: &str = "([a-zA-Z]{2}|[iI]-[a-zA-Z]+|[xX]-[a-zA-Z]{1,8})(-[a-zA-Z]{1,8})*";
+
+        Pattern::from_string(LANGUAGE_PATTERN, &WhiteSpace::Collapse).unwrap()
+    }
+
+    fn fake_language(&mut self) -> Option<String> {
+        let pattern = Self::get_language_pattern();
+
+        self.generate_language(&pattern)
+    }
+
+    fn generate_language_pattern(&mut self, pattern: &Pattern) -> Option<String> {
+        let language_pattern = Self::get_language_pattern();
+
+        self.generate_two_patterns(&language_pattern, pattern, 0)
+    }
+
     fn fake_datetime(&mut self, datetime: &Datetime) -> Option<String> {
         datetime.generate(&mut self.rng)
     }
@@ -248,6 +273,7 @@ impl Generator {
             // XsdType::Base64Binary => fake_base64(),
             // XsdType::HexBinary => fake_hex(),
             XsdType::Duration => fake::<Duration>(),
+            XsdType::Language => self.fake_language(),
             XsdType::DateTime(datetime) => self.fake_datetime(datetime),
             XsdType::String(pattern) => self.fake_string(pattern, ascii),
             XsdType::None => None,
@@ -352,11 +378,17 @@ impl Generator {
         }
 
         if base_pattern.is_empty() {
-            return self.regex(specific_pattern, true);
+            return match self.regex(specific_pattern, true) {
+                Some(output) => Some(output),
+                None => self.regex(specific_pattern, false),
+            }
         }
 
-        if specific_pattern.is_empty() {
-            return self.regex(base_pattern, true);
+        if specific_pattern.is_empty() || specific_pattern == base_pattern {
+            return match self.regex(base_pattern, true) {
+                Some(output) => Some(output),
+                None => self.regex(base_pattern, false),
+            }
         }
 
         for ascii in [true, false] {
@@ -393,6 +425,7 @@ impl Generator {
             // XsdType::Base64Binary => self.generate_pattern(xsd_type, pattern, ASCII),
             // XsdType::HexBinary => self.generate_pattern(xsd_type, pattern, ASCII),
             XsdType::Duration => self.generate_pattern(xsd_type, pattern, ASCII),
+            XsdType::Language => self.generate_language_pattern(pattern),
             XsdType::DateTime(datetime) => self.generate_date_with_pattern(datetime, pattern),
             XsdType::String(string) => self.generate_two_patterns(string, pattern, 0),
             XsdType::None => self.regex(pattern, ASCII),
