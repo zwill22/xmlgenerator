@@ -148,16 +148,14 @@ impl Namespaces {
                 "No target namespace found.".to_string(),
             )),
             Some(ns) => {
-                if ns.eq("xs") {
-                    let valid_name = self.generate_valid_name(generator, schemas)?;
-                    self.target_namespace = Some(valid_name.clone());
-                    self.other_namespaces.insert(valid_name, target_location);
-                    return Ok(());
-                }
                 self.target_namespace = Some(ns.clone());
                 Ok(())
             }
         }
+    }
+    
+    pub(crate) fn get_target_namespace(&self) -> Option<String> {
+        self.target_namespace.clone()
     }
 
     fn check_target_namespace(&self, ns: String, target: &String) -> Result<(), XMLGeneratorError> {
