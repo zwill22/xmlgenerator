@@ -12,7 +12,7 @@ mod tests {
 
     #[test]
     fn test_blank_path() {
-        let validator = XSDValidator::new(true);
+        let validator = XSDValidator::new(false);
 
         let path = PathBuf::new();
 

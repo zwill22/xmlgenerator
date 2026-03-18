@@ -40,22 +40,22 @@ mod tests {
         parse_node(regex, root);
     }
 
-    fn handle_errors(error: RegexTranslationError, input: &str) {
+    fn handle_errors(error: RegexTranslationError, input: &str) -> String {
         match error {
-            RegexTranslationError::InvalidInput(e) => println!("{}", e),
+            RegexTranslationError::InvalidInput(e) => format!("{}", e),
             RegexTranslationError::RegexError(e) => panic!("{}", e),
             RegexTranslationError::FileReadError(e) => panic!("{}", e),
             RegexTranslationError::DataError(e) => panic!("{}", e),
             RegexTranslationError::UnicodeError(e) => panic!("{}", e),
-            RegexTranslationError::SurrogatesError => println!("Surrogates in input: {}", input),
+            RegexTranslationError::SurrogatesError => format!("Surrogates in input: {}", input),
         }
     }
 
-    fn test_pattern(translator: &RegexTranslator, pattern: &str) {
+    fn test_pattern(translator: &RegexTranslator, pattern: &str) -> String {
         match translator.translate(&pattern, true) {
-            Ok(_) => return,
+            Ok(translation) => translation,
             Err(_) => match translator.translate(&pattern, false) {
-                Ok(_) => return,
+                Ok(translation) => translation,
                 Err(e) => handle_errors(e, &pattern),
             },
         }
@@ -101,9 +101,9 @@ mod tests {
     #[case::boeing_data("boeingData")]
     #[case::common("common")]
     fn it_works(translator: &RegexTranslator, test_data: &XsdTestData, #[case] data_set: String) {
-        patterns(test_data, &data_set)
-            .iter()
-            .for_each(|pattern| test_pattern(translator, pattern));
+        for pattern in patterns(test_data, &data_set) {
+            test_pattern(translator, &pattern);
+        }
     }
 
     fn handle_surrogate_string(translator: &RegexTranslator, surrogate: &str) {

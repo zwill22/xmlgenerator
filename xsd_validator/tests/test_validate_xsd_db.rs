@@ -6,7 +6,7 @@ mod tests {
     use xsdtestdata::XsdTestData;
     use xsdvalidator::{XSDValidationError, XSDValidator};
 
-    fn check_error(error: &XSDValidationError, path: &Path) {
+    fn check_error(error: &XSDValidationError, path: &Path) -> String {
         match error {
             XSDValidationError::PathError => panic!("Error resolving path: {:?}", path),
             XSDValidationError::StringError => panic!("Error converting path to string"),
@@ -16,31 +16,35 @@ mod tests {
                 panic!("Error generating context for file: {:?}", path)
             }
             XSDValidationError::XSDRecursionError => {
-                eprintln!("File includes recursive loop: {:?}", path);
+                format!("File includes recursive loop: {:?}", path)
             }
             XSDValidationError::ParseError(_) => {
-                eprintln!("Invalid file listed as valid: {:?}", path)
+                format!("Invalid file listed as valid: {:?}", path)
             }
         }
     }
 
-    fn test_valid_file(validator: &XSDValidator, path: &PathBuf) {
+    fn test_valid_file(validator: &XSDValidator, path: &PathBuf) -> String {
         match validator.validate(path) {
             Ok(value) => {
                 if !value {
                     panic!("Invalid XSD: {:?}", path);
                 }
+
+                "".to_string()
             }
             Err(e) => check_error(&e, &path),
         }
     }
 
-    fn test_invalid_file(validator: &XSDValidator, path: &PathBuf) {
+    fn test_invalid_file(validator: &XSDValidator, path: &PathBuf) -> String {
         if let Ok(value) = validator.validate(path) {
             if value {
-                eprintln!("Invalid XSD validated: {:?}", path);
+                return format!("Invalid XSD validated: {:?}", path);
             }
         }
+
+        "".to_string()
     }
 
     #[fixture]
