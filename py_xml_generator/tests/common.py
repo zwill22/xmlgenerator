@@ -21,18 +21,6 @@ def get_project_root() -> Path:
     )
 
 
-def identity(file: Path, parent_path: Path) -> str:
-    full_path = str(file)
-    root_path = str(parent_path)
-
-    out = full_path.replace(root_path, "")
-
-    if out.startswith("/"):
-        return out[1:]
-
-    return out
-
-
 def setup_xmlschema11(filepath):
     try:
         schema = XMLSchema11(filepath)

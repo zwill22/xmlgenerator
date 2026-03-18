@@ -280,7 +280,7 @@ fn file_path(db_root: &PathBuf, path_string: &str) -> PathBuf {
     db_root.join(path_string)
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct XsdTestData {
     data: Vec<XsdData>,
 }
@@ -457,6 +457,33 @@ impl XsdTestData {
             test_data: &self,
             index: 0,
         }
+    }
+}
+
+pub struct XsdTestDataIntoIterator {
+    test_data: XsdTestData,
+}
+
+impl Iterator for XsdTestDataIntoIterator {
+    type Item = XsdData;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.test_data.data.len() == 0 {
+            return None;
+        }
+
+        let result = self.test_data.data.remove(0);
+
+        Some(result)
+    }
+}
+
+impl IntoIterator for XsdTestData {
+    type Item = XsdData;
+    type IntoIter = XsdTestDataIntoIterator;
+
+    fn into_iter(self) -> XsdTestDataIntoIterator {
+        XsdTestDataIntoIterator { test_data: self }
     }
 }
 
