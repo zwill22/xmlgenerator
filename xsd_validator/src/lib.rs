@@ -25,7 +25,7 @@ impl XSDValidator {
 
         XSDValidator {
             lock: Mutex::new(()),
-            warnings: print_warnings
+            warnings: print_warnings,
         }
     }
 

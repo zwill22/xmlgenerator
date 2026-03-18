@@ -9,7 +9,7 @@ mod tests {
     use xmlgenerator::{XMLGenerator, XMLGeneratorError};
     use xsdtestdata::XsdTestData;
 
-    fn check_error(error: &XMLGeneratorError) {
+    fn check_error(error: &XMLGeneratorError) -> String {
         match error {
             XMLGeneratorError::InvalidPathError(e) => panic!("Invalid path: {}", e),
             XMLGeneratorError::XSDValidatorError(e) => panic!("XSD validator error: {}", e),
@@ -18,59 +18,52 @@ mod tests {
             }
             XMLGeneratorError::DataTypeNotFoundError(e) => panic!("DataType not found: {}", e),
             XMLGeneratorError::XSDParserError(e) => {
-                eprintln!("XSD Parser Error: {}", e);
+                format!("XSD Parser Error: {}", e)
             }
             XMLGeneratorError::DataTypesFormatError(e) => {
-                eprintln!("Data Types Format Error: {}", e);
+                format!("Data Types Format Error: {}", e)
             }
             XMLGeneratorError::XMLBuilderError(e) => panic!("XML builder error: {}", e),
             XMLGeneratorError::InvalidXSDVersionError(e) => {
-                eprintln!("Invalid XSD Version: {}", e);
+                format!("Invalid XSD Version: {}", e)
             }
-            XMLGeneratorError::InfiniteRecursionError => {
-                eprintln!("Infinite Recursion detected");
-            }
-            XMLGeneratorError::NoElementsError => {
-                eprintln!("No Elements in XSD");
-            }
+            XMLGeneratorError::InfiniteRecursionError => "Infinite Recursion detected".to_string(),
+            XMLGeneratorError::NoElementsError => "No Elements in XSD".to_string(),
             XMLGeneratorError::InvalidXSDError(e) => panic!("Invalid XSD error: {}", e),
             XMLGeneratorError::InvalidXSDNameError(e) => {
-                eprintln!("Invalid XSD element name: {}", e);
+                format!("Invalid XSD element name: {}", e)
             }
             XMLGeneratorError::NoIndependentElementsError => {
-                eprintln!("No Independent Elements found in XSD");
+                "No Independent Elements found in XSD".to_string()
             }
-            XMLGeneratorError::MultipleRootsError => {
-                eprintln!("Multiple Roots found in XSD");
-            }
+            XMLGeneratorError::MultipleRootsError => "Multiple Roots found in XSD".to_string(),
             XMLGeneratorError::TypeGenerationError(e) => panic!("Type generation error: {}", e),
             XMLGeneratorError::RegexError(e) => panic!("Regex error: {}", e),
             XMLGeneratorError::RegexMismatchError(p1, p2) => {
-                eprintln!("Regex mismatch error: {} <-> {}", p1, p2);
+                format!("Regex mismatch error: {} <-> {}", p1, p2)
             }
-            XMLGeneratorError::EncodingError => {
-                eprintln!("Encoding error");
-            }
+            XMLGeneratorError::EncodingError => "Encoding error".to_string(),
             XMLGeneratorError::LineEndingsError(e) => {
-                eprintln!("Invalid line ending error: {}", e);
+                format!("Invalid line ending error: {}", e)
             }
-            XMLGeneratorError::UnimplementedFeature(_) => {}
+            XMLGeneratorError::UnimplementedFeature(e) => {
+                format!("Unimplemented feature: {}", e)
+            }
         }
     }
 
-    fn check_result_str(str: &str) {
+    fn check_result_str(str: &str) -> String {
         if str.is_empty() {
             panic!("Empty string is not allowed");
         }
 
-        //println!("{}", str.replace(">", ">\n").replace("</", "\n</"));
-        //println!("{}", str);
+        str.to_string()
     }
 
-    fn test_file(generator: &XMLGenerator, test_data: &XsdTestData, path: &str) {
+    fn test_file(generator: &XMLGenerator, test_data: &XsdTestData, path: &str) -> String {
         let data = match test_data.get(path) {
             Some(data) => data,
-            None => return,
+            None => return "".to_string(),
         };
 
         let path = data.get_path();
@@ -146,11 +139,12 @@ mod tests {
         }
     }
 
-    #[rstest]
-    #[case("saxonData/XmlVersions/xv008.xsd")]
-    fn test_files(generator: &XMLGenerator, test_data: &XsdTestData, #[case] file: &str) {
-        println!("{}", file);
-
-        test_file(generator, test_data, file);
-    }
+    // #[rstest]
+    // fn test_single_file(generator: &XMLGenerator, test_data: &XsdTestData) {
+    //     let file = "saxonData/XmlVersions/xv008.xsd";
+    //     println!("{}", file);
+    //
+    //     let output = test_file(generator, test_data, file);
+    //     println!("{}", output);
+    // }
 }
