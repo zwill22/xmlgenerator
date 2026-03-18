@@ -6,7 +6,6 @@ use crate::xsd_type::XsdType;
 use std::collections::HashMap;
 use std::str::from_utf8;
 use xsd_parser::Schemas;
-use xsd_parser::models::schema::xs::{Import, SchemaContent};
 use xsd_parser::models::schema::{NamespaceInfo, SchemaInfo};
 
 fn check_namespace_exists(ns: &String, schemas: &Schemas) -> Result<(), XMLGeneratorError> {
@@ -41,7 +40,6 @@ pub(crate) struct Namespaces {
     root_namespace: Option<String>,
     default_namespace: Option<String>,
     target_namespace: Option<String>,
-    locations: HashMap<String, String>,
     other_namespaces: HashMap<String, String>,
 }
 
@@ -134,9 +132,7 @@ impl Namespaces {
 
     fn set_target_namespace(
         &mut self,
-        generator: &mut Generator,
-        schemas: &Schemas,
-        target_location: String,
+        target_location: &str,
     ) -> Result<(), XMLGeneratorError> {
         // A target namespace is provided but does not match any given namespace
         // There are two options here:
@@ -153,12 +149,12 @@ impl Namespaces {
             }
         }
     }
-    
+
     pub(crate) fn get_target_namespace(&self) -> Option<String> {
         self.target_namespace.clone()
     }
 
-    fn check_target_namespace(&self, ns: String, target: &String) -> Result<(), XMLGeneratorError> {
+    fn check_target_namespace(&self, ns: &str, target: &str) -> Result<(), XMLGeneratorError> {
         if let Some(new_target) = self.find(&ns)
             && new_target.eq(target)
         {
@@ -172,9 +168,7 @@ impl Namespaces {
 
     fn add_target_namespace(
         &mut self,
-        generator: &mut Generator,
-        schemas: &Schemas,
-        ns: String,
+        ns: &str,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(default_ns) = &self.default_namespace
             && default_ns.eq(&ns)
@@ -183,32 +177,11 @@ impl Namespaces {
         }
 
         match &self.target_namespace {
-            None => self.set_target_namespace(generator, schemas, ns)?,
+            None => self.set_target_namespace(ns)?,
             Some(target) => self.check_target_namespace(ns, target)?,
         }
 
         Ok(())
-    }
-
-    fn set_location(&mut self, import: &Import, location: &String) {
-        match &import.namespace {
-            None => {
-                self.locations
-                    .insert(location.to_string(), location.to_string());
-            }
-            Some(ns) => {
-                self.locations.insert(ns.to_string(), location.to_string());
-            }
-        }
-    }
-
-    fn get_imports(&mut self, import: &Import) {
-        match &import.schema_location {
-            None => {}
-            Some(location) => {
-                self.set_location(import, location);
-            }
-        };
     }
 
     fn get_info(
@@ -253,13 +226,7 @@ impl Namespaces {
             && root
         {
             check_namespace_exists(ns, schemas)?;
-            self.add_target_namespace(generator, schemas, ns.to_string())?;
-        }
-
-        for content in &schema.content {
-            if let SchemaContent::Import(import) = content {
-                self.get_imports(import)
-            }
+            self.add_target_namespace(ns)?;
         }
 
         generator.set_qualification(schema_info);
