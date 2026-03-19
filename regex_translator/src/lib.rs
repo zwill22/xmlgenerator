@@ -4,7 +4,7 @@ use core::fmt::Display;
 
 use line_ending::LineEnding;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::num::ParseIntError;
 use unic_char_basics::{is_noncharacter, is_private_use};
 use unic_ucd::CharAge;
@@ -73,12 +73,6 @@ impl Display for RegexTranslationError {
         }
     }
 }
-fn validate_input(input: &str) -> Result<(), RegexTranslationError> {
-    match regexml::Regex::xsd(input, "") {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e.into()),
-    }
-}
 
 fn is_surrogate(character: char) -> bool {
     const MIN: u32 = 55296; // 0xD800
@@ -90,6 +84,10 @@ fn is_surrogate(character: char) -> bool {
 }
 
 fn is_supported(character: char) -> bool {
+    if character.is_control() {
+        return false;
+    }
+
     if is_surrogate(character) {
         return false;
     }
@@ -149,7 +147,7 @@ fn get_unicode_categories() -> Result<HashMap<String, Vec<char>>, RegexTranslati
                 GeneralCategory::PrivateUse => "Co",
                 GeneralCategory::Unassigned => "Cn",
             }
-            .to_string();
+                .to_string();
 
             let supergroup = category.chars().next().unwrap().to_string();
 
@@ -187,7 +185,7 @@ fn add(map: &mut HashMap<String, String>, key: &str, value: &str) {
     }
 }
 
-fn unicode_blocks(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
+fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
     let mut map = HashMap::new();
 
     for block in BlockIter::new() {
@@ -198,10 +196,6 @@ fn unicode_blocks(ascii: bool) -> Result<HashMap<String, String>, RegexTranslati
         let min_char = range.low;
         let max_char = range.high;
 
-        if ascii && (min_char as u32 > 128 || max_char as u32 > 128) {
-            break;
-        }
-
         let key = format!("Is{}", name);
         let range = format!(r"[{}-{}]", min_char, max_char);
 
@@ -211,16 +205,13 @@ fn unicode_blocks(ascii: bool) -> Result<HashMap<String, String>, RegexTranslati
     Ok(map)
 }
 
-fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
+fn unicode_categories() -> Result<HashMap<String, String>, RegexTranslationError> {
     let data = get_unicode_categories()?;
 
     let mut map = HashMap::new();
     for (key, values) in data {
         let mut string = r"[".to_owned();
         for value in values {
-            if ascii && value as u32 > 128 {
-                continue;
-            }
             string.push_str(value.escape_unicode().to_string().as_str());
         }
         string.push(']');
@@ -235,25 +226,17 @@ fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTrans
     Ok(map)
 }
 
-fn unicode_definitions(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut blocks = unicode_blocks(ascii)?;
-    let sets = unicode_categories(ascii)?;
+fn unicode_definitions() -> Result<HashMap<String, String>, RegexTranslationError> {
+    let mut blocks = unicode_blocks()?;
+    let sets = unicode_categories()?;
 
     blocks.extend(sets);
 
     Ok(blocks)
 }
 
-fn get_comp_set(set: &str, ascii: bool) -> String {
-    if ascii {
-        return format!(r"[[\x{{0}}-\x{{7F}}]--{}]", set);
-    }
-
-    format!(r"[^{}]", set)
-}
-
-fn get_unicode_mappings(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
-    let unicode_blocks = unicode_definitions(ascii)?;
+fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
+    let unicode_blocks = unicode_definitions()?;
 
     let mut output = HashMap::new();
 
@@ -265,7 +248,7 @@ fn get_unicode_mappings(ascii: bool) -> Result<HashMap<String, String>, RegexTra
 
         // Set negation
         let comp_block = format!(r"\P{{{}}}", k);
-        let comp_set = get_comp_set(&v, ascii);
+        let comp_set = format!(r"[^{}]", v);
 
         output.insert(comp_block, comp_set);
     }
@@ -273,23 +256,44 @@ fn get_unicode_mappings(ascii: bool) -> Result<HashMap<String, String>, RegexTra
     Ok(output)
 }
 
-fn handle_surrogates(output: &str) -> Result<(), RegexTranslationError> {
-    let surrogate_strings = vec![
-        r"\p{IsHighSurrogates}",
-        r"\p{IsHighPrivateUseSurrogates}",
-        r"\p{IsLowSurrogates}",
-        r"\P{IsHighSurrogates}",
-        r"\P{IsHighPrivateUseSurrogates}",
-        r"\P{IsLowSurrogates}",
-    ];
+fn into_sets<Str: Display>(input: Vec<Str>) -> HashSet<String> {
+    let mut output = HashSet::new();
 
-    for string in surrogate_strings {
-        if output.contains(string) {
-            return Err(RegexTranslationError::SurrogatesError);
-        }
+    for k in input {
+        output.insert(format!(r"\p{{{}}}", k));
+        output.insert(format!(r"\P{{{}}}", k));
     }
 
-    Ok(())
+    output
+}
+
+fn get_unsupported() -> HashSet<String> {
+    let mut out = vec![];
+
+    for block in BlockIter::new() {
+        let count = block.range.iter().filter(|c| is_supported(*c)).count();
+
+        if count > 0 {
+            continue;
+        }
+
+        let name = block.name.split_whitespace().collect::<Vec<_>>().join("");
+        let key = format!("Is{}", name);
+
+        out.push(key);
+    }
+
+    into_sets(out)
+}
+
+fn get_surrogates() -> HashSet<String> {
+    let surrogate_strings = vec![
+        "IsHighSurrogates",
+        "IsHighPrivateUseSurrogates",
+        "IsLowSurrogates",
+    ];
+
+    into_sets(surrogate_strings)
 }
 
 fn apply_common_mappings(mappings: &mut HashMap<String, String>) {
@@ -311,7 +315,7 @@ fn apply_common_mappings(mappings: &mut HashMap<String, String>) {
 }
 
 fn get_ascii_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut mappings = get_unicode_mappings(true)?;
+    let mut mappings = HashMap::new();
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z]";
@@ -346,7 +350,7 @@ fn get_ascii_mappings() -> Result<HashMap<String, String>, RegexTranslationError
 }
 
 fn get_full_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut mappings = get_unicode_mappings(false)?;
+    let mut mappings = get_unicode_mappings()?;
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
@@ -378,17 +382,6 @@ fn get_full_mappings() -> Result<HashMap<String, String>, RegexTranslationError>
     apply_common_mappings(&mut mappings);
 
     Ok(mappings)
-}
-
-fn validate_output(output: &str) -> Result<(), RegexTranslationError> {
-    match Regex::new(output) {
-        Ok(_) => Ok(()),
-        Err(e) => {
-            handle_surrogates(output)?;
-
-            Err(e.into())
-        }
-    }
 }
 
 fn replace_negation_patterns(input: &str) -> Result<String, RegexTranslationError> {
@@ -458,7 +451,7 @@ fn dot_replace(input: &str) -> Result<String, RegexTranslationError> {
     const DOT: &str = r"([^\\]|^)\.";
     let regex = Regex::new(DOT)?;
 
-    let result = regex.replace_all(&tmp, r"$1[\x{20}-\x{7E}]").to_string();
+    let result = regex.replace_all(&tmp, r"$1\w").to_string();
 
     Ok(result.to_string())
 }
@@ -467,6 +460,8 @@ fn dot_replace(input: &str) -> Result<String, RegexTranslationError> {
 pub struct RegexTranslator {
     ascii_mappings: HashMap<String, String>,
     unicode_mappings: HashMap<String, String>,
+    unsupported: HashSet<String>,
+    surrogates: HashSet<String>,
 }
 
 impl RegexTranslator {
@@ -474,9 +469,40 @@ impl RegexTranslator {
         let translator = Self {
             ascii_mappings: get_ascii_mappings()?,
             unicode_mappings: get_full_mappings()?,
+            unsupported: get_unsupported(),
+            surrogates: get_surrogates(/* &str */),
         };
 
         Ok(translator)
+    }
+
+    fn handle_surrogates(&self, input: &str) -> Result<(), RegexTranslationError> {
+        for pattern in self.surrogates.iter() {
+            if input.contains(pattern) {
+                return Err(RegexTranslationError::SurrogatesError);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn handle_unsupported_patterns(&self, input: &str) -> Result<(), RegexTranslationError> {
+        for pattern in self.unsupported.iter() {
+            if input.contains(pattern) {
+                return Err(RegexTranslationError::InvalidInput(pattern.to_string()));
+            }
+        }
+
+        Ok(())
+    }
+
+    fn validate_input(&self, input: &str) -> Result<(), RegexTranslationError> {
+        regexml::Regex::xsd(input, "")?;
+
+        self.handle_surrogates(input)?;
+        self.handle_unsupported_patterns(input)?;
+
+        Ok(())
     }
 
     fn replace(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {
@@ -526,12 +552,19 @@ impl RegexTranslator {
         false
     }
 
+    fn validate_output(&self, output: &str) -> Result<(), RegexTranslationError> {
+        match Regex::new(output) {
+            Ok(_) => Ok(()),
+            Err(_) => self.handle_surrogates(output),
+        }
+    }
+
     pub fn translate(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {
-        validate_input(input)?;
+        self.validate_input(input)?;
 
         let output = self.replace(input, ascii)?;
 
-        validate_output(&output)?;
+        self.validate_output(&output)?;
 
         Ok(output)
     }
