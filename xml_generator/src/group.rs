@@ -60,6 +60,10 @@ impl Group {
             }
         }
 
+        if group.elements.is_empty() && group.choose {
+            return Err(XMLGeneratorError::DataTypesFormatError("Empty group".to_string()));
+        }
+
         Ok(group)
     }
 
