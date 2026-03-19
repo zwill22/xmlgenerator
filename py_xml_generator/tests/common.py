@@ -63,11 +63,13 @@ class Validator:
 
     def validate(self, xml: str):
         xmlschema_valid = False
+        errors = []
         if self.xmlschema:
             try:
                 xmlschema_valid = self.xmlschema.is_valid(xml)
-            except XMLResourceParseError:
+            except XMLResourceParseError as e:
                 xmlschema_valid = False
+                errors.append(e)
 
         lxml_schema_valid = False
         if self.lxml_schema:
@@ -75,21 +77,22 @@ class Validator:
                 doc = etree.parse(BytesIO(xml.encode()))
                 self.lxml_schema.assertValid(doc)
                 lxml_schema_valid = True
-            except etree.XMLSyntaxError:
+            except etree.XMLSyntaxError as e:
                 lxml_schema_valid = False
+                errors.append(e)
             except etree.DocumentInvalid:
                 lxml_schema_valid = False
 
         if not xmlschema_valid:
             if not lxml_schema_valid:
-                return False
+                return False, errors
 
             pytest.xfail("XMLSchema failed to validate output")
 
         if not lxml_schema_valid:
             pytest.xfail("LXML failed to validate output")
 
-        return True
+        return True, errors
 
 
 def run_generator(xml_generator, filepath) -> str:
@@ -144,7 +147,7 @@ def validate_output(xml_generator, input_file: Path | str):
 
     result = run_generator(xml_generator, filepath)
 
-    valid = validator.validate(result)
+    valid, errors = validator.validate(result)
 
     os.chdir(cwd)
 
@@ -153,4 +156,13 @@ def validate_output(xml_generator, input_file: Path | str):
     except AssertionError as e:
         print("Invalid XML")
         validator.print_output(result)
+        print("Errors:")
+
+        if len(errors) > 1:
+            for i in range(1, len(errors)):
+                print(errors[i])
+
+        if len(errors) == 1:
+            raise errors[0]
+
         raise e
