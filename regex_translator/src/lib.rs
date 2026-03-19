@@ -147,7 +147,7 @@ fn get_unicode_categories() -> Result<HashMap<String, Vec<char>>, RegexTranslati
                 GeneralCategory::PrivateUse => "Co",
                 GeneralCategory::Unassigned => "Cn",
             }
-                .to_string();
+            .to_string();
 
             let supergroup = category.chars().next().unwrap().to_string();
 

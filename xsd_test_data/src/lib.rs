@@ -41,6 +41,10 @@ impl XsdData {
     pub fn get_path(&self) -> &PathBuf {
         &self.path
     }
+
+    fn is_set(&self, name: &str) -> bool {
+        self.get_data_set() == name
+    }
 }
 
 fn fetch_repo(archive_path: &PathBuf) {
@@ -401,13 +405,13 @@ impl XsdTestData {
             let valid = self
                 .data
                 .iter()
-                .filter(|data| data.data_set == **data_set && data.valid)
+                .filter(|data| data.is_set(data_set) && data.valid)
                 .count();
 
             let invalid = self
                 .data
                 .iter()
-                .filter(|data| data.data_set == **data_set && !data.valid)
+                .filter(|data| data.is_set(data_set) && !data.valid)
                 .count();
 
             println!(

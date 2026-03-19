@@ -266,7 +266,7 @@ impl Generator {
     pub(crate) fn generate_enumeration(&mut self, enumerations: &[String]) -> Option<String> {
         let enumeration = self.choose(enumerations)?;
 
-        let output = decode_html(&enumeration);
+        let output = decode_html(enumeration);
 
         Some(output)
     }
