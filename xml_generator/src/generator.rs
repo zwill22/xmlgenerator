@@ -211,7 +211,13 @@ impl Generator {
     fn generate_language_pattern(&mut self, pattern: &Pattern) -> Option<String> {
         let language_pattern = Self::get_language_pattern();
 
-        self.generate_two_patterns(&language_pattern, pattern, 0)
+        if let Some(output) = self.generate_two_patterns(&language_pattern, pattern, 0)
+            && XsdType::Language.validate(&output)
+        {
+            return Some(output);
+        }
+
+        self.generate_language_pattern(pattern)
     }
 
     fn fake_datetime(&mut self, datetime: &Datetime) -> Option<String> {
