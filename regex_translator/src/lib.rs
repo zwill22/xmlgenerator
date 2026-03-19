@@ -6,6 +6,8 @@ use line_ending::LineEnding;
 use regex::Regex;
 use std::collections::HashMap;
 use std::num::ParseIntError;
+use unic_char_basics::{is_noncharacter, is_private_use};
+use unic_ucd::CharAge;
 use unic_ucd_block::BlockIter;
 use unic_ucd_category::GeneralCategory;
 
@@ -87,12 +89,32 @@ fn is_surrogate(character: char) -> bool {
     MIN <= z && z <= MAX
 }
 
+fn is_supported(character: char) -> bool {
+    if is_surrogate(character) {
+        return false;
+    }
+
+    if is_noncharacter(character) {
+        return false;
+    }
+
+    if is_private_use(character) {
+        return false;
+    }
+
+    if character.age().is_none() {
+        return false;
+    }
+
+    true
+}
+
 fn get_unicode_categories() -> Result<HashMap<String, Vec<char>>, RegexTranslationError> {
     let mut lists: HashMap<String, Vec<char>> = HashMap::new();
 
     for block in BlockIter::new() {
         for character in block.range.iter() {
-            if is_surrogate(character) {
+            if !is_supported(character) {
                 continue;
             }
             let category = match GeneralCategory::of(character) {
@@ -310,7 +332,7 @@ fn get_ascii_mappings() -> Result<HashMap<String, String>, RegexTranslationError
     mappings.insert(NEGATIVE_C.to_string(), NEGATIVE_C_SET.to_string());
 
     const W: &str = r"\w";
-    const W_SET: &str = r"[a-zA-Z0-9_]";
+    const W_SET: &str = r"[a-zA-Z0-9]";
 
     const NEGATIVE_W: &str = r"\W";
     const NEGATIVE_W_SET: &str = r"[[\x{20}-\x{7E}]--[a-zA-Z0-9_]]";
@@ -345,7 +367,7 @@ fn get_full_mappings() -> Result<HashMap<String, String>, RegexTranslationError>
     mappings.insert(NEGATIVE_C.to_string(), NEGATIVE_C_SET.to_string());
 
     const W: &str = r"\w";
-    const W_SET: &str = r"[[[:alpha:]][0-9]_]";
+    const W_SET: &str = r"[[[:alpha:]][0-9]]";
 
     const NEGATIVE_W: &str = r"\W";
     const NEGATIVE_W_SET: &str = r"[^[[:alnum:]]]";
