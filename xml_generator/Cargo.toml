@@ -22,6 +22,7 @@ line-ending = "1.5.1"
 regex-intersect = "1.2.0"
 quick-xml = "0.38.4"
 language-tags = "0.3.2"
+html-escape = "0.2.13"
 
 [dev-dependencies]
 workspace_root = "0.2.0"

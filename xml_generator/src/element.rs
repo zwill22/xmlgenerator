@@ -1,9 +1,9 @@
 use crate::data_type::DataType;
+use crate::encoder::encode_html;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::special::replace_specials;
 use crate::xsd::Xsd;
 use crate::xsd_type::XsdType;
 use rand::Rng;
@@ -235,7 +235,7 @@ impl Element {
         xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(output) = generator.generate_type(&self.xsd_type) {
-            let value = replace_specials(&output, &self.xsd_type.whitespace())?;
+            let value = encode_html(&output, &self.xsd_type.whitespace())?;
             xml_element.add_text(value)?;
             return Ok(());
         }

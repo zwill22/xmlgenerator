@@ -1,6 +1,7 @@
 use crate::XMLGeneratorError;
 use crate::datetime::Datetime;
 use crate::element::Element;
+use crate::encoder::decode_html;
 use crate::pattern::Pattern;
 use crate::whitespace::{WhiteSpace, check_line_endings};
 use crate::xsd_type::XsdType;
@@ -20,37 +21,6 @@ fn make_fake<Output: fake::Dummy<Faker> + ToString>() -> Option<Output> {
 
 fn fake<Input: fake::Dummy<Faker> + ToString>() -> Option<String> {
     make_fake::<Input>().map(|output| output.to_string())
-}
-
-fn parse(string: &str) -> Option<String> {
-    let regex = Regex::new(r"&#x(\w+);").unwrap();
-
-    let mut tmp = string.to_string();
-    for capture in regex.captures_iter(string) {
-        let full_match = capture.get(0).unwrap();
-        let partial = capture.get(1).unwrap();
-
-        const HEX: u32 = 16;
-        let value = match u32::from_str_radix(partial.as_str(), HEX) {
-            Ok(v) => v,
-            Err(_) => return None,
-        };
-
-        let c = match char::from_u32(value) {
-            Some(c) => c.to_string(),
-            None => return None,
-        };
-
-        tmp = tmp.replace(full_match.as_str(), c.as_str());
-    }
-
-    let out1 = tmp
-        .replace("&amp;", "&")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&quot", "\"");
-
-    Some(out1)
 }
 
 pub(crate) struct Generator {
@@ -288,9 +258,11 @@ impl Generator {
     }
 
     pub(crate) fn generate_enumeration(&mut self, enumerations: &[String]) -> Option<String> {
-        let out = self.choose(enumerations)?;
+        let enumeration = self.choose(enumerations)?;
 
-        parse(out)
+        let output = decode_html(&enumeration);
+
+        Some(output)
     }
 
     fn find_match(pattern: &Pattern, input: &str, ascii: bool) -> Option<String> {

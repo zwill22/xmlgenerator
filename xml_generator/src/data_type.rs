@@ -1,9 +1,9 @@
 use crate::attribute::Attribute;
+use crate::encoder::encode_html;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::group::Group;
 use crate::namespaces::Namespaces;
-use crate::special::replace_specials;
 use crate::type_info::TypeInfo;
 use crate::whitespace::WhiteSpace;
 use crate::xsd::Xsd;
@@ -169,7 +169,7 @@ impl DataType {
         if let Some(type_info) = &self.type_info {
             return match type_info.generate(generator, xsd)? {
                 Some(value) => {
-                    let attribute = replace_specials(&value, &WhiteSpace::Collapse)?;
+                    let attribute = encode_html(&value, &WhiteSpace::Collapse)?;
                     xml_element.add_attribute(name, &attribute);
                     Ok(())
                 }
@@ -205,7 +205,7 @@ impl DataType {
                     ));
                 }
                 Some(value) => {
-                    let result = replace_specials(&value, &WhiteSpace::Preserve)?;
+                    let result = encode_html(&value, &WhiteSpace::Preserve)?;
                     if let Err(error) = xml_element.add_text(result) {
                         return Err(XMLGeneratorError::XMLBuilderError(error.to_string()));
                     }

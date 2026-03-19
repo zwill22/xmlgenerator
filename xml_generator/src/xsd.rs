@@ -1,12 +1,12 @@
 use crate::XMLGeneratorError;
 use crate::data_type::DataType;
 use crate::element::Element;
+use crate::encoder::encode_html;
 use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::namespaces::Namespaces;
 use crate::schema_version::SchemaVersion;
 use crate::schemas::SchemaData;
-use crate::special::replace_specials;
 use crate::whitespace::WhiteSpace;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
@@ -72,7 +72,7 @@ impl Xsd {
         element: &mut XMLElement,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(location) = &self.namespaces.get_default_namespace() {
-            let loc = replace_specials(location, &WhiteSpace::Preserve)?;
+            let loc = encode_html(location, &WhiteSpace::Preserve)?;
             match self.namespaces.get_root_namespace() {
                 None => {
                     element.add_attribute("xmlns", &loc);

@@ -170,6 +170,7 @@ fn unicode_blocks(ascii: bool) -> Result<HashMap<String, String>, RegexTranslati
 
     for block in BlockIter::new() {
         let name = block.name.split_whitespace().collect::<Vec<_>>().join("");
+
         let range = block.range;
 
         let min_char = range.low;
@@ -216,9 +217,8 @@ fn unicode_definitions(ascii: bool) -> Result<HashMap<String, String>, RegexTran
     let mut blocks = unicode_blocks(ascii)?;
     let sets = unicode_categories(ascii)?;
 
-    for (k, v) in sets {
-        blocks.insert(k, v);
-    }
+    blocks.extend(sets);
+
     Ok(blocks)
 }
 
@@ -231,7 +231,6 @@ fn get_comp_set(set: &str, ascii: bool) -> String {
 }
 
 fn get_unicode_mappings(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
-    // TODO Replace with const
     let unicode_blocks = unicode_definitions(ascii)?;
 
     let mut output = HashMap::new();

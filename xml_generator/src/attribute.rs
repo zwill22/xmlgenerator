@@ -1,8 +1,8 @@
+use crate::encoder::encode_html;
 use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::special::replace_specials;
 use crate::whitespace::WhiteSpace;
 use crate::xsd::Xsd;
 use crate::xsd_type::XsdType;
@@ -122,7 +122,7 @@ impl Attribute {
 
         let name = self.get_name(generator)?;
         if let Some(attribute) = generator.generate_type(&self.xsd_type) {
-            let value = replace_specials(&attribute, &self.xsd_type.whitespace())?;
+            let value = encode_html(&attribute, &self.xsd_type.whitespace())?;
             xml_element.add_attribute(&name, &value);
             generated = true;
         }
@@ -142,7 +142,7 @@ impl Attribute {
             if self.type_name.is_none() {
                 let xsd_type = XsdType::string("", &WhiteSpace::Collapse)?;
                 let value = generator.generate_type(&xsd_type).unwrap();
-                let attribute = replace_specials(&value, &xsd_type.whitespace())?;
+                let attribute = encode_html(&value, &xsd_type.whitespace())?;
                 xml_element.add_attribute(&name, &attribute);
             } else if self.use_type == AttributeUseType::Required {
                 return Err(XMLGeneratorError::TypeGenerationError(
