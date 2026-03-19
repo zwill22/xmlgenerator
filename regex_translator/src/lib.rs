@@ -205,13 +205,16 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
     Ok(map)
 }
 
-fn unicode_categories() -> Result<HashMap<String, String>, RegexTranslationError> {
+fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
     let data = get_unicode_categories()?;
 
     let mut map = HashMap::new();
     for (key, values) in data {
         let mut string = r"[".to_owned();
         for value in values {
+            if ascii && value as u32 > 128 {
+                continue;
+            }
             string.push_str(value.escape_unicode().to_string().as_str());
         }
         string.push(']');
@@ -226,17 +229,29 @@ fn unicode_categories() -> Result<HashMap<String, String>, RegexTranslationError
     Ok(map)
 }
 
-fn unicode_definitions() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut blocks = unicode_blocks()?;
-    let sets = unicode_categories()?;
+fn unicode_definitions(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
+    let mut blocks = if ascii {
+        HashMap::new()
+    } else {
+        unicode_blocks()?
+    };
+    let sets = unicode_categories(ascii)?;
 
     blocks.extend(sets);
 
     Ok(blocks)
 }
 
-fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let unicode_blocks = unicode_definitions()?;
+fn get_comp_set(set: &str, ascii: bool) -> String {
+    if ascii {
+        return format!(r"[[\x{{0}}-\x{{7F}}]--{}]", set);
+    }
+
+    format!(r"[^{}]", set)
+}
+
+fn get_unicode_mappings(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
+    let unicode_blocks = unicode_definitions(ascii)?;
 
     let mut output = HashMap::new();
 
@@ -248,7 +263,7 @@ fn get_unicode_mappings() -> Result<HashMap<String, String>, RegexTranslationErr
 
         // Set negation
         let comp_block = format!(r"\P{{{}}}", k);
-        let comp_set = format!(r"[^{}]", v);
+        let comp_set = get_comp_set(&v, ascii);
 
         output.insert(comp_block, comp_set);
     }
@@ -315,7 +330,7 @@ fn apply_common_mappings(mappings: &mut HashMap<String, String>) {
 }
 
 fn get_ascii_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut mappings = HashMap::new();
+    let mut mappings = get_unicode_mappings(true)?;
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z]";
@@ -350,7 +365,7 @@ fn get_ascii_mappings() -> Result<HashMap<String, String>, RegexTranslationError
 }
 
 fn get_full_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut mappings = get_unicode_mappings()?;
+    let mut mappings = get_unicode_mappings(false)?;
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
@@ -451,7 +466,7 @@ fn dot_replace(input: &str) -> Result<String, RegexTranslationError> {
     const DOT: &str = r"([^\\]|^)\.";
     let regex = Regex::new(DOT)?;
 
-    let result = regex.replace_all(&tmp, r"$1\w").to_string();
+    let result = regex.replace_all(&tmp, r"$1[\x{20}-\x{7E}]").to_string();
 
     Ok(result.to_string())
 }
