@@ -4,7 +4,7 @@ from pathlib import Path
 import pyxmlgenerator
 from pyxsdtestdata import XSDTestData
 
-from common import validate_output, get_project_root
+from .common import validate_output, get_project_root
 
 
 xsd_directory = "xsdtests-master"
