@@ -29,7 +29,7 @@ mod tests {
     }
 
     fn parse_file(regex: &mut HashSet<String>, filepath: &PathBuf) {
-        let xml_string = match read_file(&filepath) {
+        let xml_string = match read_file(filepath) {
             Ok(s) => s,
             Err(e) => panic!("{}", e),
         };
@@ -42,7 +42,7 @@ mod tests {
 
     fn handle_errors(error: RegexTranslationError, input: &str) -> String {
         match error {
-            RegexTranslationError::InvalidInput(e) => format!("{}", e),
+            RegexTranslationError::InvalidInput(e) => e.to_string(),
             RegexTranslationError::RegexError(e) => panic!("{}", e),
             RegexTranslationError::FileReadError(e) => panic!("{}", e),
             RegexTranslationError::DataError(e) => panic!("{}", e),
@@ -52,11 +52,11 @@ mod tests {
     }
 
     fn test_pattern(translator: &RegexTranslator, pattern: &str) -> String {
-        match translator.translate(&pattern, true) {
+        match translator.translate(pattern, true) {
             Ok(translation) => translation,
-            Err(_) => match translator.translate(&pattern, false) {
+            Err(_) => match translator.translate(pattern, false) {
                 Ok(translation) => translation,
-                Err(e) => handle_errors(e, &pattern),
+                Err(e) => handle_errors(e, pattern),
             },
         }
     }
@@ -118,7 +118,7 @@ mod tests {
 
     #[rstest]
     fn check_surrogates(translator: &RegexTranslator) {
-        let surrogates_strings = vec![
+        let surrogates_strings = [
             r"\p{IsHighSurrogates}",
             r"\p{IsHighPrivateUseSurrogates}",
             r"\p{IsLowSurrogates}",

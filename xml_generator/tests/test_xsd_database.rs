@@ -93,10 +93,8 @@ mod tests {
                 return;
             }
             let valid = data.is_valid();
-            if valid {
-                if validate_file(generator, data.get_path(), valid) {
-                    valid_files.insert(data.get_key());
-                }
+            if valid && validate_file(generator, data.get_path(), valid) {
+                valid_files.insert(data.get_key());
             }
         });
 

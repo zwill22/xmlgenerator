@@ -33,15 +33,15 @@ mod tests {
 
                 "".to_string()
             }
-            Err(e) => check_error(&e, &path),
+            Err(e) => check_error(&e, path),
         }
     }
 
     fn test_invalid_file(validator: &XSDValidator, path: &PathBuf) -> String {
-        if let Ok(value) = validator.validate(path) {
-            if value {
-                return format!("Invalid XSD validated: {:?}", path);
-            }
+        if let Ok(value) = validator.validate(path)
+            && value
+        {
+            return format!("Invalid XSD validated: {:?}", path);
         }
 
         "".to_string()

@@ -7,10 +7,10 @@ use xsdtestdata::{XsdData, XsdTestData, XsdTestDataIntoIterator};
 
 fn handle_panic(error: Box<dyn Any>) -> PyErr {
     if let Some(s) = error.downcast_ref::<&str>() {
-        let msg = format!("{}", s);
+        let msg = s.to_string();
         PyRuntimeError::new_err(msg)
     } else if let Some(s) = error.downcast_ref::<String>() {
-        let msg = format!("{}", s);
+        let msg = s.to_string();
         PyRuntimeError::new_err(msg)
     } else {
         PyRuntimeError::new_err("XMLGenerator: unknown error")
@@ -90,12 +90,12 @@ impl PyXsdTestData {
 }
 
 #[pyclass]
-struct Iter {
+struct Iterator {
     inner: std::vec::IntoIter<usize>,
 }
 
 #[pymethods]
-impl Iter {
+impl Iterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
@@ -112,8 +112,8 @@ struct Container {
 
 #[pymethods]
 impl Container {
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<Iter>> {
-        let iter = Iter {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<Iterator>> {
+        let iter = Iterator {
             inner: slf.iter.clone().into_iter(),
         };
         Py::new(slf.py(), iter)

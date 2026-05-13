@@ -9,9 +9,8 @@ mod tests {
         let root = get_workspace_root();
 
         let example_dir = root.join("examples").join(directory);
-        let paths = fs::read_dir(example_dir).expect("Unable to read examples directory");
 
-        paths
+        fs::read_dir(example_dir).expect("Unable to read examples directory")
     }
 
     fn validate_files(validator: &XSDValidator, files: ReadDir) {

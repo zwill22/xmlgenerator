@@ -11,12 +11,11 @@ mod tests {
     fn fetch_test_files(directory: &str) -> ReadDir {
         let root: PathBuf = get_workspace_root();
 
-        let mut example_dir = PathBuf::from(root);
+        let mut example_dir = root;
         example_dir.push("examples");
         example_dir.push(directory);
-        let paths = fs::read_dir(example_dir).unwrap();
 
-        paths
+        fs::read_dir(example_dir).unwrap()
     }
 
     fn check_error(error: &XMLGeneratorError, expected_error: &String) {
@@ -74,7 +73,7 @@ mod tests {
     ) -> Result<String, XMLGeneratorError> {
         let _err_gag = Gag::stderr().unwrap();
 
-        generator.generate(&filepath)
+        generator.generate(filepath)
     }
 
     #[test]

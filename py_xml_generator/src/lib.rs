@@ -79,7 +79,7 @@ fn handle_input(input_string: String) -> PyResult<PathBuf> {
 
 fn handle_panic(error: Box<dyn Any>) -> PyErr {
     if let Some(s) = error.downcast_ref::<&str>() {
-        let msg = format!("{}", s);
+        let msg = s.to_string();
         ImplementationError::new_err(msg)
     } else if let Some(s) = error.downcast_ref::<String>() {
         let msg = format!("XMLGenerator panic error: {}", s);
@@ -105,7 +105,7 @@ pub struct PyXMLGenerator {
 impl PyXMLGenerator {
     #[new]
     fn new() -> PyResult<Self> {
-        match panic::catch_unwind(|| XMLGenerator::new()) {
+        match panic::catch_unwind(XMLGenerator::new) {
             Ok(generator) => Ok(PyXMLGenerator { inner: generator }),
             Err(error) => Err(handle_panic(error)),
         }

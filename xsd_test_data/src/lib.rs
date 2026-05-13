@@ -87,9 +87,11 @@ fn check_repo(db_root: &PathBuf, archive_path: &PathBuf) {
     extract_repo(db_root, &archive).expect("failed to extract repo archive");
 }
 
-fn parse_with_dtd(contents: &'_ String) -> Result<Document<'_>, XSDTestDataError> {
-    let mut options = ParsingOptions::default();
-    options.allow_dtd = true;
+fn parse_with_dtd(contents: &str) -> Result<Document<'_>, XSDTestDataError> {
+    let options = ParsingOptions {
+        allow_dtd: true,
+        ..ParsingOptions::default()
+    };
 
     match Document::parse_with_options(contents, options) {
         Ok(document) => Ok(document),
@@ -97,7 +99,7 @@ fn parse_with_dtd(contents: &'_ String) -> Result<Document<'_>, XSDTestDataError
     }
 }
 
-fn parse(contents: &'_ String) -> Result<Document<'_>, XSDTestDataError> {
+fn parse(contents: &str) -> Result<Document<'_>, XSDTestDataError> {
     match Document::parse(contents) {
         Ok(document) => Ok(document),
         Err(_) => parse_with_dtd(contents),
@@ -132,13 +134,12 @@ fn get_validity(node: &Node) -> Option<bool> {
     }
 }
 
-fn get_key_and_group(root: &PathBuf, full_path: &PathBuf) -> (String, String) {
+fn get_key_and_group(root: &PathBuf, full_path: &Path) -> (String, String) {
     let path = full_path.strip_prefix(root).unwrap();
 
     let mut group = "other".to_string();
-    for component in path.components() {
+    if let Some(component) = path.components().next() {
         group = component.as_os_str().to_str().unwrap().to_string();
-        break;
     }
 
     (path.to_string_lossy().to_string(), group)
@@ -168,9 +169,7 @@ fn get_test_info(
             schema_path = Some(schema);
         } else if tag == "expected" {
             let validity = get_validity(&child);
-            if validity.is_none() {
-                return None;
-            }
+            validity?;
             valid = validity
         }
     }
@@ -182,7 +181,7 @@ fn get_test_info(
     let filepath = schema_path.unwrap();
     let validity = valid.unwrap();
 
-    let (path, group) = get_key_and_group(&db_root, &filepath);
+    let (path, group) = get_key_and_group(db_root, &filepath);
 
     let data = XsdData {
         key: path,
@@ -204,9 +203,8 @@ fn get_schema_test(
     path: &PathBuf,
     db_root: &PathBuf,
 ) {
-    match get_schema_info(node, path, db_root) {
-        Some(info) => results.push(info),
-        None => return,
+    if let Some(info) = get_schema_info(node, path, db_root) {
+        results.push(info)
     }
 }
 
@@ -221,10 +219,10 @@ fn get_test_group(test_group: &Node, path: &PathBuf, db_root: &PathBuf) -> XsdTe
 
         if tag_name == "schemaTest" {
             get_schema_test(&mut data, &child, path, db_root);
-        } else if tag_name == "instanceTest" {
-            if let Some(new_data) = get_instance_test(&child, path, db_root) {
-                data += &new_data;
-            }
+        } else if tag_name == "instanceTest"
+            && let Some(new_data) = get_instance_test(&child, path, db_root)
+        {
+            data += &new_data;
         }
     });
 
@@ -232,7 +230,7 @@ fn get_test_group(test_group: &Node, path: &PathBuf, db_root: &PathBuf) -> XsdTe
 }
 
 fn read_test_set_file(filepath: &PathBuf, db_root: &PathBuf) -> XsdTestData {
-    let filedata = read_file(&filepath).expect("failed to read file");
+    let filedata = read_file(filepath).expect("failed to read file");
     let mut data = XsdTestData::default();
 
     let document = match parse(&filedata) {
@@ -245,7 +243,7 @@ fn read_test_set_file(filepath: &PathBuf, db_root: &PathBuf) -> XsdTestData {
         let tag_name = child.tag_name().name();
 
         if tag_name == "testGroup" {
-            data += &get_test_group(&child, &filepath, db_root);
+            data += &get_test_group(&child, filepath, db_root);
         }
     });
 
@@ -253,10 +251,7 @@ fn read_test_set_file(filepath: &PathBuf, db_root: &PathBuf) -> XsdTestData {
 }
 
 fn get_instance_test(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XsdTestData> {
-    let instance = match get_instance_info(node, path, db_root) {
-        Some(info) => info,
-        None => return None,
-    };
+    let instance = get_instance_info(node, path, db_root)?;
 
     if instance.path == *path {
         return None;
@@ -280,7 +275,7 @@ fn get_attribute(node: &Node, name: String) -> String {
     panic!("attribute not found");
 }
 
-fn file_path(db_root: &PathBuf, path_string: &str) -> PathBuf {
+fn file_path(db_root: &Path, path_string: &str) -> PathBuf {
     db_root.join(path_string)
 }
 
@@ -317,7 +312,7 @@ impl AddAssign<&XsdTestData> for XsdTestData {
 }
 
 impl XsdTestData {
-    fn add(&mut self, results: &XsdTestData, ignore: &Vec<PathBuf>) {
+    fn add(&mut self, results: &XsdTestData, ignore: &[PathBuf]) {
         results.data.iter().for_each(|result| {
             if ignore.contains(&result.path) {
                 return;
@@ -329,17 +324,12 @@ impl XsdTestData {
 
     fn add_test_set(root_path: &PathBuf, extension: &String) -> Self {
         let filepath = root_path.join(extension);
-        let data = read_test_set_file(&filepath, root_path);
 
-        data
+        read_test_set_file(&filepath, root_path)
     }
 
-    fn parse_test_data(
-        test_suite: &PathBuf,
-        db_path: &PathBuf,
-        ignore: &Vec<PathBuf>,
-    ) -> XsdTestData {
-        let filedata = read_file(&test_suite).expect("failed to read file");
+    fn parse_test_data(test_suite: &PathBuf, db_path: &PathBuf, ignore: &[PathBuf]) -> XsdTestData {
+        let filedata = read_file(test_suite).expect("failed to read file");
         let document = parse(&filedata).expect("failed to parse xml");
 
         let mut output = XsdTestData::default();
@@ -359,17 +349,17 @@ impl XsdTestData {
     pub fn new(db_path: &PathBuf, archive_path: &PathBuf) -> XsdTestData {
         // TODO Remove ignores
         let ignore = vec![
-            file_path(&db_path, "msData/particles/particlesZ012.xsd"),
-            file_path(&db_path, "msData/particles/particlesZ015.xsd"),
-            file_path(&db_path, "msData/particles/particlesZ020.xsd"),
+            file_path(db_path, "msData/particles/particlesZ012.xsd"),
+            file_path(db_path, "msData/particles/particlesZ015.xsd"),
+            file_path(db_path, "msData/particles/particlesZ020.xsd"),
         ];
-        check_repo(&db_path, &archive_path);
+        check_repo(db_path, archive_path);
 
         let suite = db_path.join("suite.xml");
-        let mut data = XsdTestData::parse_test_data(&suite, &db_path, &ignore);
+        let mut data = XsdTestData::parse_test_data(&suite, db_path, &ignore);
 
         let extra_suite = db_path.join("extra-suite.xml");
-        let extra_data = XsdTestData::parse_test_data(&extra_suite, &db_path, &ignore);
+        let extra_data = XsdTestData::parse_test_data(&extra_suite, db_path, &ignore);
 
         data += &extra_data;
 
@@ -458,7 +448,7 @@ impl<'a> Iterator for XsdTestDataIterator<'a> {
 impl XsdTestData {
     pub fn iter(&'_ self) -> XsdTestDataIterator<'_> {
         XsdTestDataIterator {
-            test_data: &self,
+            test_data: self,
             index: 0,
         }
     }
@@ -472,7 +462,7 @@ impl Iterator for XsdTestDataIntoIterator {
     type Item = XsdData;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.test_data.data.len() == 0 {
+        if self.test_data.data.is_empty() {
             return None;
         }
 
