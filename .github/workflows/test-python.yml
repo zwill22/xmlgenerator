@@ -21,11 +21,11 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version:
-          - 3.10
-          - 3.11
-          - 3.12
-          - 3.13
-          - 3.14
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
 
     steps:
       - name: Checkout
@@ -48,13 +48,13 @@ jobs:
         if: ${{ env.ACT }}
         uses: jwlawson/actions-setup-cmake@v2
         with:
-          cmake-version: '3.22'
+          cmake-version: "3.22"
 
       - name: UV setup
         uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python-version }}
-          activate-environment: 'true'
+          activate-environment: "true"
 
       - name: Install Dependencies
         run: |
