@@ -26,20 +26,25 @@ impl SchemaVersion {
             match &version {
                 Some(v) => {
                     if v != &version_string {
-                        return Err(XMLGeneratorError::InvalidXSDVersionError(
-                            "Version mismatch".to_string(),
-                        ));
+                        return Err(
+                            XMLGeneratorError::InvalidXSDVersionError(
+                                "Version mismatch".to_string()
+                            )
+                        );
                     }
                 }
-                None => version = Some(version_string),
+                None => {
+                    version = Some(version_string);
+                }
             }
         }
 
         let out = match version {
             Some(v) => SchemaVersion { version: v },
-            None => SchemaVersion {
-                version: "1.0".to_string(),
-            },
+            None =>
+                SchemaVersion {
+                    version: "1.0".to_string(),
+                },
         };
 
         Ok(out)
@@ -53,9 +58,7 @@ impl SchemaVersion {
         } else if version == "1.1" {
             Ok(XMLVersion::XML1_1)
         } else {
-            Err(XMLGeneratorError::InvalidXSDVersionError(
-                version.to_string(),
-            ))
+            Err(XMLGeneratorError::InvalidXSDVersionError(version.to_string()))
         }
     }
 }

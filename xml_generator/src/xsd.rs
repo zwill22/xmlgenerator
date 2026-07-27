@@ -10,7 +10,7 @@ use crate::schemas::SchemaData;
 use crate::whitespace::WhiteSpace;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
-use xml_builder::{XML, XMLBuilder, XMLElement, XMLVersion};
+use xml_builder::{ XML, XMLBuilder, XMLElement, XMLVersion };
 use xsd_parser::models::schema::xs::SchemaContent;
 
 pub(crate) struct Xsd {
@@ -25,7 +25,7 @@ impl Xsd {
     pub(crate) fn new(
         generator: &mut Generator,
         translator: &RegexTranslator,
-        schemas: &SchemaData,
+        schemas: &SchemaData
     ) -> Result<Xsd, XMLGeneratorError> {
         let mut xsd = Xsd {
             version: schemas.get_version()?,
@@ -40,8 +40,12 @@ impl Xsd {
             for content in &schema.content {
                 match content {
                     SchemaContent::Element(element) => {
-                        let element =
-                            Element::new(translator, element, &xsd.namespaces, schema_info)?;
+                        let element = Element::new(
+                            translator,
+                            element,
+                            &xsd.namespaces,
+                            schema_info
+                        )?;
                         xsd.elements.push(element);
                     }
                     SchemaContent::Import(_) => {}
@@ -55,11 +59,13 @@ impl Xsd {
                             translator,
                             complex,
                             &xsd.namespaces,
-                            schema_info,
+                            schema_info
                         )?;
                         xsd.data_types.push(complex_type);
                     }
-                    _ => return unimplemented("Unimplemented schema content type"),
+                    _ => {
+                        return unimplemented("Unimplemented schema content type");
+                    }
                 }
             }
         }
@@ -69,7 +75,7 @@ impl Xsd {
 
     pub(crate) fn apply_metadata_to(
         &self,
-        element: &mut XMLElement,
+        element: &mut XMLElement
     ) -> Result<(), XMLGeneratorError> {
         if let Some(location) = &self.namespaces.get_default_namespace() {
             let loc = encode_html(location, &WhiteSpace::Preserve)?;
@@ -86,8 +92,9 @@ impl Xsd {
 
         for (prefix, location) in self.namespaces.get_other_namespaces() {
             if prefix == "xs" {
-                if let Some(target_ns) = self.namespaces.get_target_namespace()
-                    && target_ns == *prefix
+                if
+                    let Some(target_ns) = self.namespaces.get_target_namespace() &&
+                    target_ns == *prefix
                 {
                     let name = "xmlns:".to_string() + prefix.as_str();
                     element.add_attribute(&name, location);
@@ -124,9 +131,7 @@ impl Xsd {
 
     fn get_element(&self, field: &String) -> Option<&Element> {
         for element in self.elements() {
-            if let Ok(name) = element.get_name()
-                && name.eq(field)
-            {
+            if let Ok(name) = element.get_name() && name.eq(field) {
                 return Some(element);
             }
         }
@@ -144,9 +149,11 @@ impl Xsd {
                         return Ok(name.to_string());
                     }
 
-                    Err(XMLGeneratorError::DataTypeInformationError(
-                        "multiple root namespaces".to_string(),
-                    ))
+                    Err(
+                        XMLGeneratorError::DataTypeInformationError(
+                            "multiple root namespaces".to_string()
+                        )
+                    )
                 } else {
                     Ok(format!("{}:{}", root_ns, name))
                 }
@@ -200,9 +207,7 @@ impl Xsd {
     fn build_xml(&self) -> Result<XML, XMLGeneratorError> {
         let schema_version = self.get_version()?;
 
-        let mut xml_builder = XMLBuilder::new()
-            .expand_empty_tags(true)
-            .version(schema_version);
+        let mut xml_builder = XMLBuilder::new().expand_empty_tags(true).version(schema_version);
 
         if let Some(encoding) = &self.encoding {
             xml_builder = xml_builder.encoding(encoding.clone());
@@ -216,7 +221,7 @@ impl Xsd {
     fn generate_root(
         &self,
         generator: &mut Generator,
-        root: &Element,
+        root: &Element
     ) -> Result<XMLElement, XMLGeneratorError> {
         let root_elements = root.generate(generator, self)?;
 
@@ -229,9 +234,10 @@ impl Xsd {
                 self.apply_metadata_to(&mut root_element)?;
                 Ok(root_element)
             }
-            None => Err(XMLGeneratorError::TypeGenerationError(
-                "No root elements generated".to_string(),
-            )),
+            None =>
+                Err(
+                    XMLGeneratorError::TypeGenerationError("No root elements generated".to_string())
+                ),
         }
     }
 
@@ -242,7 +248,7 @@ impl Xsd {
 
     pub(crate) fn generate_xml(
         &self,
-        generator: &mut Generator,
+        generator: &mut Generator
     ) -> Result<String, XMLGeneratorError> {
         let mut xml = self.build_xml()?;
 

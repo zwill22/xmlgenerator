@@ -1,5 +1,5 @@
 use crate::error::XSDValidationError;
-use libc::{STDERR_FILENO, c_int, close, dup, dup2, pipe};
+use libc::{ STDERR_FILENO, c_int, close, dup, dup2, pipe };
 
 pub(crate) struct WarningHandler {
     saved_stderr: Option<c_int>,
@@ -22,26 +22,26 @@ impl WarningHandler {
         let saved_stderr = unsafe { dup(STDERR_FILENO) };
 
         if saved_stderr == -1 {
-            return Err(XSDValidationError::OutputRedirectError(
-                "cannot duplicate stderr".to_string(),
-            ));
+            return Err(
+                XSDValidationError::OutputRedirectError("cannot duplicate stderr".to_string())
+            );
         }
 
         self.saved_stderr = Some(saved_stderr);
 
         let mut pipe_fd: [c_int; 2] = [-1; 2];
 
-        if unsafe { pipe(&mut pipe_fd[0]) } == -1 {
-            return Err(XSDValidationError::OutputRedirectError(
-                "cannot create pipe".to_string(),
-            ));
+        if (unsafe { pipe(&mut pipe_fd[0]) }) == -1 {
+            return Err(XSDValidationError::OutputRedirectError("cannot create pipe".to_string()));
         }
 
         // redirect stderr to pipe/log_file
-        if unsafe { dup2(pipe_fd[self.pipe_write], STDERR_FILENO) } == -1 {
-            return Err(XSDValidationError::OutputRedirectError(
-                "cannot redirect stderr to pipe".to_string(),
-            ));
+        if (unsafe { dup2(pipe_fd[self.pipe_write], STDERR_FILENO) }) == -1 {
+            return Err(
+                XSDValidationError::OutputRedirectError(
+                    "cannot redirect stderr to pipe".to_string()
+                )
+            );
         }
 
         self.pipe_fd = Some(pipe_fd);

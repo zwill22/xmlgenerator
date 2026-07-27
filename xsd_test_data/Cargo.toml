@@ -8,7 +8,7 @@ repository.workspace = true
 
 [dependencies]
 roxmltree = "0.21.1"
-reqwest = { version = "0.12.24", features = ["blocking"]}
+reqwest = { version = "0.12.24", features = ["blocking"] }
 zip = "6.0.0"
 file_to_string = { workspace = true }
 

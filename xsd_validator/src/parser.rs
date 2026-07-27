@@ -1,10 +1,13 @@
 use crate::error::XSDValidationError;
 use crate::schema::Schema;
 use libxml2_rs::{
-    xmlErrorPtr, xmlSchemaNewParserCtxt, xmlSchemaParse, xmlSchemaParserCtxtPtr,
+    xmlErrorPtr,
+    xmlSchemaNewParserCtxt,
+    xmlSchemaParse,
+    xmlSchemaParserCtxtPtr,
     xmlSchemaSetParserStructuredErrors,
 };
-use std::ffi::{CStr, CString, c_char, c_void};
+use std::ffi::{ CStr, CString, c_char, c_void };
 use std::path::Path;
 
 extern "C" fn structured_error_handler(user_data: *mut c_void, error: xmlErrorPtr) {
@@ -40,7 +43,9 @@ impl Parser {
     pub(crate) fn new(path: &Path) -> Result<Self, XSDValidationError> {
         let path_str = match path.to_str() {
             Some(x) => get_cstring(x)?,
-            None => return Err(XSDValidationError::PathError),
+            None => {
+                return Err(XSDValidationError::PathError);
+            }
         };
 
         let file_ptr = path_str.as_ptr() as *const c_char;
@@ -59,9 +64,9 @@ impl Parser {
             xmlSchemaSetParserStructuredErrors(
                 self.0,
                 Some(structured_error_handler),
-                errors as *mut _ as *mut c_void,
+                errors as *mut _ as *mut c_void
             );
-        };
+        }
     }
 
     pub(crate) fn parse(&self) -> bool {

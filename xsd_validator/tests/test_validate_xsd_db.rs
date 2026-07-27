@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
-    use rstest::{fixture, rstest};
-    use std::path::{Path, PathBuf};
+    use rstest::{ fixture, rstest };
+    use std::path::{ Path, PathBuf };
     use workspace_root::get_workspace_root;
     use xsdtestdata::XsdTestData;
-    use xsdvalidator::{XSDValidationError, XSDValidator};
+    use xsdvalidator::{ XSDValidationError, XSDValidator };
 
     fn check_error(error: &XSDValidationError, path: &Path) -> String {
         match error {
@@ -38,9 +38,7 @@ mod tests {
     }
 
     fn test_invalid_file(validator: &XSDValidator, path: &PathBuf) -> String {
-        if let Ok(value) = validator.validate(path)
-            && value
-        {
+        if let Ok(value) = validator.validate(path) && value {
             return format!("Invalid XSD validated: {:?}", path);
         }
 
@@ -76,7 +74,7 @@ mod tests {
     fn test_database_validation(
         validator: &XSDValidator,
         test_data: &XsdTestData,
-        #[case] data_set: String,
+        #[case] data_set: String
     ) {
         for data in test_data.iter() {
             if data.get_data_set() != data_set.as_str() {

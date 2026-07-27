@@ -1,6 +1,6 @@
 import re
 
-with open("output.txt", 'r') as f:
+with open("output.txt", "r") as f:
     out: list[str] = f.readlines()
 
 impl = set()
@@ -51,7 +51,9 @@ for item in out:
         result = re.findall(r"Some\(\"(.*?)\"\)", item)
         dependent.add(result[0])
     elif "XSD parser error: XML Error: Unknown or invalid value: " in item:
-        result = item.replace("XSD parser error: XML Error: Unknown or invalid value:", "").split(";")
+        result = item.replace(
+            "XSD parser error: XML Error: Unknown or invalid value:", ""
+        ).split(";")
         assert len(result) == 3
         string_val = result[0]
         position = get_position(result)
@@ -74,13 +76,16 @@ for item in out:
         empty_xsd += 1
     elif "Invalid XSD version: " in item:
         invalid_version.add(item.replace("Invalid XSD version: ", ""))
-    elif "XSD parser error: Resolver Error: No such file or directory (os error 2)" in item:
+    elif (
+        "XSD parser error: Resolver Error: No such file or directory (os error 2)"
+        in item
+    ):
         invalid_file += 1
     elif "XSD parser error: XML Error: Attribute Error: " in item:
-        attribute_errors.add(item.replace("XSD parser error: XML Error: Attribute Error: ", ""))
-    elif "Unimplemented feature" in item:
-        pass
-    elif "File: " in item:
+        attribute_errors.add(
+            item.replace("XSD parser error: XML Error: Attribute Error: ", "")
+        )
+    elif "Unimplemented feature" in item or "File: " in item:
         pass
     elif item.strip() != "":
         other.add(item)
@@ -109,7 +114,7 @@ def print_unknown(values: set[str], positions: set[int], elements: set[str]):
         assert n_positions == 0
         return
 
-    print_number(values, "Unknown values", end='\t')
+    print_number(values, "Unknown values", end="\t")
     print(f"(positions: {n_positions}, elements: {n_elements})")
 
 
@@ -118,6 +123,7 @@ def print_resource_errors(locations: set[str], currents: set[str]):
         raise ValueError("Invalid resource errors")
 
     print_number(locations, "Invalid resources")
+
 
 print_number(impl, "Implementation errors")
 print_number(invalid_data_type, "Invalid data types")
@@ -132,6 +138,7 @@ print_num(empty_xsd, "XSD containing no elements")
 print_number(invalid_version, "Invalid versions")
 print_num(invalid_file, "Invalid files")
 
+
 def print_results(data: set[str], title: str):
     n = len(data)
     if n == 0:
@@ -143,9 +150,10 @@ def print_results(data: set[str], title: str):
     print(string)
     print(under)
     for val in data:
-        print(end='\t')
+        print(end="\t")
         print(val.strip())
     print()
+
 
 print()
 print_results(impl, "Implementation errors")
@@ -162,4 +170,4 @@ print_results(attribute_errors, "Attribute errors")
 
 print("-" * 128)
 for item in other:
-    print(item, end='')
+    print(item, end="")

@@ -1,8 +1,8 @@
-use encoding_rs::{Encoding, UTF_16LE};
+use encoding_rs::{ Encoding, UTF_16LE };
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use std::fs::File;
 use std::fs::read_to_string;
-use std::io::{BufReader, Error, ErrorKind, Read};
+use std::io::{ BufReader, Error, ErrorKind, Read };
 use std::path::PathBuf;
 
 struct Encodings {
@@ -19,7 +19,7 @@ impl Encodings {
     }
 
     fn get(&self, index: usize) -> Option<&'static Encoding> {
-        if index as u32 >= self.list.len() as u32 {
+        if (index as u32) >= (self.list.len() as u32) {
             return None;
         }
 
@@ -30,18 +30,18 @@ impl Encodings {
 fn read_file_encoding(
     file_path: &PathBuf,
     encodings: &Encodings,
-    index: usize,
+    index: usize
 ) -> Result<String, Error> {
     let file = File::open(file_path)?;
     let encoding = match encodings.get(index) {
         Some(encoding) => encoding,
-        None => return Err(Error::new(ErrorKind::InvalidData, "cannot read file")),
+        None => {
+            return Err(Error::new(ErrorKind::InvalidData, "cannot read file"));
+        }
     };
 
     let mut reader = BufReader::new(
-        DecodeReaderBytesBuilder::new()
-            .encoding(Some(encoding))
-            .build(file),
+        DecodeReaderBytesBuilder::new().encoding(Some(encoding)).build(file)
     );
 
     let mut string = String::new();

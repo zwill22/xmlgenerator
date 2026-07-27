@@ -1,4 +1,4 @@
-use libxml2_rs::{xmlSchemaFree, xmlSchemaPtr};
+use libxml2_rs::{ xmlSchemaFree, xmlSchemaPtr };
 
 pub(crate) struct Schema(xmlSchemaPtr);
 

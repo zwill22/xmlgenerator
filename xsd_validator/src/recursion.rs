@@ -14,15 +14,15 @@ fn parse_document(document: &Document) -> Result<(), XSDValidationError> {
 pub(crate) fn recursion_check(path: &PathBuf) -> Result<(), XSDValidationError> {
     let filedata = match read_file(path) {
         Ok(f) => f,
-        Err(_) => return Err(XSDValidationError::ReadFileError),
+        Err(_) => {
+            return Err(XSDValidationError::ReadFileError);
+        }
     };
 
     let doc = match Document::parse(&filedata) {
         Ok(d) => d,
         Err(_) => {
-            return Err(XSDValidationError::ParseError(
-                path.to_str().unwrap().to_string(),
-            ));
+            return Err(XSDValidationError::ParseError(path.to_str().unwrap().to_string()));
         }
     };
 

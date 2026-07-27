@@ -4,9 +4,9 @@ use core::fmt::Display;
 
 use line_ending::LineEnding;
 use regex::Regex;
-use std::collections::{HashMap, HashSet};
+use std::collections::{ HashMap, HashSet };
 use std::num::ParseIntError;
-use unic_char_basics::{is_noncharacter, is_private_use};
+use unic_char_basics::{ is_noncharacter, is_private_use };
 use unic_ucd::CharAge;
 use unic_ucd_block::BlockIter;
 use unic_ucd_category::GeneralCategory;
@@ -115,39 +115,40 @@ fn get_unicode_categories() -> Result<HashMap<String, Vec<char>>, RegexTranslati
             if !is_supported(character) {
                 continue;
             }
-            let category = match GeneralCategory::of(character) {
-                GeneralCategory::UppercaseLetter => "Lu",
-                GeneralCategory::LowercaseLetter => "Ll",
-                GeneralCategory::TitlecaseLetter => "Lt",
-                GeneralCategory::ModifierLetter => "Lm",
-                GeneralCategory::OtherLetter => "Lo",
-                GeneralCategory::NonspacingMark => "Mn",
-                GeneralCategory::SpacingMark => "Mc",
-                GeneralCategory::EnclosingMark => "Me",
-                GeneralCategory::DecimalNumber => "Nd",
-                GeneralCategory::LetterNumber => "Nl",
-                GeneralCategory::OtherNumber => "No",
-                GeneralCategory::ConnectorPunctuation => "Pc",
-                GeneralCategory::DashPunctuation => "Pd",
-                GeneralCategory::OpenPunctuation => "Ps",
-                GeneralCategory::ClosePunctuation => "Pe",
-                GeneralCategory::InitialPunctuation => "Pi",
-                GeneralCategory::FinalPunctuation => "Pf",
-                GeneralCategory::OtherPunctuation => "Po",
-                GeneralCategory::MathSymbol => "Sm",
-                GeneralCategory::CurrencySymbol => "Sc",
-                GeneralCategory::ModifierSymbol => "Sk",
-                GeneralCategory::OtherSymbol => "So",
-                GeneralCategory::SpaceSeparator => "Zs",
-                GeneralCategory::LineSeparator => "Zl",
-                GeneralCategory::ParagraphSeparator => "Zp",
-                GeneralCategory::Control => "Cc",
-                GeneralCategory::Format => "Cf",
-                GeneralCategory::Surrogate => "Cs",
-                GeneralCategory::PrivateUse => "Co",
-                GeneralCategory::Unassigned => "Cn",
-            }
-            .to_string();
+            let category = (
+                match GeneralCategory::of(character) {
+                    GeneralCategory::UppercaseLetter => "Lu",
+                    GeneralCategory::LowercaseLetter => "Ll",
+                    GeneralCategory::TitlecaseLetter => "Lt",
+                    GeneralCategory::ModifierLetter => "Lm",
+                    GeneralCategory::OtherLetter => "Lo",
+                    GeneralCategory::NonspacingMark => "Mn",
+                    GeneralCategory::SpacingMark => "Mc",
+                    GeneralCategory::EnclosingMark => "Me",
+                    GeneralCategory::DecimalNumber => "Nd",
+                    GeneralCategory::LetterNumber => "Nl",
+                    GeneralCategory::OtherNumber => "No",
+                    GeneralCategory::ConnectorPunctuation => "Pc",
+                    GeneralCategory::DashPunctuation => "Pd",
+                    GeneralCategory::OpenPunctuation => "Ps",
+                    GeneralCategory::ClosePunctuation => "Pe",
+                    GeneralCategory::InitialPunctuation => "Pi",
+                    GeneralCategory::FinalPunctuation => "Pf",
+                    GeneralCategory::OtherPunctuation => "Po",
+                    GeneralCategory::MathSymbol => "Sm",
+                    GeneralCategory::CurrencySymbol => "Sc",
+                    GeneralCategory::ModifierSymbol => "Sk",
+                    GeneralCategory::OtherSymbol => "So",
+                    GeneralCategory::SpaceSeparator => "Zs",
+                    GeneralCategory::LineSeparator => "Zl",
+                    GeneralCategory::ParagraphSeparator => "Zp",
+                    GeneralCategory::Control => "Cc",
+                    GeneralCategory::Format => "Cf",
+                    GeneralCategory::Surrogate => "Cs",
+                    GeneralCategory::PrivateUse => "Co",
+                    GeneralCategory::Unassigned => "Cn",
+                }
+            ).to_string();
 
             let supergroup = category.chars().next().unwrap().to_string();
 
@@ -173,7 +174,7 @@ fn add(map: &mut HashMap<String, String>, key: &str, value: &str) {
     let mut alternative_names = HashMap::new();
     alternative_names.insert(
         "IsCombiningDiacriticalMarksforSymbols".to_string(),
-        "IsCombiningMarksforSymbols".to_string(),
+        "IsCombiningMarksforSymbols".to_string()
     );
 
     alternative_names.insert("IsGreekandCoptic".to_string(), "IsGreek".to_string());
@@ -212,7 +213,7 @@ fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTrans
     for (key, values) in data {
         let mut string = r"[".to_owned();
         for value in values {
-            if ascii && value as u32 > 128 {
+            if ascii && (value as u32) > 128 {
                 continue;
             }
             string.push_str(value.escape_unicode().to_string().as_str());
@@ -230,11 +231,7 @@ fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTrans
 }
 
 fn unicode_definitions(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut blocks = if ascii {
-        HashMap::new()
-    } else {
-        unicode_blocks()?
-    };
+    let mut blocks = if ascii { HashMap::new() } else { unicode_blocks()? };
     let sets = unicode_categories(ascii)?;
 
     blocks.extend(sets);
@@ -286,7 +283,10 @@ fn get_unsupported() -> HashSet<String> {
     let mut out = vec![];
 
     for block in BlockIter::new() {
-        let count = block.range.iter().filter(|c| is_supported(*c)).count();
+        let count = block.range
+            .iter()
+            .filter(|c| is_supported(*c))
+            .count();
 
         if count > 0 {
             continue;
@@ -305,7 +305,7 @@ fn get_surrogates() -> HashSet<String> {
     let surrogate_strings = vec![
         "IsHighSurrogates",
         "IsHighPrivateUseSurrogates",
-        "IsLowSurrogates",
+        "IsLowSurrogates"
     ];
 
     into_sets(surrogate_strings)
@@ -368,19 +368,23 @@ fn get_full_mappings() -> Result<HashMap<String, String>, RegexTranslationError>
     let mut mappings = get_unicode_mappings(false)?;
 
     const I: &str = r"\i";
-    const I_SET: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
+    const I_SET: &str =
+        r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
 
     const C: &str = r"\c";
-    const C_SET: &str = r"[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
+    const C_SET: &str =
+        r"[-\.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
 
     mappings.insert(I.to_string(), I_SET.to_string());
     mappings.insert(C.to_string(), C_SET.to_string());
 
     const NEGATIVE_I: &str = r"\I";
-    const NEGATIVE_I_SET: &str = r"[^[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]]";
+    const NEGATIVE_I_SET: &str =
+        r"[^[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]]";
 
     const NEGATIVE_C: &str = r"\C";
-    const NEGATIVE_C_SET: &str = r"[^[-.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]]";
+    const NEGATIVE_C_SET: &str =
+        r"[^[-\.0-9:A-Z_a-z\u00B7\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u037D\u037F-\u1FFF\u200C-\u200D\u203F\u2040\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]]";
 
     mappings.insert(NEGATIVE_I.to_string(), NEGATIVE_I_SET.to_string());
     mappings.insert(NEGATIVE_C.to_string(), NEGATIVE_C_SET.to_string());
@@ -420,7 +424,7 @@ fn replace_or_patterns(input: &str) -> Result<String, RegexTranslationError> {
 fn replace_character_reference(
     pattern: &str,
     input: &str,
-    radix: u32,
+    radix: u32
 ) -> Result<String, RegexTranslationError> {
     let regex = Regex::new(pattern)?;
 
@@ -433,9 +437,11 @@ fn replace_character_reference(
         let character = match char::from_u32(value) {
             Some(c) => c,
             None => {
-                return Err(RegexTranslationError::DataError(
-                    "Unable to parse character reference.".to_string(),
-                ));
+                return Err(
+                    RegexTranslationError::DataError(
+                        "Unable to parse character reference.".to_string()
+                    )
+                );
             }
         };
 
@@ -541,7 +547,7 @@ impl RegexTranslator {
         // Replace negation patterns
         output = replace_negation_patterns(output.as_str())?;
 
-        // Replace hexidecimal character reference &#x{}; -> \u{}
+        // Replace hexadecimal character reference &#x{}; -> \u{}
         output = replace_hex_character_reference(output.as_str())?;
 
         // Replace decimal character reference &#{}; -> \u{}

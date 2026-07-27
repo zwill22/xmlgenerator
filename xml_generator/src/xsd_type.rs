@@ -12,17 +12,17 @@ use std::fmt::Display;
 #[derive(Default, PartialEq)]
 pub(crate) enum XsdType {
     // Integer types
-    Byte,          // A signed 8-bit integer
-    Short,         // A signed 16-bit integer
-    Int,           // A signed 32-bit integer
-    Long,          // A signed 64-bit integer
-    UnsignedByte,  // An unsigned 8-bit integer
+    Byte, // A signed 8-bit integer
+    Short, // A signed 16-bit integer
+    Int, // A signed 32-bit integer
+    Long, // A signed 64-bit integer
+    UnsignedByte, // An unsigned 8-bit integer
     UnsignedShort, // An unsigned 16-bit integer
-    UnsignedInt,   // An unsigned 32-bit integer
-    UnsignedLong,  // An unsigned 64-bit integer
+    UnsignedInt, // An unsigned 32-bit integer
+    UnsignedLong, // An unsigned 64-bit integer
 
     // Floating point numbers
-    Float,  // A 32-bit floating point number
+    Float, // A 32-bit floating point number
     Double, // A 64-bit floating point number
 
     // Miscellaneous types
@@ -30,7 +30,7 @@ pub(crate) enum XsdType {
 
     // TODO Implement these types properly
     // Base64Binary, // A base64 value
-    // HexBinary,    // A hexidecimal binary value
+    // HexBinary,    // A hexadecimal binary value
     Duration, // A duration of time
     Language, // An RFC 1766 language string
 
@@ -44,7 +44,9 @@ pub(crate) enum XsdType {
 fn validate(input_str: &str, pattern: &str) -> Result<bool, XMLGeneratorError> {
     let regex = match Regex::new(pattern) {
         Ok(re) => re,
-        Err(_) => return Err(XMLGeneratorError::RegexError(input_str.to_string())),
+        Err(_) => {
+            return Err(XMLGeneratorError::RegexError(input_str.to_string()));
+        }
     };
 
     let result = regex.is_match(input_str);
@@ -54,7 +56,8 @@ fn validate(input_str: &str, pattern: &str) -> Result<bool, XMLGeneratorError> {
 
 fn validate_duration(input: &str) -> bool {
     // PnYnMnDTnHnMnS
-    const DURATION: &str = r"[Pp](?:[0-9]+[Yy])?(?:[0-9]+[Mm])?(?:[0-9]+[Dd])?T?(?:[0-9]+[Hh])?(?:[0-9]+[Mm])?(?:[0-9]+[Ss])?";
+    const DURATION: &str =
+        r"[Pp](?:[0-9]+[Yy])?(?:[0-9]+[Mm])?(?:[0-9]+[Dd])?T?(?:[0-9]+[Hh])?(?:[0-9]+[Mm])?(?:[0-9]+[Ss])?";
 
     validate(input, DURATION).unwrap_or(false)
 }
@@ -70,7 +73,9 @@ fn validate_pattern(pattern: &Pattern, input: &str) -> bool {
     let re = pattern.get_pattern(true);
     let is_valid = match validate(input, re) {
         Ok(valid) => valid,
-        Err(_) => return false,
+        Err(_) => {
+            return false;
+        }
     };
 
     if is_valid {
@@ -157,13 +162,13 @@ impl XsdType {
 
     pub(crate) fn from_string(s: &str) -> Result<Self, XMLGeneratorError> {
         const NAME: &str = r"\i\c*";
-        const NCNAME: &str = r"[\i--[:]][\c--[:]]*";
-        const NMTOKEN: &str = r"\c+";
+        const NC_NAME: &str = r"[\i--[:]][\c--[:]]*";
+        const NM_TOKEN: &str = r"\c+";
         const NORMAL: &str = r"[^\r\n\t]*";
         const TOKEN: &str = r"[^\s]*(?: [^\s]*)*";
-        const NC_NAMES: &str = formatcp!(r"{0}(?:\s+{0})*", NCNAME);
+        const NC_NAMES: &str = formatcp!(r"{0}(?:\s+{0})*", NC_NAME);
         const BOOLEAN: &str = r"(?:true|false|0|1)";
-        const NMTOKENS: &str = formatcp!(r"{0}(?:\s+{0})*", NMTOKEN);
+        const NM_TOKENS: &str = formatcp!(r"{0}(?:\s+{0})*", NM_TOKEN);
         const NULL: &str = "";
 
         const DATE: &str = "%Y-%m-%d";
@@ -197,13 +202,13 @@ impl XsdType {
             "unsignedByte" => Ok(XsdType::UnsignedByte),
 
             // String data types
-            "ENTITY" => XsdType::string(NCNAME, &COLLAPSE),
-            "ID" => XsdType::string(NCNAME, &COLLAPSE),
+            "ENTITY" => XsdType::string(NC_NAME, &COLLAPSE),
+            "ID" => XsdType::string(NC_NAME, &COLLAPSE),
             "IDREF" => unimplemented("IDREF"), // Requires cross-referencing
             "language" => Ok(XsdType::Language),
             "Name" => XsdType::string(NAME, &COLLAPSE),
-            "NCName" => XsdType::string(NCNAME, &COLLAPSE),
-            "NMTOKEN" => XsdType::string(NMTOKEN, &COLLAPSE),
+            "NCName" => XsdType::string(NC_NAME, &COLLAPSE),
+            "NMTOKEN" => XsdType::string(NM_TOKEN, &COLLAPSE),
             "normalizedString" => XsdType::string(NORMAL, &REPLACE),
             "QName" => unimplemented("QName"), // Requires cross-referencing
             "string" => XsdType::string(NULL, &PRESERVE),
@@ -231,7 +236,7 @@ impl XsdType {
 
             // List types
             "ENTITIES" => XsdType::string(NC_NAMES, &PRESERVE),
-            "NMTOKENS" => XsdType::string(NMTOKENS, &PRESERVE),
+            "NMTOKENS" => XsdType::string(NM_TOKENS, &PRESERVE),
             "IDREFS" => unimplemented("IDREFS"), // Requires cross-referencing
 
             // Just use a string for any type
@@ -261,9 +266,7 @@ impl Display for XsdType {
             // XsdType::HexBinary => "HexBinary".to_string(),
             XsdType::Duration => "Duration".to_string(),
             XsdType::Language => "Language".to_string(),
-            XsdType::DateTime(datetime) => {
-                format!("Datetime with pattern: {}", datetime)
-            }
+            XsdType::DateTime(datetime) => { format!("Datetime with pattern: {}", datetime) }
             XsdType::String(pattern) => {
                 if pattern.is_empty() {
                     "String".to_string()

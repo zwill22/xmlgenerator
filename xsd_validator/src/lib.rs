@@ -2,8 +2,8 @@ pub use crate::error::XSDValidationError;
 use crate::parser::Parser;
 use crate::recursion::recursion_check;
 use crate::warning_handler::WarningHandler;
-use libxml2_rs::{xmlCleanupParser, xmlInitParser};
-use std::env::{current_dir, set_current_dir};
+use libxml2_rs::{ xmlCleanupParser, xmlInitParser };
+use std::env::{ current_dir, set_current_dir };
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -21,7 +21,9 @@ pub struct XSDValidator {
 
 impl XSDValidator {
     pub fn new(print_warnings: bool) -> XSDValidator {
-        unsafe { xmlInitParser() };
+        unsafe {
+            xmlInitParser();
+        }
 
         XSDValidator {
             lock: Mutex::new(()),
@@ -65,7 +67,9 @@ impl XSDValidator {
         let wd = current_dir().expect("current_dir() failed");
         let file_dir = match path.parent() {
             Some(parent) => parent,
-            None => return Err(XSDValidationError::PathError),
+            None => {
+                return Err(XSDValidationError::PathError);
+            }
         };
 
         set_current_dir(file_dir).expect("set_current_dir() failed");
@@ -80,6 +84,6 @@ impl XSDValidator {
 
 impl Drop for XSDValidator {
     fn drop(&mut self) {
-        unsafe { xmlCleanupParser() };
+        unsafe { xmlCleanupParser() }
     }
 }

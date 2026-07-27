@@ -1,5 +1,5 @@
 use crate::XMLGeneratorError;
-use crate::element::{Element, Occurrence};
+use crate::element::{ Element, Occurrence };
 use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::namespaces::Namespaces;
@@ -7,8 +7,8 @@ use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
 use xml_builder::XMLElement;
-use xsd_parser::models::schema::xs::{GroupType, GroupTypeContent};
-use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
+use xsd_parser::models::schema::xs::{ GroupType, GroupTypeContent };
+use xsd_parser::models::schema::{ MaxOccurs, SchemaInfo };
 
 #[derive(Default)]
 pub struct Group {
@@ -24,7 +24,7 @@ impl Group {
         group_type: &GroupType,
         schema_info: &SchemaInfo,
         namespaces: &Namespaces,
-        choose: bool,
+        choose: bool
     ) -> Result<Group, XMLGeneratorError> {
         let mut group = Group::default();
 
@@ -49,7 +49,7 @@ impl Group {
             match content {
                 GroupTypeContent::Element(element_type) => {
                     let element = Element::new(translator, element_type, namespaces, schema_info)?;
-                    group.elements.push(element)
+                    group.elements.push(element);
                 }
                 GroupTypeContent::Annotation(_) => unimplemented("GroupTypeContent::Annotation")?,
                 GroupTypeContent::Group(_) => unimplemented("GroupTypeContent::Group")?,
@@ -61,9 +61,7 @@ impl Group {
         }
 
         if group.elements.is_empty() && group.choose {
-            return Err(XMLGeneratorError::DataTypesFormatError(
-                "Empty group".to_string(),
-            ));
+            return Err(XMLGeneratorError::DataTypesFormatError("Empty group".to_string()));
         }
 
         Ok(group)
@@ -86,7 +84,7 @@ impl Group {
         generator: &mut Generator,
         xml_element: &mut XMLElement,
         xsd: &Xsd,
-        element: &Element,
+        element: &Element
     ) -> Result<(), XMLGeneratorError> {
         let children = element.generate(generator, xsd)?;
 
@@ -101,11 +99,11 @@ impl Group {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd,
+        xsd: &Xsd
     ) -> Result<(), XMLGeneratorError> {
         if self.choose {
             if let Some(element) = generator.choose(&self.elements) {
-                Self::generate_element(generator, xml_element, xsd, element)?
+                Self::generate_element(generator, xml_element, xsd, element)?;
             }
         } else {
             for element in self.elements() {
@@ -120,7 +118,7 @@ impl Group {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd,
+        xsd: &Xsd
     ) -> Result<(), XMLGeneratorError> {
         let n = self.get_occurrences();
 

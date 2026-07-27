@@ -15,11 +15,14 @@ root = get_project_root()
 xsd_filepath = root / xsd_directory
 archive_filepath = root / archive_filename
 
+
 def validate_schema(xml_generator, xsd_file: Path):
     filepath = str(xsd_file)
     xml_generator.validate(filepath)
 
+
 xsd_test_data = XSDTestData(xsd_filepath, archive_filepath)
+
 
 def get_valid_files():
     result = []
@@ -29,7 +32,9 @@ def get_valid_files():
 
     return result
 
+
 valid_files = get_valid_files()
+
 
 @pytest.mark.parametrize("file", valid_files)
 def test_xsd_file(xml_generator, file):
@@ -42,6 +47,7 @@ def test_xsd_file(xml_generator, file):
         pytest.skip(f"Unable to validate XSD: {file}")
 
     validate_output(xml_generator, path)
+
 
 # def test_single_file(xml_generator):
 #     file = "msData/regex/reI57.xsd"

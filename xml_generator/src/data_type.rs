@@ -1,6 +1,6 @@
 use crate::attribute::Attribute;
 use crate::encoder::encode_html;
-use crate::error::{XMLGeneratorError, unimplemented};
+use crate::error::{ XMLGeneratorError, unimplemented };
 use crate::generator::Generator;
 use crate::group::Group;
 use crate::namespaces::Namespaces;
@@ -11,7 +11,7 @@ use regextranslator::RegexTranslator;
 use std::ops::Deref;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
-use xsd_parser::models::schema::xs::{ComplexBaseType, ComplexBaseTypeContent, SimpleBaseType};
+use xsd_parser::models::schema::xs::{ ComplexBaseType, ComplexBaseTypeContent, SimpleBaseType };
 
 #[derive(Default)]
 pub(crate) struct DataType {
@@ -24,7 +24,7 @@ pub(crate) struct DataType {
 impl DataType {
     pub(crate) fn simple_type(
         translator: &RegexTranslator,
-        simple: &SimpleBaseType,
+        simple: &SimpleBaseType
     ) -> Result<Self, XMLGeneratorError> {
         let name = simple.name.clone().unwrap_or("".to_string());
         if name.is_empty() {
@@ -51,7 +51,7 @@ impl DataType {
         translator: &RegexTranslator,
         complex: &ComplexBaseType,
         namespaces: &Namespaces,
-        schema_info: &SchemaInfo,
+        schema_info: &SchemaInfo
     ) -> Result<Self, XMLGeneratorError> {
         let name = complex.name.clone().unwrap_or("".to_string());
 
@@ -102,25 +102,25 @@ impl DataType {
                     attributes.push(attribute);
                 }
                 ComplexBaseTypeContent::Annotation(_) => {
-                    unimplemented("ComplexBaseTypeContent::Annotation")?
+                    unimplemented("ComplexBaseTypeContent::Annotation")?;
                 }
                 ComplexBaseTypeContent::SimpleContent(_) => {
-                    unimplemented("ComplexBaseTypeContent::SimpleContent")?
+                    unimplemented("ComplexBaseTypeContent::SimpleContent")?;
                 }
                 ComplexBaseTypeContent::ComplexContent(_) => {
-                    unimplemented("ComplexBaseTypeContent::ComplexContent")?
+                    unimplemented("ComplexBaseTypeContent::ComplexContent")?;
                 }
                 ComplexBaseTypeContent::OpenContent(_) => {
-                    unimplemented("ComplexBaseTypeContent::OpenContent")?
+                    unimplemented("ComplexBaseTypeContent::OpenContent")?;
                 }
                 ComplexBaseTypeContent::AttributeGroup(_) => {
-                    unimplemented("ComplexBaseTypeContent::AttributeGroup")?
+                    unimplemented("ComplexBaseTypeContent::AttributeGroup")?;
                 }
                 ComplexBaseTypeContent::AnyAttribute(_) => {
-                    unimplemented("ComplexBaseTypeContent::AnyAttribute")?
+                    unimplemented("ComplexBaseTypeContent::AnyAttribute")?;
                 }
                 ComplexBaseTypeContent::Assert(_) => {
-                    unimplemented("ComplexBaseTypeContent::Assert")?
+                    unimplemented("ComplexBaseTypeContent::Assert")?;
                 }
             }
         }
@@ -152,18 +152,22 @@ impl DataType {
         generator: &mut Generator,
         xml_element: &mut XMLElement,
         xsd: &Xsd,
-        name: &String,
+        name: &String
     ) -> Result<(), XMLGeneratorError> {
         if !self.groups.is_empty() {
-            return Err(XMLGeneratorError::DataTypesFormatError(
-                "Attributes cannot include groups".to_string(),
-            ));
+            return Err(
+                XMLGeneratorError::DataTypesFormatError(
+                    "Attributes cannot include groups".to_string()
+                )
+            );
         }
 
         if !self.attributes.is_empty() {
-            return Err(XMLGeneratorError::DataTypesFormatError(
-                "Attributes cannot have their own attributes".to_string(),
-            ));
+            return Err(
+                XMLGeneratorError::DataTypesFormatError(
+                    "Attributes cannot have their own attributes".to_string()
+                )
+            );
         }
 
         if let Some(type_info) = &self.type_info {
@@ -173,36 +177,37 @@ impl DataType {
                     xml_element.add_attribute(name, &attribute);
                     Ok(())
                 }
-                None => Err(XMLGeneratorError::DataTypeNotFoundError(
-                    type_info.get_name(),
-                )),
+                None => Err(XMLGeneratorError::DataTypeNotFoundError(type_info.get_name())),
             };
         }
 
-        Err(XMLGeneratorError::DataTypeInformationError(format!(
-            "No type information found for type: {}",
-            name
-        )))
+        Err(
+            XMLGeneratorError::DataTypeInformationError(
+                format!("No type information found for type: {}", name)
+            )
+        )
     }
 
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd,
+        xsd: &Xsd
     ) -> Result<(), XMLGeneratorError> {
         if let Some(type_info) = &self.type_info {
             if !self.groups.is_empty() {
-                return Err(XMLGeneratorError::DataTypesFormatError(
-                    "Type includes type information and groups".to_string(),
-                ));
+                return Err(
+                    XMLGeneratorError::DataTypesFormatError(
+                        "Type includes type information and groups".to_string()
+                    )
+                );
             }
 
             match type_info.generate(generator, xsd)? {
                 None => {
-                    return Err(XMLGeneratorError::TypeGenerationError(
-                        "No output generated".to_string(),
-                    ));
+                    return Err(
+                        XMLGeneratorError::TypeGenerationError("No output generated".to_string())
+                    );
                 }
                 Some(value) => {
                     let result = encode_html(&value, &WhiteSpace::Preserve)?;

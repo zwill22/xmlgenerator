@@ -1,12 +1,12 @@
 #[cfg(test)]
 mod tests {
-    use crate::{RegexTranslationError, RegexTranslator};
+    use crate::{ RegexTranslationError, RegexTranslator };
     use file_to_string::read_file;
     use roxmltree::Node;
-    use roxmltree::{Attribute, Document};
+    use roxmltree::{ Attribute, Document };
     use std::collections::HashSet;
 
-    use rstest::{fixture, rstest};
+    use rstest::{ fixture, rstest };
     use std::path::PathBuf;
     use workspace_root::get_workspace_root;
     use xsdtestdata::XsdTestData;
@@ -21,8 +21,7 @@ mod tests {
         let name = node.tag_name().name().trim().to_string();
 
         if name == "pattern" {
-            node.attributes()
-                .for_each(|attr| parse_attribute(regex, &attr));
+            node.attributes().for_each(|attr| parse_attribute(regex, &attr));
         }
 
         node.children().for_each(|child| parse_node(regex, child));
@@ -54,10 +53,11 @@ mod tests {
     fn test_pattern(translator: &RegexTranslator, pattern: &str) -> String {
         match translator.translate(pattern, true) {
             Ok(translation) => translation,
-            Err(_) => match translator.translate(pattern, false) {
-                Ok(translation) => translation,
-                Err(e) => handle_errors(e, pattern),
-            },
+            Err(_) =>
+                match translator.translate(pattern, false) {
+                    Ok(translation) => translation,
+                    Err(e) => handle_errors(e, pattern),
+                }
         }
     }
 
@@ -109,10 +109,11 @@ mod tests {
     fn handle_surrogate_string(translator: &RegexTranslator, surrogate: &str) {
         match translator.translate(surrogate, true) {
             Ok(_) => panic!("No error thrown"),
-            Err(e) => match e {
-                RegexTranslationError::SurrogatesError => {}
-                _ => panic!("Invalid error thrown"),
-            },
+            Err(e) =>
+                match e {
+                    RegexTranslationError::SurrogatesError => {}
+                    _ => panic!("Invalid error thrown"),
+                }
         }
     }
 
@@ -127,8 +128,6 @@ mod tests {
             r"\P{IsLowSurrogates}",
         ];
 
-        surrogates_strings
-            .iter()
-            .for_each(|string| handle_surrogate_string(translator, string));
+        surrogates_strings.iter().for_each(|string| handle_surrogate_string(translator, string));
     }
 }

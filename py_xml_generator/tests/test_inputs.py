@@ -2,13 +2,13 @@ import pytest
 
 from pyxmlgenerator import InvalidPathError
 
-invalid_inputs = [
-    "",
-    "Invalid path format",
-    "/path/in/valid/format/but/does/not/exist"
-]
+invalid_inputs = ["", "Invalid path format", "/path/in/valid/format/but/does/not/exist"]
 
-@pytest.mark.parametrize("path", invalid_inputs, )
+
+@pytest.mark.parametrize(
+    "path",
+    invalid_inputs,
+)
 def test_empty(xml_generator, path):
 
     with pytest.raises(InvalidPathError) as e:

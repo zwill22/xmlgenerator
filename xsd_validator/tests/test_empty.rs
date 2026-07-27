@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    use xsdvalidator::{XSDValidationError, XSDValidator};
+    use xsdvalidator::{ XSDValidationError, XSDValidator };
 
     fn check_error(error: XSDValidationError) {
         match error {

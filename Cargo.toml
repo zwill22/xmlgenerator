@@ -7,13 +7,9 @@ members = [
     "py_xml_generator",
     "xsd_test_data",
     "py_xsd_test_data",
-    "regex_translator"
-]
-default-members = [
-    "xsd_validator",
     "regex_translator",
-    "xml_generator",
 ]
+default-members = ["xsd_validator", "regex_translator", "xml_generator"]
 
 [workspace.package]
 version = "0.1.0"

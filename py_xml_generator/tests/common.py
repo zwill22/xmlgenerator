@@ -15,10 +15,7 @@ def get_project_root() -> Path:
 
     :return: Path
     """
-    return next(
-        p for p in Path(__file__).parents
-        if (p / '.git').exists()
-    )
+    return next(p for p in Path(__file__).parents if (p / ".git").exists())
 
 
 def setup_xmlschema11(filepath):
@@ -132,9 +129,9 @@ def validate_output(xml_generator, input_file: Path | str):
 
     :param xml_generator: XMLGenerator fixture
     :param input_file: Input schema passed to py-xmlgenerator
-    
+
     :raise x
-    :return: 
+    :return:
     """
 
     filepath = str(input_file)
