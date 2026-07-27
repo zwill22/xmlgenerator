@@ -1,7 +1,7 @@
 use crate::pattern::Pattern;
 use crate::whitespace::WhiteSpace;
 use rand::Rng;
-use rand::rngs::ThreadRng;
+use rand::rngs::{ StdRng };
 use regex::Regex;
 
 #[derive(PartialEq)]
@@ -10,7 +10,7 @@ pub(crate) struct Datetime {
     pattern: Pattern,
 }
 
-fn generate_year(rng: &mut ThreadRng) -> i32 {
+fn generate_year(rng: &mut StdRng) -> i32 {
     let mut year = rng.random_range(1..10000);
     if year == 0 {
         return generate_year(rng);
@@ -22,15 +22,11 @@ fn generate_year(rng: &mut ThreadRng) -> i32 {
     year
 }
 
-fn generate_day(rng: &mut ThreadRng, year: i32, month: i32) -> i32 {
+fn generate_day(rng: &mut StdRng, year: i32, month: i32) -> i32 {
     match month {
         9 | 4 | 6 | 11 => rng.random_range(1..=30),
         2 => {
-            if year % 4 == 0 {
-                rng.random_range(1..=29)
-            } else {
-                rng.random_range(1..=28)
-            }
+            if year % 4 == 0 { rng.random_range(1..=29) } else { rng.random_range(1..=28) }
         }
         _ => rng.random_range(1..=31),
     }
@@ -41,7 +37,7 @@ impl Datetime {
         &self.pattern
     }
 
-    pub(crate) fn generate(&self, rng: &mut ThreadRng) -> Option<String> {
+    pub(crate) fn generate(&self, rng: &mut StdRng) -> Option<String> {
         if self.strf_time.is_empty() {
             return None;
         }
@@ -86,7 +82,7 @@ impl Datetime {
         }
 
         if output.contains("%") {
-            panic!("Raw time string not replaced")
+            panic!("Raw time string not replaced");
         }
 
         Some(output)
@@ -101,7 +97,8 @@ impl Datetime {
 
 impl From<&str> for Datetime {
     fn from(s: &str) -> Self {
-        const YEAR: &str = r"(-?(?:[0-9]{3}[1-9])|(?:[0-9]{2}[1-9][0-9])|(?:[0-9][1-9][0-9]{2})|(?:[1-9][0-9]{3}))";
+        const YEAR: &str =
+            r"(-?(?:[0-9]{3}[1-9])|(?:[0-9]{2}[1-9][0-9])|(?:[0-9][1-9][0-9]{2})|(?:[1-9][0-9]{3}))";
         const MONTH: &str = r"(?:0[1-9]|1[0-2])";
         const DAY: &str = r"(?:0[1-9]|1[0-9]|2[0-9]|3[0-1])";
 
@@ -118,7 +115,7 @@ impl From<&str> for Datetime {
             .replace("%S", SECOND);
 
         if output.contains("%") {
-            panic!("Raw time string not replaced")
+            panic!("Raw time string not replaced");
         }
 
         Datetime {

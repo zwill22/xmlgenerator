@@ -21,7 +21,7 @@ mod tests {
             Err(e) => check_error(e),
         }
 
-        match generator.generate(&path) {
+        match generator.generate(&path, Some(38)) {
             Ok(_) => panic!("No error thrown"),
             Err(e) => check_error(e),
         }

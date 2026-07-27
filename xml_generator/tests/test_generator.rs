@@ -3,7 +3,7 @@ mod tests {
     use gag::Gag;
     use std::fs::ReadDir;
     use std::path::PathBuf;
-    use std::{fs, panic};
+    use std::{ fs, panic };
     use workspace_root::get_workspace_root;
     use xmlgenerator::XMLGenerator;
     use xmlgenerator::error::XMLGeneratorError;
@@ -50,7 +50,7 @@ mod tests {
     }
 
     fn test_xml(generator: &XMLGenerator, filepath: &PathBuf, expected: &String) {
-        match generator.generate(filepath) {
+        match generator.generate(filepath, Some(47)) {
             Ok(_) => panic!("No error thrown for invalid result"),
             Err(error) => check_error(&error, expected),
         }
@@ -69,11 +69,11 @@ mod tests {
 
     fn run_generator(
         generator: &XMLGenerator,
-        filepath: &PathBuf,
+        filepath: &PathBuf
     ) -> Result<String, XMLGeneratorError> {
         let _err_gag = Gag::stderr().unwrap();
 
-        generator.generate(filepath)
+        generator.generate(filepath, Some(42))
     }
 
     #[test]
@@ -87,7 +87,7 @@ mod tests {
             match run_generator(&generator, &filepath) {
                 Ok(out) => println!("{}", out),
                 Err(err) => {
-                    panic!("XMLGenerator error: {:?}", err)
+                    panic!("XMLGenerator error: {:?}", err);
                 }
             }
         }
@@ -96,7 +96,7 @@ mod tests {
         test_error(
             &generator,
             "two_roots.xsd",
-            "not implemented: Multiple independent (root) elements",
+            "not implemented: Multiple independent (root) elements"
         );
     }
 }

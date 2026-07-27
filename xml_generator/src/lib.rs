@@ -53,9 +53,7 @@ impl XMLGenerator {
             return Ok(());
         }
 
-        Err(XMLGeneratorError::XSDValidatorError(
-            "Invalid XSD".to_string(),
-        ))
+        Err(XMLGeneratorError::XSDValidatorError("Invalid XSD".to_string()))
     }
 
     /// Generate an XML string containing fake data
@@ -76,11 +74,15 @@ impl XMLGenerator {
     /// `XMLBuilder` object using the `xml_builder` crate. If the `XMLBuilder` returns
     /// an error when generating the output XML, then an `XMLGeneratorError::XMLBuilderError`
     /// is returned.
-    pub fn generate(&self, xsd_path: &PathBuf) -> Result<String, XMLGeneratorError> {
+    pub fn generate(
+        &self,
+        xsd_path: &PathBuf,
+        seed: Option<u64>
+    ) -> Result<String, XMLGeneratorError> {
         let schemas = SchemaData::new(xsd_path)?;
         self.validate(xsd_path)?;
 
-        let mut generator = Generator::new(100, 10, 100);
+        let mut generator = Generator::new(10000, 10, 10000, seed);
 
         let xsd = Xsd::new(&mut generator, &self.translator, &schemas)?;
 

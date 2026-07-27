@@ -67,7 +67,7 @@ mod tests {
         };
 
         let path = data.get_path();
-        match generator.generate(path) {
+        match generator.generate(path, Some(57)) {
             Ok(str) => check_result_str(&str),
             Err(err) => check_error(&err),
         }

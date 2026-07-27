@@ -3,12 +3,13 @@ use crate::datetime::Datetime;
 use crate::element::Element;
 use crate::encoder::decode_html;
 use crate::pattern::Pattern;
-use crate::whitespace::{WhiteSpace, check_line_endings};
+use crate::whitespace::{ WhiteSpace, check_line_endings };
 use crate::xsd_type::XsdType;
 use chrono::Duration;
-use fake::{Fake, Faker};
-use rand::prelude::{IndexedRandom, ThreadRng};
-use rand::{Rng, SeedableRng};
+use fake::{ Fake, Faker };
+use rand::{ Rng, SeedableRng };
+use rand::prelude::{ IndexedRandom };
+use rand::rngs::StdRng;
 use rand_xorshift::XorShiftRng;
 use regex::Regex;
 use std::collections::HashSet;
@@ -24,7 +25,7 @@ fn fake<Input: fake::Dummy<Faker> + ToString>() -> Option<String> {
 }
 
 pub(crate) struct Generator {
-    rng: ThreadRng,
+    rng: StdRng,
     xor: XorShiftRng,
     max_depth: usize,
     max_repeat: u32,
@@ -37,9 +38,22 @@ pub(crate) struct Generator {
 }
 
 impl Generator {
-    pub(crate) fn new(regex_patterns: usize, max_repeat: u32, max_depth: usize) -> Generator {
-        let rng = rand::rng();
-        let xor = XorShiftRng::from_os_rng();
+    pub(crate) fn new(
+        regex_patterns: usize,
+        max_repeat: u32,
+        max_depth: usize,
+        seed: Option<u64>
+    ) -> Generator {
+        let rng = match seed {
+            Some(val) => StdRng::seed_from_u64(val),
+            None => StdRng::from_os_rng(),
+        };
+
+        let xor = match seed {
+            Some(val) => XorShiftRng::seed_from_u64(val),
+            None => XorShiftRng::from_os_rng(),
+        };
+
         Generator {
             rng,
             xor,
@@ -66,16 +80,12 @@ impl Generator {
         match self.references.pop() {
             Some(value) => {
                 if reference != value {
-                    return Err(XMLGeneratorError::InvalidXSDError(
-                        "Unknown reference".to_string(),
-                    ));
+                    return Err(XMLGeneratorError::InvalidXSDError("Unknown reference".to_string()));
                 }
 
                 Ok(())
             }
-            None => Err(XMLGeneratorError::InvalidXSDError(
-                "Reference not found".to_string(),
-            )),
+            None => Err(XMLGeneratorError::InvalidXSDError("Reference not found".to_string())),
         }
     }
 
@@ -83,12 +93,16 @@ impl Generator {
         let schema = &schema_info.schema;
 
         match schema.element_form_default {
-            FormChoiceType::Qualified => self.element_qualified = true,
+            FormChoiceType::Qualified => {
+                self.element_qualified = true;
+            }
             FormChoiceType::Unqualified => {}
         }
 
         match schema.attribute_form_default {
-            FormChoiceType::Qualified => self.attribute_qualified = true,
+            FormChoiceType::Qualified => {
+                self.attribute_qualified = true;
+            }
             FormChoiceType::Unqualified => {}
         }
     }
@@ -103,7 +117,9 @@ impl Generator {
         }
         let reference = match self.references.last() {
             Some(reference) => reference,
-            None => return false,
+            None => {
+                return false;
+            }
         };
 
         if reference == name {
@@ -138,10 +154,7 @@ impl Generator {
     }
 
     fn sample(&mut self, regex: rand_regex::Regex) -> HashSet<String> {
-        (&mut self.xor)
-            .sample_iter(&regex)
-            .take(self.regex_patterns)
-            .collect::<HashSet<String>>()
+        (&mut self.xor).sample_iter(&regex).take(self.regex_patterns).collect::<HashSet<String>>()
     }
 
     fn check_valid(&mut self, sample: &str) -> bool {
@@ -156,7 +169,9 @@ impl Generator {
 
         let regex = match rand_regex::Regex::compile(re, self.max_repeat) {
             Ok(regex) => regex,
-            Err(_) => return HashSet::new(),
+            Err(_) => {
+                return HashSet::new();
+            }
         };
 
         let samples = self.sample(regex);
@@ -211,8 +226,9 @@ impl Generator {
     fn generate_language_pattern(&mut self, pattern: &Pattern) -> Option<String> {
         let language_pattern = Self::get_language_pattern();
 
-        if let Some(output) = self.generate_two_patterns(&language_pattern, pattern, 0)
-            && XsdType::Language.validate(&output)
+        if
+            let Some(output) = self.generate_two_patterns(&language_pattern, pattern, 0) &&
+            XsdType::Language.validate(&output)
         {
             return Some(output);
         }
@@ -290,7 +306,7 @@ impl Generator {
         &mut self,
         xsd_type: &XsdType,
         pattern: &Pattern,
-        ascii: bool,
+        ascii: bool
     ) -> Option<String> {
         let samples = self.regex_samples(pattern, ascii);
         for sample in samples {
@@ -299,9 +315,7 @@ impl Generator {
             }
         }
 
-        let output = self
-            .type_generate(xsd_type, ascii)
-            .expect("No type generated");
+        let output = self.type_generate(xsd_type, ascii).expect("No type generated");
 
         Generator::find_match(pattern, &output, ascii)
     }
@@ -310,7 +324,7 @@ impl Generator {
         &mut self,
         pattern1: &Pattern,
         pattern2: &Pattern,
-        ascii: bool,
+        ascii: bool
     ) -> Option<String> {
         let samples1 = self.regex_samples(pattern1, ascii);
         for sample in samples1 {
@@ -325,16 +339,17 @@ impl Generator {
     fn generate_date_with_pattern(
         &mut self,
         datetime: &Datetime,
-        pattern: &Pattern,
+        pattern: &Pattern
     ) -> Option<String> {
         if pattern.is_empty() {
             return datetime.generate(&mut self.rng);
         }
 
         for _ in 1..self.regex_patterns {
-            if let Some(out_date) = datetime.generate(&mut self.rng)
-                && let Some(output) = Generator::find_match(pattern, &out_date, true)
-                && datetime.matches(&output)
+            if
+                let Some(out_date) = datetime.generate(&mut self.rng) &&
+                let Some(output) = Generator::find_match(pattern, &out_date, true) &&
+                datetime.matches(&output)
             {
                 return Some(output);
             }
@@ -347,7 +362,7 @@ impl Generator {
         &mut self,
         base_pattern: &Pattern,
         specific_pattern: &Pattern,
-        depth: usize,
+        depth: usize
     ) -> Option<String> {
         // TODO Implement proper error
         if depth > self.max_depth {
@@ -371,7 +386,7 @@ impl Generator {
         for ascii in [true, false] {
             if let Some(output) = self.cross_match(base_pattern, specific_pattern, ascii) {
                 return Some(output);
-            };
+            }
 
             if let Some(output) = self.cross_match(specific_pattern, base_pattern, ascii) {
                 return Some(output);
@@ -384,7 +399,7 @@ impl Generator {
     pub(crate) fn generate_type_pattern(
         &mut self,
         xsd_type: &XsdType,
-        pattern: &Pattern,
+        pattern: &Pattern
     ) -> Option<String> {
         const ASCII: bool = true;
         match xsd_type {

@@ -97,7 +97,7 @@ class Validator:
 
 def run_generator(xml_generator, filepath) -> str:
     try:
-        result: str = xml_generator.generate(filepath)
+        result: str = xml_generator.generate(filepath, seed=42)
     except pyxmlgenerator.NoElementsError:
         pytest.xfail("XSD does not contain any elements")
     except pyxmlgenerator.ImplementationError as e:
