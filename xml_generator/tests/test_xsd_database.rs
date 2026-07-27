@@ -7,7 +7,7 @@ mod tests {
     use rstest::*;
     use std::panic;
     use xmlgenerator::{ XMLGenerator, XMLGeneratorError };
-    use xsdtestdata::XsdTestData;
+    use xsdtestdata::XSDTestData;
 
     fn check_error(error: &XMLGeneratorError) -> String {
         match error {
@@ -58,7 +58,7 @@ mod tests {
         str.to_string()
     }
 
-    fn test_file(generator: &XMLGenerator, test_data: &XsdTestData, path: &str) -> String {
+    fn test_file(generator: &XMLGenerator, test_data: &XSDTestData, path: &str) -> String {
         let data = match test_data.get(path) {
             Some(data) => data,
             None => {
@@ -83,7 +83,7 @@ mod tests {
 
     fn get_valid_files<'a>(
         generator: &XMLGenerator,
-        test_data: &'a XsdTestData,
+        test_data: &'a XSDTestData,
         data_set: String
     ) -> HashSet<&'a str> {
         let mut valid_files = HashSet::new();
@@ -109,12 +109,12 @@ mod tests {
 
     #[fixture]
     #[once]
-    fn test_data() -> XsdTestData {
+    fn test_data() -> XSDTestData {
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");
         let archive = root.join("xsdtests.zip");
 
-        XsdTestData::new(&db_root, &archive)
+        XSDTestData::new(&db_root, &archive)
     }
 
     #[rstest]
@@ -129,7 +129,7 @@ mod tests {
     #[case::common("common")]
     fn test_xsd_database(
         generator: &XMLGenerator,
-        test_data: &XsdTestData,
+        test_data: &XSDTestData,
         #[case] data_set: String
     ) {
         for filepath in get_valid_files(generator, test_data, data_set) {
@@ -138,7 +138,7 @@ mod tests {
     }
 
     // #[rstest]
-    // fn test_single_file(generator: &XMLGenerator, test_data: &XsdTestData) {
+    // fn test_single_file(generator: &XMLGenerator, test_data: &XSDTestData) {
     //     let file = "saxonData/XmlVersions/xv008.xsd";
     //     println!("{}", file);
     //

@@ -4,8 +4,8 @@ use crate::error::{ XMLGeneratorError, unimplemented };
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::xsd::Xsd;
-use crate::xsd_type::XsdType;
+use crate::xsd::XSD;
+use crate::xsd_type::XSDType;
 use rand::Rng;
 use regextranslator::RegexTranslator;
 use std::cmp::{ max, min };
@@ -44,7 +44,7 @@ pub(crate) struct Element {
     name: Option<Name>,
     data_types: Vec<DataType>,
     type_name: Option<String>,
-    xsd_type: XsdType,
+    xsd_type: XSDType,
     reference: Option<Name>,
     min: usize,
     max: Option<usize>,
@@ -72,8 +72,8 @@ impl Element {
                     return Err(XMLGeneratorError::DataTypeInformationError(e.to_string()));
                 }
             };
-            match XsdType::from_string(&type_name)? {
-                XsdType::None => {
+            match XSDType::from_string(&type_name)? {
+                XSDType::None => {
                     element.type_name = Some(type_name);
                 }
                 xsd_type => {
@@ -225,7 +225,7 @@ impl Element {
     fn get_root_name(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &XSD
     ) -> Result<String, XMLGeneratorError> {
         let root = generator.is_root();
         let name = self.get_name()?;
@@ -242,7 +242,7 @@ impl Element {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd
+        xsd: &XSD
     ) -> Result<(), XMLGeneratorError> {
         if let Some(output) = generator.generate_type(&self.xsd_type) {
             let value = encode_html(&output, &self.xsd_type.whitespace())?;
@@ -279,7 +279,7 @@ impl Element {
     fn generate_type_from_name(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &XSD
     ) -> Result<XMLElement, XMLGeneratorError> {
         let n_namespace = generator.n_namespaces();
         let name = self.get_root_name(generator, xsd)?;
@@ -297,7 +297,7 @@ impl Element {
     fn generate_element(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &XSD
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         let n = self.get_occurrences();
 
@@ -313,7 +313,7 @@ impl Element {
     fn generate_reference(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd,
+        xsd: &XSD,
         reference: &Name
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         if self.type_name.is_some() {
@@ -354,7 +354,7 @@ impl Element {
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &XSD
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
             None => self.generate_element(generator, xsd),
@@ -376,7 +376,7 @@ impl Default for Element {
             name: None,
             data_types: vec![],
             type_name: None,
-            xsd_type: XsdType::None,
+            xsd_type: XSDType::None,
             reference: None,
             min: 0,
             max: None,

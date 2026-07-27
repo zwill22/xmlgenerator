@@ -1,4 +1,4 @@
-use quick_xml::Error as QuickXmlError;
+use quick_xml::Error as QuickXMLError;
 use quick_xml::events::attributes::AttrError;
 use regex_intersect::IntersectError;
 use regextranslator::RegexTranslationError;
@@ -52,20 +52,20 @@ pub enum XMLGeneratorError {
     UnimplementedFeature(String),
 }
 
-impl From<QuickXmlError> for XMLGeneratorError {
-    fn from(err: QuickXmlError) -> XMLGeneratorError {
+impl From<QuickXMLError> for XMLGeneratorError {
+    fn from(err: QuickXMLError) -> XMLGeneratorError {
         match err {
-            QuickXmlError::Io(error) => XMLGeneratorError::InvalidPathError(error.to_string()),
-            QuickXmlError::Syntax(error) => XMLGeneratorError::InvalidXSDError(error.to_string()),
-            QuickXmlError::IllFormed(error) => {
+            QuickXMLError::Io(error) => XMLGeneratorError::InvalidPathError(error.to_string()),
+            QuickXMLError::Syntax(error) => XMLGeneratorError::InvalidXSDError(error.to_string()),
+            QuickXMLError::IllFormed(error) => {
                 XMLGeneratorError::InvalidXSDError(error.to_string())
             }
-            QuickXmlError::InvalidAttr(error) => {
+            QuickXMLError::InvalidAttr(error) => {
                 XMLGeneratorError::InvalidXSDError(error.to_string())
             }
-            QuickXmlError::Encoding(error) => XMLGeneratorError::InvalidXSDError(error.to_string()),
-            QuickXmlError::Escape(error) => XMLGeneratorError::InvalidXSDError(error.to_string()),
-            QuickXmlError::Namespace(error) => {
+            QuickXMLError::Encoding(error) => XMLGeneratorError::InvalidXSDError(error.to_string()),
+            QuickXMLError::Escape(error) => XMLGeneratorError::InvalidXSDError(error.to_string()),
+            QuickXMLError::Namespace(error) => {
                 XMLGeneratorError::InvalidXSDError(error.to_string())
             }
         }

@@ -10,7 +10,7 @@ use regex::Regex;
 use std::fmt::Display;
 
 #[derive(Default, PartialEq)]
-pub(crate) enum XsdType {
+pub(crate) enum XSDType {
     // Integer types
     Byte, // A signed 8-bit integer
     Short, // A signed 16-bit integer
@@ -86,7 +86,7 @@ fn validate_pattern(pattern: &Pattern, input: &str) -> bool {
     validate(input, extended).unwrap_or(false)
 }
 
-impl XsdType {
+impl XSDType {
     pub(crate) fn string(string: &str, whitespace: &WhiteSpace) -> Result<Self, XMLGeneratorError> {
         let pattern = Pattern::from_string(string, whitespace)?;
         let out = Self::String(pattern);
@@ -102,54 +102,54 @@ impl XsdType {
 
     pub(crate) fn validate(&self, input: &str) -> bool {
         match self {
-            XsdType::Byte => input.parse::<i8>().is_ok(),
-            XsdType::Short => input.parse::<i16>().is_ok(),
-            XsdType::Int => input.parse::<i32>().is_ok(),
-            XsdType::Long => input.parse::<i64>().is_ok(),
-            XsdType::UnsignedByte => input.parse::<u8>().is_ok(),
-            XsdType::UnsignedShort => input.parse::<u16>().is_ok(),
-            XsdType::UnsignedInt => input.parse::<u32>().is_ok(),
-            XsdType::UnsignedLong => input.parse::<u64>().is_ok(),
-            XsdType::Float => input.parse::<f32>().is_ok(),
-            XsdType::Double => input.parse::<f64>().is_ok(),
-            XsdType::Uri => input.parse::<Uri>().is_ok(),
-            // XsdType::Base64Binary => unimplemented!("Base64Binary"),
-            // XsdType::HexBinary => unimplemented!("HexBinary"),
-            XsdType::Duration => validate_duration(input),
-            XsdType::Language => validate_language(input),
-            XsdType::DateTime(_) => unimplemented!("Datetime validation"),
-            XsdType::String(pattern) => validate_pattern(pattern, input),
-            XsdType::None => false,
+            XSDType::Byte => input.parse::<i8>().is_ok(),
+            XSDType::Short => input.parse::<i16>().is_ok(),
+            XSDType::Int => input.parse::<i32>().is_ok(),
+            XSDType::Long => input.parse::<i64>().is_ok(),
+            XSDType::UnsignedByte => input.parse::<u8>().is_ok(),
+            XSDType::UnsignedShort => input.parse::<u16>().is_ok(),
+            XSDType::UnsignedInt => input.parse::<u32>().is_ok(),
+            XSDType::UnsignedLong => input.parse::<u64>().is_ok(),
+            XSDType::Float => input.parse::<f32>().is_ok(),
+            XSDType::Double => input.parse::<f64>().is_ok(),
+            XSDType::Uri => input.parse::<Uri>().is_ok(),
+            // XSDType::Base64Binary => unimplemented!("Base64Binary"),
+            // XSDType::HexBinary => unimplemented!("HexBinary"),
+            XSDType::Duration => validate_duration(input),
+            XSDType::Language => validate_language(input),
+            XSDType::DateTime(_) => unimplemented!("Datetime validation"),
+            XSDType::String(pattern) => validate_pattern(pattern, input),
+            XSDType::None => false,
         }
     }
 
     pub(crate) fn whitespace(&self) -> WhiteSpace {
         match self {
-            XsdType::Byte => WhiteSpace::Preserve,
-            XsdType::Short => WhiteSpace::Preserve,
-            XsdType::Int => WhiteSpace::Preserve,
-            XsdType::Long => WhiteSpace::Collapse,
-            XsdType::UnsignedByte => WhiteSpace::Preserve,
-            XsdType::UnsignedShort => WhiteSpace::Preserve,
-            XsdType::UnsignedInt => WhiteSpace::Preserve,
-            XsdType::UnsignedLong => WhiteSpace::Preserve,
-            XsdType::Float => WhiteSpace::Collapse,
-            XsdType::Double => WhiteSpace::Collapse,
-            XsdType::Uri => WhiteSpace::Collapse,
-            // XsdType::Base64Binary => WhiteSpace::Collapse,
-            // XsdType::HexBinary => WhiteSpace::Collapse,
-            XsdType::Duration => WhiteSpace::Collapse,
-            XsdType::Language => WhiteSpace::Collapse,
-            XsdType::DateTime(_) => WhiteSpace::Collapse,
-            XsdType::String(pattern) => pattern.get_whitespace(),
-            XsdType::None => WhiteSpace::Preserve,
+            XSDType::Byte => WhiteSpace::Preserve,
+            XSDType::Short => WhiteSpace::Preserve,
+            XSDType::Int => WhiteSpace::Preserve,
+            XSDType::Long => WhiteSpace::Collapse,
+            XSDType::UnsignedByte => WhiteSpace::Preserve,
+            XSDType::UnsignedShort => WhiteSpace::Preserve,
+            XSDType::UnsignedInt => WhiteSpace::Preserve,
+            XSDType::UnsignedLong => WhiteSpace::Preserve,
+            XSDType::Float => WhiteSpace::Collapse,
+            XSDType::Double => WhiteSpace::Collapse,
+            XSDType::Uri => WhiteSpace::Collapse,
+            // XSDType::Base64Binary => WhiteSpace::Collapse,
+            // XSDType::HexBinary => WhiteSpace::Collapse,
+            XSDType::Duration => WhiteSpace::Collapse,
+            XSDType::Language => WhiteSpace::Collapse,
+            XSDType::DateTime(_) => WhiteSpace::Collapse,
+            XSDType::String(pattern) => pattern.get_whitespace(),
+            XSDType::None => WhiteSpace::Preserve,
         }
     }
 
     pub(crate) fn get_pattern(&self) -> Option<&Pattern> {
         match self {
-            XsdType::DateTime(datetime) => Some(datetime.get_pattern()),
-            XsdType::String(pattern) => {
+            XSDType::DateTime(datetime) => Some(datetime.get_pattern()),
+            XSDType::String(pattern) => {
                 if pattern.is_empty() {
                     return None;
                 }
@@ -186,95 +186,95 @@ impl XsdType {
 
         match s {
             // Numeric Data Types
-            "byte" => Ok(XsdType::Byte),
-            "decimal" => XsdType::string(r"(\+|-)?([0-9]+(\.[0-9]*)?|\.[0-9]+)", &COLLAPSE),
-            "short" => Ok(XsdType::Short),
-            "int" => Ok(XsdType::Int),
-            "long" => Ok(XsdType::Long),
-            "integer" => XsdType::string(r"[+-]?[0-9]+", &COLLAPSE),
-            "negativeInteger" => XsdType::string(r"-[1-9][0-9]+", &COLLAPSE),
-            "nonNegativeInteger" => XsdType::string(r"0|(?:\+?[1-9][0-9]*)", &COLLAPSE),
-            "nonPositiveInteger" => XsdType::string(r"0|(?:-[1-9][0-9]*)", &COLLAPSE),
-            "positiveInteger" => XsdType::string(r"\+?[1-9][0-9]*", &COLLAPSE),
-            "unsignedLong" => Ok(XsdType::UnsignedLong),
-            "unsignedInt" => Ok(XsdType::UnsignedInt),
-            "unsignedShort" => Ok(XsdType::UnsignedShort),
-            "unsignedByte" => Ok(XsdType::UnsignedByte),
+            "byte" => Ok(XSDType::Byte),
+            "decimal" => XSDType::string(r"(\+|-)?([0-9]+(\.[0-9]*)?|\.[0-9]+)", &COLLAPSE),
+            "short" => Ok(XSDType::Short),
+            "int" => Ok(XSDType::Int),
+            "long" => Ok(XSDType::Long),
+            "integer" => XSDType::string(r"[+-]?[0-9]+", &COLLAPSE),
+            "negativeInteger" => XSDType::string(r"-[1-9][0-9]+", &COLLAPSE),
+            "nonNegativeInteger" => XSDType::string(r"0|(?:\+?[1-9][0-9]*)", &COLLAPSE),
+            "nonPositiveInteger" => XSDType::string(r"0|(?:-[1-9][0-9]*)", &COLLAPSE),
+            "positiveInteger" => XSDType::string(r"\+?[1-9][0-9]*", &COLLAPSE),
+            "unsignedLong" => Ok(XSDType::UnsignedLong),
+            "unsignedInt" => Ok(XSDType::UnsignedInt),
+            "unsignedShort" => Ok(XSDType::UnsignedShort),
+            "unsignedByte" => Ok(XSDType::UnsignedByte),
 
             // String data types
-            "ENTITY" => XsdType::string(NC_NAME, &COLLAPSE),
-            "ID" => XsdType::string(NC_NAME, &COLLAPSE),
+            "ENTITY" => XSDType::string(NC_NAME, &COLLAPSE),
+            "ID" => XSDType::string(NC_NAME, &COLLAPSE),
             "IDREF" => unimplemented("IDREF"), // Requires cross-referencing
-            "language" => Ok(XsdType::Language),
-            "Name" => XsdType::string(NAME, &COLLAPSE),
-            "NCName" => XsdType::string(NC_NAME, &COLLAPSE),
-            "NMTOKEN" => XsdType::string(NM_TOKEN, &COLLAPSE),
-            "normalizedString" => XsdType::string(NORMAL, &REPLACE),
+            "language" => Ok(XSDType::Language),
+            "Name" => XSDType::string(NAME, &COLLAPSE),
+            "NCName" => XSDType::string(NC_NAME, &COLLAPSE),
+            "NMTOKEN" => XSDType::string(NM_TOKEN, &COLLAPSE),
+            "normalizedString" => XSDType::string(NORMAL, &REPLACE),
             "QName" => unimplemented("QName"), // Requires cross-referencing
-            "string" => XsdType::string(NULL, &PRESERVE),
-            "token" => XsdType::string(TOKEN, &COLLAPSE),
+            "string" => XSDType::string(NULL, &PRESERVE),
+            "token" => XSDType::string(TOKEN, &COLLAPSE),
 
             // Date time data types
-            "date" => XsdType::from_date(DATE),
-            "dateTime" => XsdType::from_date(DATETIME),
-            "gDay" => XsdType::from_date(G_DAY),
-            "gMonth" => XsdType::from_date(G_MONTH),
-            "gMonthDay" => XsdType::from_date(G_MONTH_DAY),
-            "gYear" => XsdType::from_date(G_YEAR),
-            "gYearMonth" => XsdType::from_date(G_YEAR_MONTH),
-            "time" => XsdType::from_date(TIME),
+            "date" => XSDType::from_date(DATE),
+            "dateTime" => XSDType::from_date(DATETIME),
+            "gDay" => XSDType::from_date(G_DAY),
+            "gMonth" => XSDType::from_date(G_MONTH),
+            "gMonthDay" => XSDType::from_date(G_MONTH_DAY),
+            "gYear" => XSDType::from_date(G_YEAR),
+            "gYearMonth" => XSDType::from_date(G_YEAR_MONTH),
+            "time" => XSDType::from_date(TIME),
 
             // Miscellaneous data types
-            "duration" => Ok(XsdType::Duration),
-            "anyURI" => Ok(XsdType::Uri),
+            "duration" => Ok(XSDType::Duration),
+            "anyURI" => Ok(XSDType::Uri),
             "base64Binary" => unimplemented("base64Binary"),
-            "boolean" => XsdType::string(BOOLEAN, &COLLAPSE),
-            "float" => Ok(XsdType::Float),
-            "double" => Ok(XsdType::Double),
+            "boolean" => XSDType::string(BOOLEAN, &COLLAPSE),
+            "float" => Ok(XSDType::Float),
+            "double" => Ok(XSDType::Double),
             "hexBinary" => unimplemented("hexBinary"),
-            "NOTATION" => XsdType::string(NULL, &COLLAPSE),
+            "NOTATION" => XSDType::string(NULL, &COLLAPSE),
 
             // List types
-            "ENTITIES" => XsdType::string(NC_NAMES, &PRESERVE),
-            "NMTOKENS" => XsdType::string(NM_TOKENS, &PRESERVE),
+            "ENTITIES" => XSDType::string(NC_NAMES, &PRESERVE),
+            "NMTOKENS" => XSDType::string(NM_TOKENS, &PRESERVE),
             "IDREFS" => unimplemented("IDREFS"), // Requires cross-referencing
 
             // Just use a string for any type
-            "anyType" => XsdType::string(NULL, &PRESERVE),
-            "anySimpleType" => XsdType::string(NULL, &PRESERVE),
+            "anyType" => XSDType::string(NULL, &PRESERVE),
+            "anySimpleType" => XSDType::string(NULL, &PRESERVE),
 
-            _ => Ok(XsdType::None),
+            _ => Ok(XSDType::None),
         }
     }
 }
 
-impl Display for XsdType {
+impl Display for XSDType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let str = match self {
-            XsdType::Byte => "Byte".to_string(),
-            XsdType::Short => "Short".to_string(),
-            XsdType::Int => "Int".to_string(),
-            XsdType::Long => "Long".to_string(),
-            XsdType::UnsignedByte => "UnsignedByte".to_string(),
-            XsdType::UnsignedShort => "UnsignedShort".to_string(),
-            XsdType::UnsignedInt => "UnsignedInt".to_string(),
-            XsdType::UnsignedLong => "UnsignedLong".to_string(),
-            XsdType::Float => "Float".to_string(),
-            XsdType::Double => "Double".to_string(),
-            XsdType::Uri => "URI".to_string(),
-            // XsdType::Base64Binary => "Base64Binary".to_string(),
-            // XsdType::HexBinary => "HexBinary".to_string(),
-            XsdType::Duration => "Duration".to_string(),
-            XsdType::Language => "Language".to_string(),
-            XsdType::DateTime(datetime) => { format!("Datetime with pattern: {}", datetime) }
-            XsdType::String(pattern) => {
+            XSDType::Byte => "Byte".to_string(),
+            XSDType::Short => "Short".to_string(),
+            XSDType::Int => "Int".to_string(),
+            XSDType::Long => "Long".to_string(),
+            XSDType::UnsignedByte => "UnsignedByte".to_string(),
+            XSDType::UnsignedShort => "UnsignedShort".to_string(),
+            XSDType::UnsignedInt => "UnsignedInt".to_string(),
+            XSDType::UnsignedLong => "UnsignedLong".to_string(),
+            XSDType::Float => "Float".to_string(),
+            XSDType::Double => "Double".to_string(),
+            XSDType::Uri => "URI".to_string(),
+            // XSDType::Base64Binary => "Base64Binary".to_string(),
+            // XSDType::HexBinary => "HexBinary".to_string(),
+            XSDType::Duration => "Duration".to_string(),
+            XSDType::Language => "Language".to_string(),
+            XSDType::DateTime(datetime) => { format!("Datetime with pattern: {}", datetime) }
+            XSDType::String(pattern) => {
                 if pattern.is_empty() {
                     "String".to_string()
                 } else {
                     format!("String with pattern {}", pattern)
                 }
             }
-            XsdType::None => "None".to_string(),
+            XSDType::None => "None".to_string(),
         };
         write!(f, "{}", str)
     }

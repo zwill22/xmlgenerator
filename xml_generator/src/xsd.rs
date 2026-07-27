@@ -13,7 +13,7 @@ use std::slice::Iter;
 use xml_builder::{ XML, XMLBuilder, XMLElement, XMLVersion };
 use xsd_parser::models::schema::xs::SchemaContent;
 
-pub(crate) struct Xsd {
+pub(crate) struct XSD {
     version: SchemaVersion,
     namespaces: Namespaces,
     data_types: Vec<DataType>,
@@ -21,13 +21,13 @@ pub(crate) struct Xsd {
     encoding: Option<String>,
 }
 
-impl Xsd {
+impl XSD {
     pub(crate) fn new(
         generator: &mut Generator,
         translator: &RegexTranslator,
         schemas: &SchemaData
-    ) -> Result<Xsd, XMLGeneratorError> {
-        let mut xsd = Xsd {
+    ) -> Result<XSD, XMLGeneratorError> {
+        let mut xsd = XSD {
             version: schemas.get_version()?,
             namespaces: schemas.get_namespaces(generator)?,
             data_types: vec![],

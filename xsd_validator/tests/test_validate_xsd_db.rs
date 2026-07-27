@@ -3,7 +3,7 @@ mod tests {
     use rstest::{ fixture, rstest };
     use std::path::{ Path, PathBuf };
     use workspace_root::get_workspace_root;
-    use xsdtestdata::XsdTestData;
+    use xsdtestdata::XSDTestData;
     use xsdvalidator::{ XSDValidationError, XSDValidator };
 
     fn check_error(error: &XSDValidationError, path: &Path) -> String {
@@ -53,12 +53,12 @@ mod tests {
 
     #[fixture]
     #[once]
-    fn test_data() -> XsdTestData {
+    fn test_data() -> XSDTestData {
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");
         let archive_path = root.join("xsd_tests.zip");
 
-        XsdTestData::new(&db_root, &archive_path)
+        XSDTestData::new(&db_root, &archive_path)
     }
 
     #[rstest]
@@ -73,7 +73,7 @@ mod tests {
     #[case::common("common")]
     fn test_database_validation(
         validator: &XSDValidator,
-        test_data: &XsdTestData,
+        test_data: &XSDTestData,
         #[case] data_set: String
     ) {
         for data in test_data.iter() {

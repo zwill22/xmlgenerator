@@ -18,14 +18,14 @@ pub enum XSDTestDataError {
 }
 
 #[derive(Clone)]
-pub struct XsdData {
+pub struct XSDData {
     key: String,
     data_set: String,
     path: PathBuf,
     valid: bool,
 }
 
-impl XsdData {
+impl XSDData {
     pub fn is_valid(&self) -> bool {
         self.valid
     }
@@ -152,7 +152,7 @@ fn get_test_info(
     filepath: &PathBuf,
     tag_name: String,
     db_root: &PathBuf
-) -> Option<XsdData> {
+) -> Option<XSDData> {
     let mut schema_path = None;
     let mut valid = None;
 
@@ -187,7 +187,7 @@ fn get_test_info(
 
     let (path, group) = get_key_and_group(db_root, &filepath);
 
-    let data = XsdData {
+    let data = XSDData {
         key: path,
         data_set: group,
         path: filepath,
@@ -197,12 +197,12 @@ fn get_test_info(
     Some(data)
 }
 
-fn get_schema_info(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XsdData> {
+fn get_schema_info(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XSDData> {
     get_test_info(node, path, "schemaDocument".to_string(), db_root)
 }
 
 fn get_schema_test(
-    results: &mut XsdTestData,
+    results: &mut XSDTestData,
     node: &Node<'_, '_>,
     path: &PathBuf,
     db_root: &PathBuf
@@ -212,12 +212,12 @@ fn get_schema_test(
     }
 }
 
-fn get_instance_info(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XsdData> {
+fn get_instance_info(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XSDData> {
     get_test_info(node, path, "instanceDocument".to_string(), db_root)
 }
 
-fn get_test_group(test_group: &Node, path: &PathBuf, db_root: &PathBuf) -> XsdTestData {
-    let mut data = XsdTestData::default();
+fn get_test_group(test_group: &Node, path: &PathBuf, db_root: &PathBuf) -> XSDTestData {
+    let mut data = XSDTestData::default();
     test_group.children().for_each(|child| {
         let tag_name = child.tag_name().name();
 
@@ -234,9 +234,9 @@ fn get_test_group(test_group: &Node, path: &PathBuf, db_root: &PathBuf) -> XsdTe
     data
 }
 
-fn read_test_set_file(filepath: &PathBuf, db_root: &PathBuf) -> XsdTestData {
+fn read_test_set_file(filepath: &PathBuf, db_root: &PathBuf) -> XSDTestData {
     let filedata = read_file(filepath).expect("failed to read file");
-    let mut data = XsdTestData::default();
+    let mut data = XSDTestData::default();
 
     let document = match parse(&filedata) {
         Ok(d) => d,
@@ -257,7 +257,7 @@ fn read_test_set_file(filepath: &PathBuf, db_root: &PathBuf) -> XsdTestData {
     data
 }
 
-fn get_instance_test(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XsdTestData> {
+fn get_instance_test(node: &Node, path: &PathBuf, db_root: &PathBuf) -> Option<XSDTestData> {
     let instance = get_instance_info(node, path, db_root)?;
 
     if instance.path == *path {
@@ -287,21 +287,21 @@ fn file_path(db_root: &Path, path_string: &str) -> PathBuf {
 }
 
 #[derive(Default, Clone)]
-pub struct XsdTestData {
-    data: Vec<XsdData>,
+pub struct XSDTestData {
+    data: Vec<XSDData>,
 }
 
-impl XsdTestData {
+impl XSDTestData {
     fn total(&self) -> usize {
         self.data.len()
     }
 
-    fn contains(&self, data: &XsdData) -> bool {
+    fn contains(&self, data: &XSDData) -> bool {
         let key = &data.key;
         self.data.iter().any(|d| d.key == *key)
     }
 
-    fn push(&mut self, data: XsdData) {
+    fn push(&mut self, data: XSDData) {
         if self.contains(&data) {
             return;
         }
@@ -310,16 +310,16 @@ impl XsdTestData {
     }
 }
 
-impl AddAssign<&XsdTestData> for XsdTestData {
-    fn add_assign(&mut self, rhs: &XsdTestData) {
+impl AddAssign<&XSDTestData> for XSDTestData {
+    fn add_assign(&mut self, rhs: &XSDTestData) {
         for data in rhs.data.iter() {
             self.push(data.clone());
         }
     }
 }
 
-impl XsdTestData {
-    fn add(&mut self, results: &XsdTestData, ignore: &[PathBuf]) {
+impl XSDTestData {
+    fn add(&mut self, results: &XSDTestData, ignore: &[PathBuf]) {
         results.data.iter().for_each(|result| {
             if ignore.contains(&result.path) {
                 return;
@@ -335,11 +335,11 @@ impl XsdTestData {
         read_test_set_file(&filepath, root_path)
     }
 
-    fn parse_test_data(test_suite: &PathBuf, db_path: &PathBuf, ignore: &[PathBuf]) -> XsdTestData {
+    fn parse_test_data(test_suite: &PathBuf, db_path: &PathBuf, ignore: &[PathBuf]) -> XSDTestData {
         let filedata = read_file(test_suite).expect("failed to read file");
         let document = parse(&filedata).expect("failed to parse xml");
 
-        let mut output = XsdTestData::default();
+        let mut output = XSDTestData::default();
         let root = document.root_element();
         root.children().for_each(|child| {
             let tag = child.tag_name().name();
@@ -353,7 +353,7 @@ impl XsdTestData {
         output
     }
 
-    pub fn new(db_path: &PathBuf, archive_path: &PathBuf) -> XsdTestData {
+    pub fn new(db_path: &PathBuf, archive_path: &PathBuf) -> XSDTestData {
         // TODO Remove ignores
         let ignore = vec![
             file_path(db_path, "msData/particles/particlesZ012.xsd"),
@@ -366,10 +366,10 @@ impl XsdTestData {
         check_repo(db_path, archive_path);
 
         let suite = db_path.join("suite.xml");
-        let mut data = XsdTestData::parse_test_data(&suite, db_path, &ignore);
+        let mut data = XSDTestData::parse_test_data(&suite, db_path, &ignore);
 
         let extra_suite = db_path.join("extra-suite.xml");
-        let extra_data = XsdTestData::parse_test_data(&extra_suite, db_path, &ignore);
+        let extra_data = XSDTestData::parse_test_data(&extra_suite, db_path, &ignore);
 
         data += &extra_data;
 
@@ -416,22 +416,22 @@ impl XsdTestData {
         }
     }
 
-    fn get_index(&self, index: usize) -> Option<&XsdData> {
+    fn get_index(&self, index: usize) -> Option<&XSDData> {
         if index < self.total() { Some(&self.data[index]) } else { None }
     }
 
-    pub fn get(&self, key: &str) -> Option<&XsdData> {
+    pub fn get(&self, key: &str) -> Option<&XSDData> {
         self.data.iter().find(|data| data.key == key)
     }
 }
 
-pub struct XsdTestDataIterator<'a> {
-    test_data: &'a XsdTestData,
+pub struct XSDTestDataIterator<'a> {
+    test_data: &'a XSDTestData,
     index: usize,
 }
 
-impl<'a> Iterator for XsdTestDataIterator<'a> {
-    type Item = &'a XsdData;
+impl<'a> Iterator for XSDTestDataIterator<'a> {
+    type Item = &'a XSDData;
     fn next(&mut self) -> Option<Self::Item> {
         match self.test_data.get_index(self.index) {
             Some(data) => {
@@ -443,21 +443,21 @@ impl<'a> Iterator for XsdTestDataIterator<'a> {
     }
 }
 
-impl XsdTestData {
-    pub fn iter(&'_ self) -> XsdTestDataIterator<'_> {
-        XsdTestDataIterator {
+impl XSDTestData {
+    pub fn iter(&'_ self) -> XSDTestDataIterator<'_> {
+        XSDTestDataIterator {
             test_data: self,
             index: 0,
         }
     }
 }
 
-pub struct XsdTestDataIntoIterator {
-    test_data: XsdTestData,
+pub struct XSDTestDataIntoIterator {
+    test_data: XSDTestData,
 }
 
-impl Iterator for XsdTestDataIntoIterator {
-    type Item = XsdData;
+impl Iterator for XSDTestDataIntoIterator {
+    type Item = XSDData;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.test_data.data.is_empty() {
@@ -470,18 +470,18 @@ impl Iterator for XsdTestDataIntoIterator {
     }
 }
 
-impl IntoIterator for XsdTestData {
-    type Item = XsdData;
-    type IntoIter = XsdTestDataIntoIterator;
+impl IntoIterator for XSDTestData {
+    type Item = XSDData;
+    type IntoIter = XSDTestDataIntoIterator;
 
-    fn into_iter(self) -> XsdTestDataIntoIterator {
-        XsdTestDataIntoIterator { test_data: self }
+    fn into_iter(self) -> XSDTestDataIntoIterator {
+        XSDTestDataIntoIterator { test_data: self }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::XsdTestData;
+    use crate::XSDTestData;
     use workspace_root::get_workspace_root;
 
     #[test]
@@ -489,7 +489,7 @@ mod tests {
         let db = get_workspace_root().join("xsdtests-master");
         let archive = get_workspace_root().join("xsdtests.zip");
 
-        let data = XsdTestData::new(&db, &archive);
+        let data = XSDTestData::new(&db, &archive);
 
         data.print_stats()
     }

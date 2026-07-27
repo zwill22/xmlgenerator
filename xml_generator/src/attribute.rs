@@ -4,8 +4,8 @@ use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
 use crate::whitespace::WhiteSpace;
-use crate::xsd::Xsd;
-use crate::xsd_type::XsdType;
+use crate::xsd::XSD;
+use crate::xsd_type::XSDType;
 use std::cmp::PartialEq;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
@@ -14,7 +14,7 @@ use xsd_parser::models::schema::xs::{ AttributeType, AttributeUseType };
 pub(crate) struct Attribute {
     name: Option<Name>,
     type_name: Option<String>,
-    xsd_type: XsdType,
+    xsd_type: XSDType,
     use_type: AttributeUseType,
 }
 
@@ -27,7 +27,7 @@ impl Attribute {
         let mut attribute = Attribute {
             name: None,
             type_name: None,
-            xsd_type: XsdType::None,
+            xsd_type: XSDType::None,
             use_type: AttributeUseType::Required,
         };
 
@@ -35,8 +35,8 @@ impl Attribute {
 
         if let Some(attribute_type) = &attribute_type.type_ {
             let type_name = String::from_utf8(attribute_type.local_name().to_vec()).unwrap();
-            attribute.xsd_type = XsdType::from_string(&type_name)?;
-            if matches!(attribute.xsd_type, XsdType::None) {
+            attribute.xsd_type = XSDType::from_string(&type_name)?;
+            if matches!(attribute.xsd_type, XSDType::None) {
                 attribute.type_name = Some(type_name);
             }
         }
@@ -110,7 +110,7 @@ impl Attribute {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd
+        xsd: &XSD
     ) -> Result<(), XMLGeneratorError> {
         let mut generated = false;
         let n_namespaces = generator.n_namespaces();
@@ -139,7 +139,7 @@ impl Attribute {
 
         if !generated {
             if self.type_name.is_none() {
-                let xsd_type = XsdType::string("", &WhiteSpace::Collapse)?;
+                let xsd_type = XSDType::string("", &WhiteSpace::Collapse)?;
                 let value = generator.generate_type(&xsd_type).unwrap();
                 let attribute = encode_html(&value, &xsd_type.whitespace())?;
                 xml_element.add_attribute(&name, &attribute);

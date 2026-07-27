@@ -4,7 +4,7 @@ use crate::element::Element;
 use crate::encoder::decode_html;
 use crate::pattern::Pattern;
 use crate::whitespace::{ WhiteSpace, check_line_endings };
-use crate::xsd_type::XsdType;
+use crate::xsd_type::XSDType;
 use chrono::Duration;
 use fake::{ Fake, Faker };
 use rand::{ Rng, SeedableRng };
@@ -228,7 +228,7 @@ impl Generator {
 
         if
             let Some(output) = self.generate_two_patterns(&language_pattern, pattern, 0) &&
-            XsdType::Language.validate(&output)
+            XSDType::Language.validate(&output)
         {
             return Some(output);
         }
@@ -248,30 +248,30 @@ impl Generator {
         self.regex(pattern, ascii)
     }
 
-    fn type_generate(&mut self, xsd_type: &XsdType, ascii: bool) -> Option<String> {
+    fn type_generate(&mut self, xsd_type: &XSDType, ascii: bool) -> Option<String> {
         match xsd_type {
-            XsdType::Byte => fake::<i8>(),
-            XsdType::Short => fake::<i16>(),
-            XsdType::Int => fake::<i32>(),
-            XsdType::Long => fake::<i64>(),
-            XsdType::UnsignedByte => fake::<u8>(),
-            XsdType::UnsignedShort => fake::<u16>(),
-            XsdType::UnsignedInt => fake::<u32>(),
-            XsdType::UnsignedLong => fake::<u64>(),
-            XsdType::Float => fake::<f32>(),
-            XsdType::Double => fake::<f64>(),
-            XsdType::Uri => fake::<http::Uri>(),
-            // XsdType::Base64Binary => fake_base64(),
-            // XsdType::HexBinary => fake_hex(),
-            XsdType::Duration => fake::<Duration>(),
-            XsdType::Language => self.fake_language(),
-            XsdType::DateTime(datetime) => self.fake_datetime(datetime),
-            XsdType::String(pattern) => self.fake_string(pattern, ascii),
-            XsdType::None => None,
+            XSDType::Byte => fake::<i8>(),
+            XSDType::Short => fake::<i16>(),
+            XSDType::Int => fake::<i32>(),
+            XSDType::Long => fake::<i64>(),
+            XSDType::UnsignedByte => fake::<u8>(),
+            XSDType::UnsignedShort => fake::<u16>(),
+            XSDType::UnsignedInt => fake::<u32>(),
+            XSDType::UnsignedLong => fake::<u64>(),
+            XSDType::Float => fake::<f32>(),
+            XSDType::Double => fake::<f64>(),
+            XSDType::Uri => fake::<http::Uri>(),
+            // XSDType::Base64Binary => fake_base64(),
+            // XSDType::HexBinary => fake_hex(),
+            XSDType::Duration => fake::<Duration>(),
+            XSDType::Language => self.fake_language(),
+            XSDType::DateTime(datetime) => self.fake_datetime(datetime),
+            XSDType::String(pattern) => self.fake_string(pattern, ascii),
+            XSDType::None => None,
         }
     }
 
-    pub(crate) fn generate_type(&mut self, xsd_type: &XsdType) -> Option<String> {
+    pub(crate) fn generate_type(&mut self, xsd_type: &XSDType) -> Option<String> {
         self.type_generate(xsd_type, true)
     }
 
@@ -304,7 +304,7 @@ impl Generator {
 
     fn generate_pattern(
         &mut self,
-        xsd_type: &XsdType,
+        xsd_type: &XSDType,
         pattern: &Pattern,
         ascii: bool
     ) -> Option<String> {
@@ -398,29 +398,29 @@ impl Generator {
 
     pub(crate) fn generate_type_pattern(
         &mut self,
-        xsd_type: &XsdType,
+        xsd_type: &XSDType,
         pattern: &Pattern
     ) -> Option<String> {
         const ASCII: bool = true;
         match xsd_type {
-            XsdType::Byte => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::Short => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::Int => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::Long => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::UnsignedByte => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::UnsignedShort => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::UnsignedInt => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::UnsignedLong => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::Float => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::Double => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::Uri => self.generate_pattern(xsd_type, pattern, ASCII),
-            // XsdType::Base64Binary => self.generate_pattern(xsd_type, pattern, ASCII),
-            // XsdType::HexBinary => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::Duration => self.generate_pattern(xsd_type, pattern, ASCII),
-            XsdType::Language => self.generate_language_pattern(pattern),
-            XsdType::DateTime(datetime) => self.generate_date_with_pattern(datetime, pattern),
-            XsdType::String(string) => self.generate_two_patterns(string, pattern, 0),
-            XsdType::None => self.regex(pattern, ASCII),
+            XSDType::Byte => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::Short => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::Int => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::Long => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::UnsignedByte => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::UnsignedShort => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::UnsignedInt => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::UnsignedLong => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::Float => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::Double => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::Uri => self.generate_pattern(xsd_type, pattern, ASCII),
+            // XSDType::Base64Binary => self.generate_pattern(xsd_type, pattern, ASCII),
+            // XSDType::HexBinary => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::Duration => self.generate_pattern(xsd_type, pattern, ASCII),
+            XSDType::Language => self.generate_language_pattern(pattern),
+            XSDType::DateTime(datetime) => self.generate_date_with_pattern(datetime, pattern),
+            XSDType::String(string) => self.generate_two_patterns(string, pattern, 0),
+            XSDType::None => self.regex(pattern, ASCII),
         }
     }
 

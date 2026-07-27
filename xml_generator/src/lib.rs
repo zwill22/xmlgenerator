@@ -1,7 +1,7 @@
 pub use crate::error::XMLGeneratorError;
 use crate::generator::Generator;
 use crate::schemas::SchemaData;
-use crate::xsd::Xsd;
+use crate::xsd::XSD;
 use regextranslator::RegexTranslator;
 use std::path::PathBuf;
 use xsdvalidator::XSDValidator;
@@ -84,7 +84,7 @@ impl XMLGenerator {
 
         let mut generator = Generator::new(10000, 10, 10000, seed);
 
-        let xsd = Xsd::new(&mut generator, &self.translator, &schemas)?;
+        let xsd = XSD::new(&mut generator, &self.translator, &schemas)?;
 
         xsd.generate_xml(&mut generator)
     }

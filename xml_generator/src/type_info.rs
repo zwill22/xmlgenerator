@@ -3,8 +3,8 @@ use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::pattern::Pattern;
 use crate::whitespace::WhiteSpace;
-use crate::xsd::Xsd;
-use crate::xsd_type::XsdType;
+use crate::xsd::XSD;
+use crate::xsd_type::XSDType;
 use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
     Facet,
@@ -17,7 +17,7 @@ use xsd_parser::models::schema::xs::{
 #[derive(Default)]
 pub(crate) struct TypeInfo {
     name: Option<String>,
-    xsd_type: XsdType,
+    xsd_type: XSDType,
     pattern: Option<Pattern>,
     enumerations: Vec<String>,
 }
@@ -113,8 +113,8 @@ impl TypeInfo {
     ) -> Result<(), XMLGeneratorError> {
         if let Some(base) = &restriction.base {
             let type_name = String::from_utf8(base.local_name().to_vec()).unwrap();
-            self.xsd_type = XsdType::from_string(&type_name)?;
-            if self.xsd_type == XsdType::None {
+            self.xsd_type = XSDType::from_string(&type_name)?;
+            if self.xsd_type == XSDType::None {
                 self.name = Some(type_name);
             }
         }
@@ -137,7 +137,7 @@ impl TypeInfo {
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &XSD
     ) -> Result<Option<String>, XMLGeneratorError> {
         if !self.enumerations.is_empty() {
             if self.pattern.is_some() {

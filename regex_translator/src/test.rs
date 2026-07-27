@@ -9,7 +9,7 @@ mod tests {
     use rstest::{ fixture, rstest };
     use std::path::PathBuf;
     use workspace_root::get_workspace_root;
-    use xsdtestdata::XsdTestData;
+    use xsdtestdata::XSDTestData;
 
     fn parse_attribute(regex: &mut HashSet<String>, attribute: &Attribute) {
         if attribute.name().trim().to_lowercase() == "value" {
@@ -61,7 +61,7 @@ mod tests {
         }
     }
 
-    fn patterns(test_data: &XsdTestData, data_set: &str) -> HashSet<String> {
+    fn patterns(test_data: &XSDTestData, data_set: &str) -> HashSet<String> {
         let mut values = HashSet::new();
         test_data.iter().for_each(|test_data| {
             if test_data.get_data_set() != data_set {
@@ -82,12 +82,12 @@ mod tests {
 
     #[fixture]
     #[once]
-    fn test_data() -> XsdTestData {
+    fn test_data() -> XSDTestData {
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");
         let archive = root.as_path().join("xsdtests.zip");
 
-        XsdTestData::new(&db_root, &archive)
+        XSDTestData::new(&db_root, &archive)
     }
 
     #[rstest]
@@ -100,7 +100,7 @@ mod tests {
     #[case::nist_data("nistData")]
     #[case::boeing_data("boeingData")]
     #[case::common("common")]
-    fn it_works(translator: &RegexTranslator, test_data: &XsdTestData, #[case] data_set: String) {
+    fn it_works(translator: &RegexTranslator, test_data: &XSDTestData, #[case] data_set: String) {
         for pattern in patterns(test_data, &data_set) {
             test_pattern(translator, &pattern);
         }

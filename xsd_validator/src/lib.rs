@@ -31,7 +31,7 @@ impl XSDValidator {
         }
     }
 
-    // TODO New XsdValidator
+    // TODO New XSDValidator
     fn validate_file(&self, path: &PathBuf) -> Result<bool, XSDValidationError> {
         let _guard = self.lock.lock().unwrap();
         recursion_check(path)?;

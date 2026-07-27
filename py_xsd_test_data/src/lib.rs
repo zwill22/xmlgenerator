@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use std::any::Any;
 use std::panic;
 use std::path::PathBuf;
-use xsdtestdata::{ XsdData, XsdTestData, XsdTestDataIntoIterator };
+use xsdtestdata::{ XSDData, XSDTestData, XSDTestDataIntoIterator };
 
 fn handle_panic(error: Box<dyn Any>) -> PyErr {
     if let Some(s) = error.downcast_ref::<&str>() {
@@ -18,12 +18,12 @@ fn handle_panic(error: Box<dyn Any>) -> PyErr {
 }
 
 #[pyclass(name = "XSDData")]
-pub struct PyXsdData {
-    data: XsdData,
+pub struct PyXSDData {
+    data: XSDData,
 }
 
 #[pymethods]
-impl PyXsdData {
+impl PyXSDData {
     pub fn key(&self) -> &str {
         self.data.get_key()
     }
@@ -42,50 +42,50 @@ impl PyXsdData {
 }
 
 #[pyclass(name = "XSDTestDataIter")]
-pub struct PyXsdTestDataIter {
-    iter: XsdTestDataIntoIterator,
+pub struct PyXSDTestDataIter {
+    iter: XSDTestDataIntoIterator,
 }
 
 #[pymethods]
-impl PyXsdTestDataIter {
+impl PyXSDTestDataIter {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<Self>) -> Option<PyXsdData> {
+    fn __next__(mut slf: PyRefMut<Self>) -> Option<PyXSDData> {
         let data = slf.iter.next()?;
 
-        Some(PyXsdData { data })
+        Some(PyXSDData { data })
     }
 }
 
 #[pyclass(name = "XSDTestData")]
-pub struct PyXsdTestData {
-    inner: XsdTestData,
+pub struct PyXSDTestData {
+    inner: XSDTestData,
 }
 
 #[pymethods]
-impl PyXsdTestData {
+impl PyXSDTestData {
     #[new]
     fn new(database_dir: PathBuf, archive_path: PathBuf) -> PyResult<Self> {
-        match panic::catch_unwind(|| XsdTestData::new(&database_dir, &archive_path)) {
-            Ok(result) => Ok(PyXsdTestData { inner: result }),
+        match panic::catch_unwind(|| XSDTestData::new(&database_dir, &archive_path)) {
+            Ok(result) => Ok(PyXSDTestData { inner: result }),
             Err(error) => Err(handle_panic(error)),
         }
     }
 
-    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<PyXsdTestDataIter>> {
-        let iter = PyXsdTestDataIter {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<PyXSDTestDataIter>> {
+        let iter = PyXSDTestDataIter {
             iter: slf.inner.clone().into_iter(),
         };
 
         Py::new(slf.py(), iter)
     }
 
-    fn get(&self, key: &str) -> Option<PyXsdData> {
+    fn get(&self, key: &str) -> Option<PyXSDData> {
         let data = self.inner.get(key)?;
 
-        Some(PyXsdData { data: data.clone() })
+        Some(PyXSDData { data: data.clone() })
     }
 }
 
@@ -122,8 +122,8 @@ impl Container {
 
 #[pymodule]
 fn pyxsdtestdata(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_class::<PyXsdTestData>()?;
-    m.add_class::<PyXsdData>()?;
+    m.add_class::<PyXSDTestData>()?;
+    m.add_class::<PyXSDData>()?;
 
     Ok(())
 }

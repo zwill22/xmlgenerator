@@ -3,7 +3,7 @@ use crate::element::{ Element, Occurrence };
 use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::namespaces::Namespaces;
-use crate::xsd::Xsd;
+use crate::xsd::XSD;
 use regextranslator::RegexTranslator;
 use std::slice::Iter;
 use xml_builder::XMLElement;
@@ -83,7 +83,7 @@ impl Group {
     fn generate_element(
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd,
+        xsd: &XSD,
         element: &Element
     ) -> Result<(), XMLGeneratorError> {
         let children = element.generate(generator, xsd)?;
@@ -99,7 +99,7 @@ impl Group {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd
+        xsd: &XSD
     ) -> Result<(), XMLGeneratorError> {
         if self.choose {
             if let Some(element) = generator.choose(&self.elements) {
@@ -118,7 +118,7 @@ impl Group {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd
+        xsd: &XSD
     ) -> Result<(), XMLGeneratorError> {
         let n = self.get_occurrences();
 

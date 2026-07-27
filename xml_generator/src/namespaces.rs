@@ -2,7 +2,7 @@ use crate::XMLGeneratorError;
 use crate::generator::Generator;
 use crate::pattern::Pattern;
 use crate::whitespace::WhiteSpace;
-use crate::xsd_type::XsdType;
+use crate::xsd_type::XSDType;
 use std::collections::HashMap;
 use std::str::from_utf8;
 use xsd_parser::Schemas;
@@ -31,7 +31,7 @@ fn check_namespace_is_valid(ns: &str) -> bool {
         return false;
     }
 
-    XsdType::from_string("name").unwrap().validate(ns)
+    XSDType::from_string("name").unwrap().validate(ns)
 }
 
 #[derive(Default)]
