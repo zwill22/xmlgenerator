@@ -1,11 +1,11 @@
 use file_to_string::read_file;
 use reqwest::blocking;
-use roxmltree::{Document, Node, ParsingOptions};
+use roxmltree::{ Document, Node, ParsingOptions };
 use std::collections::HashSet;
-use std::fs::{File, canonicalize};
+use std::fs::{ File, canonicalize };
 use std::io::Write;
 use std::ops::AddAssign;
-use std::path::{Path, PathBuf};
+use std::path::{ Path, PathBuf };
 use zip::read::root_dir_common_filter;
 
 #[derive(Debug)]
@@ -60,7 +60,9 @@ fn fetch_repo(archive_path: &PathBuf) {
 fn extract_repo(db_root: &PathBuf, archive: &File) -> Result<(), XSDTestDataError> {
     let mut archive = match zip::ZipArchive::new(archive) {
         Ok(archive) => archive,
-        Err(_) => return Err(XSDTestDataError::ArchiveError),
+        Err(_) => {
+            return Err(XSDTestDataError::ArchiveError);
+        }
     };
 
     match archive.extract_unwrapped_root_dir(db_root, root_dir_common_filter) {
@@ -149,7 +151,7 @@ fn get_test_info(
     node: &Node,
     filepath: &PathBuf,
     tag_name: String,
-    db_root: &PathBuf,
+    db_root: &PathBuf
 ) -> Option<XsdData> {
     let mut schema_path = None;
     let mut valid = None;
@@ -161,7 +163,9 @@ fn get_test_info(
         if tag == tag_name {
             let schema = match get_href_path(&child, path) {
                 Ok(path) => path,
-                Err(_) => return None,
+                Err(_) => {
+                    return None;
+                }
             };
             if schema == *filepath {
                 return None;
@@ -170,7 +174,7 @@ fn get_test_info(
         } else if tag == "expected" {
             let validity = get_validity(&child);
             validity?;
-            valid = validity
+            valid = validity;
         }
     }
 
@@ -201,7 +205,7 @@ fn get_schema_test(
     results: &mut XsdTestData,
     node: &Node<'_, '_>,
     path: &PathBuf,
-    db_root: &PathBuf,
+    db_root: &PathBuf
 ) {
     if let Some(info) = get_schema_info(node, path, db_root) {
         results.push(info)
@@ -219,8 +223,9 @@ fn get_test_group(test_group: &Node, path: &PathBuf, db_root: &PathBuf) -> XsdTe
 
         if tag_name == "schemaTest" {
             get_schema_test(&mut data, &child, path, db_root);
-        } else if tag_name == "instanceTest"
-            && let Some(new_data) = get_instance_test(&child, path, db_root)
+        } else if
+            tag_name == "instanceTest" &&
+            let Some(new_data) = get_instance_test(&child, path, db_root)
         {
             data += &new_data;
         }
@@ -235,7 +240,9 @@ fn read_test_set_file(filepath: &PathBuf, db_root: &PathBuf) -> XsdTestData {
 
     let document = match parse(&filedata) {
         Ok(d) => d,
-        Err(_) => return data,
+        Err(_) => {
+            return data;
+        }
     };
 
     let root = document.root_element();
@@ -306,7 +313,7 @@ impl XsdTestData {
 impl AddAssign<&XsdTestData> for XsdTestData {
     fn add_assign(&mut self, rhs: &XsdTestData) {
         for data in rhs.data.iter() {
-            self.push(data.clone())
+            self.push(data.clone());
         }
     }
 }
@@ -352,6 +359,9 @@ impl XsdTestData {
             file_path(db_path, "msData/particles/particlesZ012.xsd"),
             file_path(db_path, "msData/particles/particlesZ015.xsd"),
             file_path(db_path, "msData/particles/particlesZ020.xsd"),
+            file_path(db_path, "msData/regex/reG17.xsd"),
+            file_path(db_path, "msData/regex/reJ25.xsd"),
+            file_path(db_path, "saxonData/XmlVersions/xv009.xsd")
         ];
         check_repo(db_path, archive_path);
 
@@ -368,7 +378,10 @@ impl XsdTestData {
 
     pub fn print_stats(&self) {
         let total = self.total();
-        let valid = self.data.iter().filter(|data| data.valid).count();
+        let valid = self.data
+            .iter()
+            .filter(|data| data.valid)
+            .count();
         let invalid = total - valid;
 
         println!("Test data\n");
@@ -386,40 +399,25 @@ impl XsdTestData {
 
         println!();
 
-        println!(
-            "\t{:36}{:8}{:8}{:8}",
-            "Data set", "Valid", "Invalid", "Total"
-        );
+        println!("\t{:36}{:8}{:8}{:8}", "Data set", "Valid", "Invalid", "Total");
 
         for data_set in data_sets {
-            let valid = self
-                .data
+            let valid = self.data
                 .iter()
                 .filter(|data| data.is_set(data_set) && data.valid)
                 .count();
 
-            let invalid = self
-                .data
+            let invalid = self.data
                 .iter()
                 .filter(|data| data.is_set(data_set) && !data.valid)
                 .count();
 
-            println!(
-                "\t{:36}{:8}{:8}{:8}",
-                data_set,
-                valid,
-                invalid,
-                valid + invalid
-            );
+            println!("\t{:36}{:8}{:8}{:8}", data_set, valid, invalid, valid + invalid);
         }
     }
 
     fn get_index(&self, index: usize) -> Option<&XsdData> {
-        if index < self.total() {
-            Some(&self.data[index])
-        } else {
-            None
-        }
+        if index < self.total() { Some(&self.data[index]) } else { None }
     }
 
     pub fn get(&self, key: &str) -> Option<&XsdData> {
