@@ -53,7 +53,9 @@ impl XMLGenerator {
             return Ok(());
         }
 
-        Err(XMLGeneratorError::XSDValidatorError("Invalid XSD".to_string()))
+        Err(XMLGeneratorError::XSDValidatorError(
+            "Invalid XSD".to_string(),
+        ))
     }
 
     /// Generate an XML string containing fake data
@@ -77,7 +79,7 @@ impl XMLGenerator {
     pub fn generate(
         &self,
         xsd_path: &PathBuf,
-        seed: Option<u64>
+        seed: Option<u64>,
     ) -> Result<String, XMLGeneratorError> {
         let schemas = SchemaData::new(xsd_path)?;
         self.validate(xsd_path)?;

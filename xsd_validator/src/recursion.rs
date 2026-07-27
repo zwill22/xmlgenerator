@@ -22,7 +22,9 @@ pub(crate) fn recursion_check(path: &PathBuf) -> Result<(), XSDValidationError> 
     let doc = match Document::parse(&filedata) {
         Ok(d) => d,
         Err(_) => {
-            return Err(XSDValidationError::ParseError(path.to_str().unwrap().to_string()));
+            return Err(XSDValidationError::ParseError(
+                path.to_str().unwrap().to_string(),
+            ));
         }
     };
 

@@ -7,11 +7,7 @@ use crate::xsd::Xsd;
 use crate::xsd_type::XSDType;
 use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
-    Facet,
-    FacetType,
-    Restriction,
-    RestrictionContent,
-    SimpleBaseTypeContent,
+    Facet, FacetType, Restriction, RestrictionContent, SimpleBaseTypeContent,
 };
 
 #[derive(Default)]
@@ -25,7 +21,7 @@ pub(crate) struct TypeInfo {
 impl TypeInfo {
     pub(crate) fn new(
         translator: &RegexTranslator,
-        base_content: &Vec<SimpleBaseTypeContent>
+        base_content: &Vec<SimpleBaseTypeContent>,
     ) -> Result<Self, XMLGeneratorError> {
         let mut type_info = TypeInfo::default();
 
@@ -68,7 +64,7 @@ impl TypeInfo {
     fn handle_pattern_facet(
         &mut self,
         translator: &RegexTranslator,
-        pattern_facet: &FacetType
+        pattern_facet: &FacetType,
     ) -> Result<(), XMLGeneratorError> {
         let pattern = &pattern_facet.value;
 
@@ -86,7 +82,7 @@ impl TypeInfo {
     fn handle_facet(
         &mut self,
         translator: &RegexTranslator,
-        facet: &Facet
+        facet: &Facet,
     ) -> Result<(), XMLGeneratorError> {
         match facet {
             Facet::Enumeration(enumeration) => self.handle_enumeration(enumeration),
@@ -109,7 +105,7 @@ impl TypeInfo {
     fn get_restriction(
         &mut self,
         translator: &RegexTranslator,
-        restriction: &Restriction
+        restriction: &Restriction,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(base) = &restriction.base {
             let type_name = String::from_utf8(base.local_name().to_vec()).unwrap();
@@ -137,7 +133,7 @@ impl TypeInfo {
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &Xsd,
     ) -> Result<Option<String>, XMLGeneratorError> {
         if !self.enumerations.is_empty() {
             if self.pattern.is_some() {
@@ -182,24 +178,22 @@ impl PartialEq for TypeInfo {
         }
 
         match &self.pattern {
-            None =>
-                match other.pattern {
-                    None => {}
-                    Some(_) => {
+            None => match other.pattern {
+                None => {}
+                Some(_) => {
+                    return false;
+                }
+            },
+            Some(pattern1) => match &other.pattern {
+                None => {
+                    return false;
+                }
+                Some(pattern2) => {
+                    if pattern1 != pattern2 {
                         return false;
                     }
                 }
-            Some(pattern1) =>
-                match &other.pattern {
-                    None => {
-                        return false;
-                    }
-                    Some(pattern2) => {
-                        if pattern1 != pattern2 {
-                            return false;
-                        }
-                    }
-                }
+            },
         }
 
         true

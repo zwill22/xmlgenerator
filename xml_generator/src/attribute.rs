@@ -1,5 +1,5 @@
 use crate::encoder::encode_html;
-use crate::error::{ XMLGeneratorError, unimplemented };
+use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
@@ -9,7 +9,7 @@ use crate::xsd_type::XSDType;
 use std::cmp::PartialEq;
 use xml_builder::XMLElement;
 use xsd_parser::models::schema::SchemaInfo;
-use xsd_parser::models::schema::xs::{ AttributeType, AttributeUseType };
+use xsd_parser::models::schema::xs::{AttributeType, AttributeUseType};
 
 pub(crate) struct Attribute {
     name: Option<Name>,
@@ -22,7 +22,7 @@ impl Attribute {
     pub(crate) fn new(
         attribute_type: &AttributeType,
         schema_info: &SchemaInfo,
-        namespaces: &Namespaces
+        namespaces: &Namespaces,
     ) -> Result<Attribute, XMLGeneratorError> {
         let mut attribute = Attribute {
             name: None,
@@ -81,7 +81,7 @@ impl Attribute {
     fn get_full_name(
         &self,
         generator: &mut Generator,
-        name: &Name
+        name: &Name,
     ) -> Result<String, XMLGeneratorError> {
         let current_namespace = generator.get_current_namespace();
 
@@ -100,8 +100,9 @@ impl Attribute {
 
     fn get_name(&self, generator: &mut Generator) -> Result<String, XMLGeneratorError> {
         match &self.name {
-            None =>
-                Err(XMLGeneratorError::DataTypesFormatError("Attribute Name is empty".to_string())),
+            None => Err(XMLGeneratorError::DataTypesFormatError(
+                "Attribute Name is empty".to_string(),
+            )),
             Some(name) => self.get_full_name(generator, name),
         }
     }
@@ -110,7 +111,7 @@ impl Attribute {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd
+        xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         let mut generated = false;
         let n_namespaces = generator.n_namespaces();
@@ -144,11 +145,9 @@ impl Attribute {
                 let attribute = encode_html(&value, &xsd_type.whitespace())?;
                 xml_element.add_attribute(&name, &attribute);
             } else if self.use_type == AttributeUseType::Required {
-                return Err(
-                    XMLGeneratorError::TypeGenerationError(
-                        "Required attribute not generated".to_string()
-                    )
-                );
+                return Err(XMLGeneratorError::TypeGenerationError(
+                    "Required attribute not generated".to_string(),
+                ));
             }
         }
 

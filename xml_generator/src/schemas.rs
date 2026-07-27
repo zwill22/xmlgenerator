@@ -4,17 +4,19 @@ use crate::namespaces::Namespaces;
 use crate::schema_version::SchemaVersion;
 use quick_xml::Reader;
 use quick_xml::events::Event;
-use std::env::{ current_dir, set_current_dir };
+use std::env::{current_dir, set_current_dir};
 use std::path::Path;
-use xsd_parser::models::schema::{ SchemaId, SchemaInfo };
-use xsd_parser::{ Parser, Schemas };
+use xsd_parser::models::schema::{SchemaId, SchemaInfo};
+use xsd_parser::{Parser, Schemas};
 
 fn build_schemas(path: &Path) -> Result<Schemas, XMLGeneratorError> {
     let wd = current_dir().expect("current_dir() failed");
     let file_dir = match path.parent() {
         Some(dir) => dir,
         None => {
-            return Err(XMLGeneratorError::InvalidPathError(path.to_str().unwrap().to_string()));
+            return Err(XMLGeneratorError::InvalidPathError(
+                path.to_str().unwrap().to_string(),
+            ));
         }
     };
 
@@ -92,7 +94,7 @@ impl SchemaData {
 
     pub(crate) fn get_namespaces(
         &self,
-        generator: &mut Generator
+        generator: &mut Generator,
     ) -> Result<Namespaces, XMLGeneratorError> {
         Namespaces::new(generator, &self.schemas)
     }

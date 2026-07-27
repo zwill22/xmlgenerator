@@ -1,8 +1,8 @@
-use encoding_rs::{ Encoding, UTF_16LE };
+use encoding_rs::{Encoding, UTF_16LE};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use std::fs::File;
 use std::fs::read_to_string;
-use std::io::{ BufReader, Error, ErrorKind, Read };
+use std::io::{BufReader, Error, ErrorKind, Read};
 use std::path::PathBuf;
 
 struct Encodings {
@@ -30,7 +30,7 @@ impl Encodings {
 fn read_file_encoding(
     file_path: &PathBuf,
     encodings: &Encodings,
-    index: usize
+    index: usize,
 ) -> Result<String, Error> {
     let file = File::open(file_path)?;
     let encoding = match encodings.get(index) {
@@ -41,7 +41,9 @@ fn read_file_encoding(
     };
 
     let mut reader = BufReader::new(
-        DecodeReaderBytesBuilder::new().encoding(Some(encoding)).build(file)
+        DecodeReaderBytesBuilder::new()
+            .encoding(Some(encoding))
+            .build(file),
     );
 
     let mut string = String::new();

@@ -12,17 +12,17 @@ use std::fmt::Display;
 #[derive(Default, PartialEq)]
 pub(crate) enum XSDType {
     // Integer types
-    Byte, // A signed 8-bit integer
-    Short, // A signed 16-bit integer
-    Int, // A signed 32-bit integer
-    Long, // A signed 64-bit integer
-    UnsignedByte, // An unsigned 8-bit integer
+    Byte,          // A signed 8-bit integer
+    Short,         // A signed 16-bit integer
+    Int,           // A signed 32-bit integer
+    Long,          // A signed 64-bit integer
+    UnsignedByte,  // An unsigned 8-bit integer
     UnsignedShort, // An unsigned 16-bit integer
-    UnsignedInt, // An unsigned 32-bit integer
-    UnsignedLong, // An unsigned 64-bit integer
+    UnsignedInt,   // An unsigned 32-bit integer
+    UnsignedLong,  // An unsigned 64-bit integer
 
     // Floating point numbers
-    Float, // A 32-bit floating point number
+    Float,  // A 32-bit floating point number
     Double, // A 64-bit floating point number
 
     // Miscellaneous types
@@ -56,8 +56,7 @@ fn validate(input_str: &str, pattern: &str) -> Result<bool, XMLGeneratorError> {
 
 fn validate_duration(input: &str) -> bool {
     // PnYnMnDTnHnMnS
-    const DURATION: &str =
-        r"[Pp](?:[0-9]+[Yy])?(?:[0-9]+[Mm])?(?:[0-9]+[Dd])?T?(?:[0-9]+[Hh])?(?:[0-9]+[Mm])?(?:[0-9]+[Ss])?";
+    const DURATION: &str = r"[Pp](?:[0-9]+[Yy])?(?:[0-9]+[Mm])?(?:[0-9]+[Dd])?T?(?:[0-9]+[Hh])?(?:[0-9]+[Mm])?(?:[0-9]+[Ss])?";
 
     validate(input, DURATION).unwrap_or(false)
 }
@@ -266,7 +265,9 @@ impl Display for XSDType {
             // XSDType::HexBinary => "HexBinary".to_string(),
             XSDType::Duration => "Duration".to_string(),
             XSDType::Language => "Language".to_string(),
-            XSDType::DateTime(datetime) => { format!("Datetime with pattern: {}", datetime) }
+            XSDType::DateTime(datetime) => {
+                format!("Datetime with pattern: {}", datetime)
+            }
             XSDType::String(pattern) => {
                 if pattern.is_empty() {
                     "String".to_string()

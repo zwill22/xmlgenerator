@@ -2,8 +2,8 @@ pub use crate::error::XSDValidationError;
 use crate::parser::Parser;
 use crate::recursion::recursion_check;
 use crate::warning_handler::WarningHandler;
-use libxml2_rs::{ xmlCleanupParser, xmlInitParser };
-use std::env::{ current_dir, set_current_dir };
+use libxml2_rs::{xmlCleanupParser, xmlInitParser};
+use std::env::{current_dir, set_current_dir};
 use std::path::PathBuf;
 use std::sync::Mutex;
 

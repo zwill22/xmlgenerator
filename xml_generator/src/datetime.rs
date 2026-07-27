@@ -1,7 +1,7 @@
 use crate::pattern::Pattern;
 use crate::whitespace::WhiteSpace;
 use rand::Rng;
-use rand::rngs::{ StdRng };
+use rand::rngs::StdRng;
 use regex::Regex;
 
 #[derive(PartialEq)]
@@ -26,7 +26,11 @@ fn generate_day(rng: &mut StdRng, year: i32, month: i32) -> i32 {
     match month {
         9 | 4 | 6 | 11 => rng.random_range(1..=30),
         2 => {
-            if year % 4 == 0 { rng.random_range(1..=29) } else { rng.random_range(1..=28) }
+            if year % 4 == 0 {
+                rng.random_range(1..=29)
+            } else {
+                rng.random_range(1..=28)
+            }
         }
         _ => rng.random_range(1..=31),
     }
@@ -97,8 +101,7 @@ impl Datetime {
 
 impl From<&str> for Datetime {
     fn from(s: &str) -> Self {
-        const YEAR: &str =
-            r"(-?(?:[0-9]{3}[1-9])|(?:[0-9]{2}[1-9][0-9])|(?:[0-9][1-9][0-9]{2})|(?:[1-9][0-9]{3}))";
+        const YEAR: &str = r"(-?(?:[0-9]{3}[1-9])|(?:[0-9]{2}[1-9][0-9])|(?:[0-9][1-9][0-9]{2})|(?:[1-9][0-9]{3}))";
         const MONTH: &str = r"(?:0[1-9]|1[0-2])";
         const DAY: &str = r"(?:0[1-9]|1[0-9]|2[0-9]|3[0-1])";
 

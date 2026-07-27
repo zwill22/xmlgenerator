@@ -1,6 +1,6 @@
 use crate::data_type::DataType;
 use crate::encoder::encode_html;
-use crate::error::{ XMLGeneratorError, unimplemented };
+use crate::error::{XMLGeneratorError, unimplemented};
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
@@ -8,11 +8,11 @@ use crate::xsd::Xsd;
 use crate::xsd_type::XSDType;
 use rand::Rng;
 use regextranslator::RegexTranslator;
-use std::cmp::{ max, min };
+use std::cmp::{max, min};
 use uuid::Uuid;
 use xml_builder::XMLElement;
-use xsd_parser::models::schema::xs::{ ElementType, ElementTypeContent };
-use xsd_parser::models::schema::{ MaxOccurs, SchemaInfo };
+use xsd_parser::models::schema::xs::{ElementType, ElementTypeContent};
+use xsd_parser::models::schema::{MaxOccurs, SchemaInfo};
 
 pub(crate) trait Occurrence {
     fn get_min(&self) -> usize;
@@ -56,7 +56,7 @@ impl Element {
         translator: &RegexTranslator,
         element_type: &ElementType,
         namespaces: &Namespaces,
-        schema: &SchemaInfo
+        schema: &SchemaInfo,
     ) -> Result<Self, XMLGeneratorError> {
         let mut element = Self::default();
 
@@ -134,12 +134,8 @@ impl Element {
                     element.data_types.push(simple);
                 }
                 ElementTypeContent::ComplexType(complex_type) => {
-                    let complex = DataType::complex_type(
-                        translator,
-                        complex_type,
-                        namespaces,
-                        schema
-                    )?;
+                    let complex =
+                        DataType::complex_type(translator, complex_type, namespaces, schema)?;
                     element.data_types.push(complex);
                 }
                 ElementTypeContent::Annotation(_) => {
@@ -160,7 +156,7 @@ impl Element {
     pub(crate) fn get_content(
         &self,
         fields: &mut Vec<String>,
-        types: &mut Vec<String>
+        types: &mut Vec<String>,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(reference) = &self.reference {
             fields.push(reference.get_name()?);
@@ -178,16 +174,12 @@ impl Element {
 
     pub(crate) fn get_name(&self) -> Result<String, XMLGeneratorError> {
         match &self.name {
-            None =>
-                match &self.reference {
-                    None =>
-                        Err(
-                            XMLGeneratorError::DataTypesFormatError(
-                                "Element does not have a name or reference".to_string()
-                            )
-                        ),
-                    Some(reference) => reference.get_name(),
-                }
+            None => match &self.reference {
+                None => Err(XMLGeneratorError::DataTypesFormatError(
+                    "Element does not have a name or reference".to_string(),
+                )),
+                Some(reference) => reference.get_name(),
+            },
             Some(name) => name.get_name(),
         }
     }
@@ -195,7 +187,7 @@ impl Element {
     fn get_full_name(
         &self,
         generator: &mut Generator,
-        name: &str
+        name: &str,
     ) -> Result<String, XMLGeneratorError> {
         let current_namespace = generator.get_current_namespace();
 
@@ -218,14 +210,16 @@ impl Element {
                 Ok(name.to_string())
             }
         } else {
-            Err(XMLGeneratorError::DataTypesFormatError("Invalid name".to_string()))
+            Err(XMLGeneratorError::DataTypesFormatError(
+                "Invalid name".to_string(),
+            ))
         }
     }
 
     fn get_root_name(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &Xsd,
     ) -> Result<String, XMLGeneratorError> {
         let root = generator.is_root();
         let name = self.get_name()?;
@@ -242,7 +236,7 @@ impl Element {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &Xsd
+        xsd: &Xsd,
     ) -> Result<(), XMLGeneratorError> {
         if let Some(output) = generator.generate_type(&self.xsd_type) {
             let value = encode_html(&output, &self.xsd_type.whitespace())?;
@@ -252,11 +246,9 @@ impl Element {
 
         if let Some(type_name) = &self.type_name {
             if !self.data_types.is_empty() {
-                return Err(
-                    XMLGeneratorError::DataTypesFormatError(
-                        "Data has a type and contains type elements".to_string()
-                    )
-                );
+                return Err(XMLGeneratorError::DataTypesFormatError(
+                    "Data has a type and contains type elements".to_string(),
+                ));
             }
 
             for data_type in xsd.types() {
@@ -279,7 +271,7 @@ impl Element {
     fn generate_type_from_name(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &Xsd,
     ) -> Result<XMLElement, XMLGeneratorError> {
         let n_namespace = generator.n_namespaces();
         let name = self.get_root_name(generator, xsd)?;
@@ -297,7 +289,7 @@ impl Element {
     fn generate_element(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &Xsd,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         let n = self.get_occurrences();
 
@@ -314,25 +306,23 @@ impl Element {
         &self,
         generator: &mut Generator,
         xsd: &Xsd,
-        reference: &Name
+        reference: &Name,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         if self.type_name.is_some() {
-            return Err(
-                XMLGeneratorError::DataTypesFormatError(
-                    "Element is a reference and a type".to_string()
-                )
-            );
+            return Err(XMLGeneratorError::DataTypesFormatError(
+                "Element is a reference and a type".to_string(),
+            ));
         }
         if !self.data_types.is_empty() {
-            return Err(
-                XMLGeneratorError::DataTypesFormatError(
-                    "Element references another element an contains content".to_string()
-                )
-            );
+            return Err(XMLGeneratorError::DataTypesFormatError(
+                "Element references another element an contains content".to_string(),
+            ));
         }
 
         for element in xsd.elements() {
-            if let Some(name) = &element.name && name.eq(reference) {
+            if let Some(name) = &element.name
+                && name.eq(reference)
+            {
                 let value = name.get_name()?;
                 generator.track_ref(&value);
                 let n = self.get_occurrences();
@@ -348,13 +338,15 @@ impl Element {
             }
         }
 
-        Err(XMLGeneratorError::XMLBuilderError("Reference not found".to_string()))
+        Err(XMLGeneratorError::XMLBuilderError(
+            "Reference not found".to_string(),
+        ))
     }
 
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
-        xsd: &Xsd
+        xsd: &Xsd,
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
             None => self.generate_element(generator, xsd),

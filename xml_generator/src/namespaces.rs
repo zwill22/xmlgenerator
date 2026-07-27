@@ -6,7 +6,7 @@ use crate::xsd_type::XSDType;
 use std::collections::HashMap;
 use std::str::from_utf8;
 use xsd_parser::Schemas;
-use xsd_parser::models::schema::{ NamespaceInfo, SchemaInfo };
+use xsd_parser::models::schema::{NamespaceInfo, SchemaInfo};
 
 fn check_namespace_exists(ns: &String, schemas: &Schemas) -> Result<(), XMLGeneratorError> {
     for (_ns_id, ns_info) in schemas.namespaces() {
@@ -23,7 +23,10 @@ fn check_namespace_exists(ns: &String, schemas: &Schemas) -> Result<(), XMLGener
         }
     }
 
-    Err(XMLGeneratorError::InvalidXSDError(format!("Invalid namespace in schema: {}", ns)))
+    Err(XMLGeneratorError::InvalidXSDError(format!(
+        "Invalid namespace in schema: {}",
+        ns
+    )))
 }
 
 fn check_namespace_is_valid(ns: &str) -> bool {
@@ -45,7 +48,7 @@ pub(crate) struct Namespaces {
 impl Namespaces {
     pub(crate) fn new(
         generator: &mut Generator,
-        schemas: &Schemas
+        schemas: &Schemas,
     ) -> Result<Namespaces, XMLGeneratorError> {
         let mut namespaces = Namespaces::default();
 
@@ -65,17 +68,18 @@ impl Namespaces {
     fn generate_valid_name(
         &mut self,
         generator: &mut Generator,
-        schemas: &Schemas
+        schemas: &Schemas,
     ) -> Result<String, XMLGeneratorError> {
         let pattern = Pattern::from_string(r"[a-z]{2}", &WhiteSpace::Collapse)?;
 
         match generator.generate_regex(&pattern) {
-            Some(output) =>
-                match check_namespace_exists(&output, schemas) {
-                    Ok(_) => self.generate_valid_name(generator, schemas),
-                    Err(_) => Ok(output),
-                }
-            None => Err(XMLGeneratorError::RegexError("Unable to generate regex".to_string())),
+            Some(output) => match check_namespace_exists(&output, schemas) {
+                Ok(_) => self.generate_valid_name(generator, schemas),
+                Err(_) => Ok(output),
+            },
+            None => Err(XMLGeneratorError::RegexError(
+                "Unable to generate regex".to_string(),
+            )),
         }
     }
 
@@ -83,7 +87,7 @@ impl Namespaces {
         &mut self,
         generator: &mut Generator,
         ns: String,
-        schemas: &Schemas
+        schemas: &Schemas,
     ) -> Result<(), XMLGeneratorError> {
         match self.default_namespace {
             None => {
@@ -108,7 +112,9 @@ impl Namespaces {
     }
 
     pub(crate) fn find(&self, location: &str) -> Option<&String> {
-        if let Some(default_ns) = &self.default_namespace && default_ns.eq(location) {
+        if let Some(default_ns) = &self.default_namespace
+            && default_ns.eq(location)
+        {
             // If namespace is default namespace, no need to include prefix
             // unless it has been aliased
             return match &self.root_namespace {
@@ -133,12 +139,9 @@ impl Namespaces {
         // 2. Assign target namespace a random name and prefix all elements with this prefix
         // TODO Consider the above
         match self.find(target_location) {
-            None =>
-                Err(
-                    XMLGeneratorError::DataTypesFormatError(
-                        "No target namespace found.".to_string()
-                    )
-                ),
+            None => Err(XMLGeneratorError::DataTypesFormatError(
+                "No target namespace found.".to_string(),
+            )),
             Some(ns) => {
                 self.target_namespace = Some(ns.clone());
                 Ok(())
@@ -151,19 +154,21 @@ impl Namespaces {
     }
 
     fn check_target_namespace(&self, ns: &str, target: &str) -> Result<(), XMLGeneratorError> {
-        if let Some(new_target) = self.find(ns) && new_target.eq(target) {
-            return Err(
-                XMLGeneratorError::DataTypesFormatError(
-                    "Multiple target namespaces found.".to_string()
-                )
-            );
+        if let Some(new_target) = self.find(ns)
+            && new_target.eq(target)
+        {
+            return Err(XMLGeneratorError::DataTypesFormatError(
+                "Multiple target namespaces found.".to_string(),
+            ));
         }
 
         Ok(())
     }
 
     fn add_target_namespace(&mut self, ns: &str) -> Result<(), XMLGeneratorError> {
-        if let Some(default_ns) = &self.default_namespace && default_ns.eq(&ns) {
+        if let Some(default_ns) = &self.default_namespace
+            && default_ns.eq(&ns)
+        {
             return Ok(());
         }
 
@@ -179,10 +184,12 @@ impl Namespaces {
         &mut self,
         generator: &mut Generator,
         ns_info: &NamespaceInfo,
-        schemas: &Schemas
+        schemas: &Schemas,
     ) -> Result<(), XMLGeneratorError> {
         if ns_info.module_name.is_some() {
-            return Err(XMLGeneratorError::UnimplementedFeature("module_name".to_string()));
+            return Err(XMLGeneratorError::UnimplementedFeature(
+                "module_name".to_string(),
+            ));
         }
 
         if let Some(namespace) = &ns_info.namespace {
@@ -207,11 +214,13 @@ impl Namespaces {
         generator: &mut Generator,
         schemas: &Schemas,
         schema_info: &SchemaInfo,
-        root: bool
+        root: bool,
     ) -> Result<(), XMLGeneratorError> {
         let schema = &schema_info.schema;
 
-        if let Some(ns) = &schema.target_namespace && root {
+        if let Some(ns) = &schema.target_namespace
+            && root
+        {
             check_namespace_exists(ns, schemas)?;
             self.add_target_namespace(ns)?;
         }

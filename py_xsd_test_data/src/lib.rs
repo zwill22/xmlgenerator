@@ -3,7 +3,7 @@ use pyo3::prelude::*;
 use std::any::Any;
 use std::panic;
 use std::path::PathBuf;
-use xsdtestdata::{ XSDData, XSDTestData, XSDTestDataIntoIterator };
+use xsdtestdata::{XSDData, XSDTestData, XSDTestDataIntoIterator};
 
 fn handle_panic(error: Box<dyn Any>) -> PyErr {
     if let Some(s) = error.downcast_ref::<&str>() {

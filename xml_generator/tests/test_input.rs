@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
-    use xmlgenerator::{ XMLGenerator, XMLGeneratorError };
+    use xmlgenerator::{XMLGenerator, XMLGeneratorError};
 
     fn check_error(error: XMLGeneratorError) {
         match error {

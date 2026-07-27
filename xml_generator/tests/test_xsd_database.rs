@@ -6,7 +6,7 @@ mod tests {
 
     use rstest::*;
     use std::panic;
-    use xmlgenerator::{ XMLGenerator, XMLGeneratorError };
+    use xmlgenerator::{XMLGenerator, XMLGeneratorError};
     use xsdtestdata::XSDTestData;
 
     fn check_error(error: &XMLGeneratorError) -> String {
@@ -17,7 +17,9 @@ mod tests {
                 panic!("Data type information error: {}", e)
             }
             XMLGeneratorError::DataTypeNotFoundError(e) => panic!("DataType not found: {}", e),
-            XMLGeneratorError::XSDParserError(e) => { format!("XSD Parser Error: {}", e) }
+            XMLGeneratorError::XSDParserError(e) => {
+                format!("XSD Parser Error: {}", e)
+            }
             XMLGeneratorError::DataTypesFormatError(e) => {
                 format!("Data Types Format Error: {}", e)
             }
@@ -84,7 +86,7 @@ mod tests {
     fn get_valid_files<'a>(
         generator: &XMLGenerator,
         test_data: &'a XSDTestData,
-        data_set: String
+        data_set: String,
     ) -> HashSet<&'a str> {
         let mut valid_files = HashSet::new();
 
@@ -130,7 +132,7 @@ mod tests {
     fn test_xsd_database(
         generator: &XMLGenerator,
         test_data: &XSDTestData,
-        #[case] data_set: String
+        #[case] data_set: String,
     ) {
         for filepath in get_valid_files(generator, test_data, data_set) {
             test_file(generator, test_data, filepath);

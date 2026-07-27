@@ -3,7 +3,7 @@ mod tests {
     use gag::Gag;
     use std::fs::ReadDir;
     use std::path::PathBuf;
-    use std::{ fs, panic };
+    use std::{fs, panic};
     use workspace_root::get_workspace_root;
     use xmlgenerator::XMLGenerator;
     use xmlgenerator::error::XMLGeneratorError;
@@ -69,7 +69,7 @@ mod tests {
 
     fn run_generator(
         generator: &XMLGenerator,
-        filepath: &PathBuf
+        filepath: &PathBuf,
     ) -> Result<String, XMLGeneratorError> {
         let _err_gag = Gag::stderr().unwrap();
 
@@ -96,7 +96,7 @@ mod tests {
         test_error(
             &generator,
             "two_roots.xsd",
-            "not implemented: Multiple independent (root) elements"
+            "not implemented: Multiple independent (root) elements",
         );
     }
 }
