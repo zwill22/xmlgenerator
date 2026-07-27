@@ -6,7 +6,7 @@ use crate::group::Group;
 use crate::namespaces::Namespaces;
 use crate::type_info::TypeInfo;
 use crate::whitespace::WhiteSpace;
-use crate::xsd::XSD;
+use crate::xsd::Xsd;
 use regextranslator::RegexTranslator;
 use std::ops::Deref;
 use xml_builder::XMLElement;
@@ -151,7 +151,7 @@ impl DataType {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &XSD,
+        xsd: &Xsd,
         name: &String
     ) -> Result<(), XMLGeneratorError> {
         if !self.groups.is_empty() {
@@ -192,7 +192,7 @@ impl DataType {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &XSD
+        xsd: &Xsd
     ) -> Result<(), XMLGeneratorError> {
         if let Some(type_info) = &self.type_info {
             if !self.groups.is_empty() {

@@ -4,7 +4,7 @@ use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
 use crate::whitespace::WhiteSpace;
-use crate::xsd::XSD;
+use crate::xsd::Xsd;
 use crate::xsd_type::XSDType;
 use std::cmp::PartialEq;
 use xml_builder::XMLElement;
@@ -110,7 +110,7 @@ impl Attribute {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &XSD
+        xsd: &Xsd
     ) -> Result<(), XMLGeneratorError> {
         let mut generated = false;
         let n_namespaces = generator.n_namespaces();

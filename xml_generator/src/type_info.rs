@@ -3,7 +3,7 @@ use crate::error::unimplemented;
 use crate::generator::Generator;
 use crate::pattern::Pattern;
 use crate::whitespace::WhiteSpace;
-use crate::xsd::XSD;
+use crate::xsd::Xsd;
 use crate::xsd_type::XSDType;
 use regextranslator::RegexTranslator;
 use xsd_parser::models::schema::xs::{
@@ -137,7 +137,7 @@ impl TypeInfo {
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
-        xsd: &XSD
+        xsd: &Xsd
     ) -> Result<Option<String>, XMLGeneratorError> {
         if !self.enumerations.is_empty() {
             if self.pattern.is_some() {

@@ -4,7 +4,7 @@ use crate::error::{ XMLGeneratorError, unimplemented };
 use crate::generator::Generator;
 use crate::name::Name;
 use crate::namespaces::Namespaces;
-use crate::xsd::XSD;
+use crate::xsd::Xsd;
 use crate::xsd_type::XSDType;
 use rand::Rng;
 use regextranslator::RegexTranslator;
@@ -225,7 +225,7 @@ impl Element {
     fn get_root_name(
         &self,
         generator: &mut Generator,
-        xsd: &XSD
+        xsd: &Xsd
     ) -> Result<String, XMLGeneratorError> {
         let root = generator.is_root();
         let name = self.get_name()?;
@@ -242,7 +242,7 @@ impl Element {
         &self,
         generator: &mut Generator,
         xml_element: &mut XMLElement,
-        xsd: &XSD
+        xsd: &Xsd
     ) -> Result<(), XMLGeneratorError> {
         if let Some(output) = generator.generate_type(&self.xsd_type) {
             let value = encode_html(&output, &self.xsd_type.whitespace())?;
@@ -279,7 +279,7 @@ impl Element {
     fn generate_type_from_name(
         &self,
         generator: &mut Generator,
-        xsd: &XSD
+        xsd: &Xsd
     ) -> Result<XMLElement, XMLGeneratorError> {
         let n_namespace = generator.n_namespaces();
         let name = self.get_root_name(generator, xsd)?;
@@ -297,7 +297,7 @@ impl Element {
     fn generate_element(
         &self,
         generator: &mut Generator,
-        xsd: &XSD
+        xsd: &Xsd
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         let n = self.get_occurrences();
 
@@ -313,7 +313,7 @@ impl Element {
     fn generate_reference(
         &self,
         generator: &mut Generator,
-        xsd: &XSD,
+        xsd: &Xsd,
         reference: &Name
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         if self.type_name.is_some() {
@@ -354,7 +354,7 @@ impl Element {
     pub(crate) fn generate(
         &self,
         generator: &mut Generator,
-        xsd: &XSD
+        xsd: &Xsd
     ) -> Result<Vec<XMLElement>, XMLGeneratorError> {
         match &self.reference {
             None => self.generate_element(generator, xsd),
