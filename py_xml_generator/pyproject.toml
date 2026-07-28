@@ -21,11 +21,12 @@ dynamic = ["version"]
 [dependency-groups]
 dev = [
     "pyxsdtestdata",
-    "pytest>=8.4.1",
-    "pytest-cov>=7.1.0",
-    "ruff>=0.12.7",
-    "xmlschema>=4.1.0",
-    "lxml>=6.0.2",
+    "maturin",
+    "pytest",
+    "pytest-cov",
+    "ruff",
+    "xmlschema",
+    "lxml",
 ]
 
 [tool.pytest.ini_options]
