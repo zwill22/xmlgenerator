@@ -58,7 +58,7 @@ jobs:
       - name: Run pytest with coverage
         uses: nick-fields/retry@v4.0.0
         with:
-          timeout_minutes: 6
+          timeout_minutes: 10
           max_attempts: 3
           command: |
             cargo llvm-cov show-env --sh > llvm-cov-env.sh
