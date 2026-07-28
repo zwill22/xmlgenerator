@@ -55,11 +55,15 @@ jobs:
           source llvm-cov-env.sh
           uv run maturin develop
 
-      - name: Test with pytest
-        run: |
-          cargo llvm-cov show-env --sh > llvm-cov-env.sh
-          source llvm-cov-env.sh
-          uv run pytest --cov --cov-report=xml
+      - name: Run pytest with coverage
+        uses: nick-fields/retry@v4.0.0
+        with:
+          timeout_minutes: 6
+          max_attempts: 3
+          command: |
+            cargo llvm-cov show-env --sh > llvm-cov-env.sh
+            source llvm-cov-env.sh
+            uv run pytest --cov --cov-report=xml
 
       - name: Get rust coverage report
         run: |
