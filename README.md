@@ -9,6 +9,9 @@
 [![GitHub Actions][actions-badge]][repo-actions]
 [![Test Rust][rust-test-badge]][rust-test]
 [![Test Python][python-test-badge]][python-test]
+[![Coverage Upload][coverage-upload-badge]][coverage]
+[![CodeCov][codecov-badge]][codecov]
+[![Coverage][coverage-badge]][coverage]
 [![Coffee][buy-me-coffee]][coffee]
 [![License: MIT][license-badge]][license]
 [![No AI][noai-badge]][website]
@@ -180,6 +183,8 @@ Not all features of the XSD specification have been implemented, if these featur
 [website]: https://zmwill.uk
 [pytest]: https://docs.pytest.org/en/stable/index.html
 [xml]: https://www.w3.org/TR/xml/
+[codecov]: https://about.codecov.io/
+[coverage]: https://app.codecov.io/gh/zwill22/xmlgenerator
 
 <!-- Badges -->
 
@@ -189,9 +194,12 @@ Not all features of the XSD specification have been implemented, if these featur
 [actions-badge]: https://img.shields.io/badge/GitHub_Actions-2088FF?logo=github-actions&logoColor=white&style=for-the-badge
 [rust-test-badge]: https://img.shields.io/github/actions/workflow/status/zwill22/xmlgenerator/test-rust.yml?style=for-the-badge&logo=rust&label=Test%20Rust
 [python-test-badge]: https://img.shields.io/github/actions/workflow/status/zwill22/xmlgenerator/test-python.yml?style=for-the-badge&logo=python&logoColor=white&label=Test%20Python
+[coverage-upload-badge]: https://img.shields.io/github/actions/workflow/status/zwill22/xmlgenerator/coverage.yml?style=for-the-badge&logo=codecov&logoColor=white&label=Coverage%20Upload
 [buy-me-coffee]: https://img.shields.io/badge/Buy_Me_A_Coffee-FFDD00?logo=buy-me-a-coffee&logoColor=black&style=for-the-badge
 [license-badge]: https://img.shields.io/github/license/zwill22/xmlgenerator?style=for-the-badge
 [pytest-badge]: https://img.shields.io/badge/pytest-%23ffffff.svg?style=for-the-badge&logo=pytest&logoColor=2f9fe3
 [noai-badge]: https://custom-icon-badges.demolab.com/badge/No%20AI-2f2f2f?logo=non-ai&logoColor=white&style=for-the-badge
 [xml-badge]: https://img.shields.io/badge/XML-767C52?logo=xml&logoColor=fff&style=for-the-badge
 [uv-badge]: https://img.shields.io/badge/uv-%23DE5FE9.svg?style=for-the-badge&logo=uv&logoColor=white
+[codecov-badge]: https://img.shields.io/badge/Codecov-F01F7A?logo=codecov&logoColor=fff&style=for-the-badge
+[coverage-badge]: https://img.shields.io/codecov/c/github/zwill22/xmlgenerator?style=for-the-badge&logo=codecov
