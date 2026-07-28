@@ -10,3 +10,6 @@ xsdtests.zip
 output.txt
 .pytest_cache
 .DS_Store
+.coverage
+.vscode
+coverage.xml

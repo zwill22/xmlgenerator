@@ -3,6 +3,7 @@ adoc
 alnum
 cdylib
 chrono
+Clippy
 COLOR
 cstring
 Ctxt

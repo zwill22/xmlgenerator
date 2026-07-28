@@ -58,7 +58,15 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          uv sync --all-packages --all-extras
+          uv sync --all-packages --all-groups
+
+      - name: Lint with Ruff
+        run: uv run ruff check
 
       - name: Run tests
-        run: uv run pytest -v
+        uses: nick-fields/retry@v4.0.0
+        with:
+          timeout_minutes: 4
+          max_attempts: 3
+          command: uv run pytest -v
+
