@@ -51,10 +51,6 @@ jobs:
           rustup component add llvm-tools-preview
           cargo install cargo-llvm-cov
 
-      - name: Install Dependencies
-        run: |
-          uv sync --all-packages --all-groups
-
       - name: Export Prefixes
         run: |
           . <(cargo llvm-cov show-env --sh)
@@ -65,8 +61,9 @@ jobs:
       - name: Cargo tests
         run: cargo test --verbose
 
-      - name: Setup UV tests
-        run: uv run maturin develop --uv
+      - name: Setup UV Tests
+        run: |
+          uv sync --all-packages --all-groups
 
       - name: UV tests with coverage
         run: uv run pytest --cov-report xml
