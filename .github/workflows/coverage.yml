@@ -58,15 +58,14 @@ jobs:
           echo CARGO_TARGET_DIR=$CARGO_LLVM_COV_TARGET_DIR >> $GITHUB_ENV
           echo CARGO_INCREMENTAL=1 >> $GITHUB_ENV
 
-      - name: Cargo tests
-        run: cargo test --verbose
-
       - name: Setup UV Tests
         run: |
           uv sync --all-packages --all-groups
 
       - name: UV tests with coverage
-        run: uv run pytest --cov-report xml
+        run: |
+          uv run coverage run -m pytest
+          uv run coverage xml
 
       - name: Generate llvm cov report
         run: cargo llvm-cov report --lcov --output-path coverage.lcov
