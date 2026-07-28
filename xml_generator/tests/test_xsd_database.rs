@@ -60,17 +60,17 @@ mod tests {
         str.to_string()
     }
 
-    fn test_file(generator: &XMLGenerator, test_data: &XSDTestData, path: &str) -> String {
-        let data = match test_data.get(path) {
+    fn test_file(generator: &XMLGenerator, test_data: &XSDTestData, key: &str) -> String {
+        let file = match test_data.get(key) {
             Some(data) => data,
             None => {
                 return "".to_string();
             }
         };
 
-        let path = data.get_path();
+        let path = file.get_path();
         match generator.generate(path, Some(57)) {
-            Ok(str) => check_result_str(&str),
+            Ok(out) => check_result_str(&out),
             Err(err) => check_error(&err),
         }
     }
@@ -86,14 +86,10 @@ mod tests {
     fn get_valid_files<'a>(
         generator: &XMLGenerator,
         test_data: &'a XSDTestData,
-        data_set: String,
     ) -> HashSet<&'a str> {
         let mut valid_files = HashSet::new();
 
         test_data.iter().for_each(|data| {
-            if data.get_data_set() != data_set {
-                return;
-            }
             let valid = data.is_valid();
             if valid && validate_file(generator, data.get_path(), valid) {
                 valid_files.insert(data.get_key());
@@ -120,23 +116,14 @@ mod tests {
     }
 
     #[rstest]
-    #[case::oracle_data("oracleData")]
-    #[case::wg_data("wgData")]
-    #[case::ibm_data("ibmData")]
-    #[case::ms_data("msData")]
-    #[case::saxon_data("saxonData")]
-    #[case::sun_data("sunData")]
-    #[case::nist_data("nistData")]
-    #[case::boeing_data("boeingData")]
-    #[case::common("common")]
     fn test_xsd_database(
         generator: &XMLGenerator,
         test_data: &XSDTestData,
-        #[case] data_set: String,
     ) {
-        for filepath in get_valid_files(generator, test_data, data_set) {
-            test_file(generator, test_data, filepath);
-        }
+        // TODO Split into cases
+        get_valid_files(generator, test_data).into_iter().for_each(|k| {
+            test_file(generator, test_data, k);
+        });
     }
 
     // #[rstest]
