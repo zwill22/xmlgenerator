@@ -1,27 +1,30 @@
 [workspace]
 resolver = "3"
 members = [
-    "reader",
-    "xsd_validator",
-    "xml_generator",
     "py_xml_generator",
-    "xsd_test_data",
     "py_xsd_test_data",
+    "reader",
     "regex_translator",
+    "xml_generator",
+    "xsd_test_data",
+    "xsd_validator",
 ]
 default-members = ["xsd_validator", "regex_translator", "xml_generator"]
 
 [workspace.package]
-version = "0.1.0"
-authors = ["Z M Williams <z.m.will@icloud.com>"]
+version = "0.2.0"
 edition = "2024"
-license = "MIT"
+license-file = "LICENSE"
 repository = "https://github.com/zwill22/xmlgenerator"
+categories = ["development-tools", "development-tools::testing"]
+description = "Generate XML instances from an XML Schema (XSD)"
+keywords = ["XML", "XSD", "Testing", "Validation", "File generation"]
+
 
 [workspace.dependencies]
-file_to_string = { version = "0.1.0", path = "reader" }
-xsdtestdata = { version = "0.1.0", path = "xsd_test_data" }
-xsdvalidator = { version = "0.1.0", path = "xsd_validator" }
-regextranslator = { version = "0.1.0", path = "regex_translator" }
-xmlgenerator = { version = "0.1.0", path = "xml_generator" }
-pyxsdtestdata = { version = "0.1.0", path = "py_xsd_test_data" }
+file_to_string = { path = "reader" }
+xsdtestdata = { path = "xsd_test_data" }
+xsdvalidator = { path = "xsd_validator" }
+regextranslator = { path = "regex_translator" }
+xmlgenerator = { path = "xml_generator" }
+pyxsdtestdata = { path = "py_xsd_test_data" }

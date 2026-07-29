@@ -1,7 +1,12 @@
 [package]
 name = "xmlgenerator"
-version = "0.1.0"
-edition = "2024"
+categories.workspace = true
+description.workspace = true
+edition.workspace = true
+keywords.workspace = true
+license-file.workspace = true
+repository.workspace = true
+version.workspace = true
 
 [dependencies]
 xsdvalidator = { workspace = true }

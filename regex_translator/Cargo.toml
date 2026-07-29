@@ -1,23 +1,32 @@
 [package]
 name = "regextranslator"
-version.workspace = true
-authors.workspace = true
+categories.workspace = true
+description.workspace = "Translator for XSD patterns into Rust-style Regular Expressions"
 edition.workspace = true
-license.workspace = true
+keywords.workspace = [
+    "xsd::pattern",
+    "Regular Expressions",
+    "Rust",
+    "XSD",
+    "Regex",
+    "Translator",
+]
+license-file.workspace = true
 repository.workspace = true
+version.workspace = true
 
 [dependencies]
+line-ending = "1.5.1"
 regex = "1.12.2"
 regexml = "0.2.1"
-line-ending = "1.5.1"
-unic-ucd-block = "0.9.0"
-unic-ucd-category = "0.9.0"
 unic-char-basics = "0.9.0"
 unic-ucd = "0.9.0"
+unic-ucd-block = "0.9.0"
+unic-ucd-category = "0.9.0"
 
 [dev-dependencies]
-xsdtestdata = { workspace = true }
 file_to_string = { workspace = true }
 roxmltree = "0.21.1"
-workspace_root = "0.2.0"
 rstest = "0.26.1"
+workspace_root = "0.2.0"
+xsdtestdata = { workspace = true }

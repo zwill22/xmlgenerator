@@ -1,16 +1,18 @@
 [package]
 name = "xsdtestdata"
-version.workspace = true
-authors.workspace = true
+categories.workspace = true
+description.workspace = "XSD Test data manaager"
 edition.workspace = true
-license.workspace = true
+keywords.workspace = ["Testing", "Test data", "XSD", "Database"]
+license-file.workspace = true
 repository.workspace = true
+version.workspace = true
 
 [dependencies]
-roxmltree = "0.21.1"
-reqwest = { version = "0.12.24", features = ["blocking"] }
-zip = "6.0.0"
 file_to_string = { workspace = true }
+reqwest = { version = "0.12.24", features = ["blocking"] }
+roxmltree = "0.21.1"
+zip = "6.0.0"
 
 [dev-dependencies]
 workspace_root = "0.2.0"
