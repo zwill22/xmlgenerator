@@ -1,9 +1,9 @@
 [package]
 name = "xsdvalidator"
 categories.workspace = true
-description.workspace = "XML Schema (XSD) file validation"
+description = "XML Schema (XSD) file validation"
 edition.workspace = true
-keywords.workspace = ["XSD", "Validation"]
+keywords = ["XSD", "Validation"]
 license-file.workspace = true
 repository.workspace = true
 version.workspace = true

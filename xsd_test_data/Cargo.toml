@@ -1,9 +1,9 @@
 [package]
 name = "xsdtestdata"
 categories.workspace = true
-description.workspace = "XSD Test data manaager"
+description = "XSD Test data manaager"
 edition.workspace = true
-keywords.workspace = ["Testing", "Test data", "XSD", "Database"]
+keywords = ["Testing", "Test data", "XSD", "Database"]
 license-file.workspace = true
 repository.workspace = true
 version.workspace = true

@@ -1,9 +1,9 @@
 [package]
 name = "pyxsdtestdata"
 categories.workspace = true
-description.workspace = "XSD test data"
+description = "XSD test data"
 edition.workspace = true
-keywords.workspace = ["XSD", "Testing", "Test data", "Validation"]
+keywords = ["XSD", "Testing", "Test data", "Validation"]
 license-file.workspace = true
 repository.workspace = true
 version.workspace = true

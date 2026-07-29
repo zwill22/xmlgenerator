@@ -1,9 +1,9 @@
 [package]
 name = "file_to_string"
-categories.workspace = ["parsing", "text-processing", "encoding"]
-description.workspace = ["Crate for reading text files to string"]
+categories = ["parsing", "text-processing", "encoding"]
+description = "Crate for reading text files to string"
 edition.workspace = true
-keywords.workspace = ["Text", "Parser", "Encoding", "String"]
+keywords = ["Text", "Parser", "Encoding", "String"]
 license-file.workspace = true
 repository.workspace = true
 version.workspace = true

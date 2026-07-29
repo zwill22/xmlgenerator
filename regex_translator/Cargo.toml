@@ -1,9 +1,9 @@
 [package]
 name = "regextranslator"
 categories.workspace = true
-description.workspace = "Translator for XSD patterns into Rust-style Regular Expressions"
+description = "Translator for XSD patterns into Rust-style Regular Expressions"
 edition.workspace = true
-keywords.workspace = [
+keywords = [
     "xsd::pattern",
     "Regular Expressions",
     "Rust",
