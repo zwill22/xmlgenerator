@@ -11,3 +11,6 @@ pyxsdtestdata = { workspace = true }
 
 [tool.uv.workspace]
 members = ["py_xml_generator", "py_xsd_test_data"]
+
+[dependency-groups]
+doc = ["sphinx", "sphinx-rtd-theme", "myst-parser"]
