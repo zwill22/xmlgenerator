@@ -210,7 +210,7 @@ fn version() -> String {
 
 /// The main class which manages the XML generator
 ///
-/// A single ``XMLGenerator`` class should be used for all required validations and generations.
+/// A single object should be used for all required validations and generations.
 ///
 /// Example
 /// -------
@@ -381,7 +381,7 @@ impl PyXMLGenerator {
 /// A Python package for generating XML instances from an input XML Schema (XSD)
 ///
 /// This package may be used to read an XML Schema (XSD) file, validate it and use it to generate an XML instance that follows the input schema.
-/// The package provides a class ``XMLGenerator`` which may be used to validate an XSD or use it to generate a new instance.
+/// The package provides a class :py:class:`XMLGenerator` which may be used to validate an XSD or use it to generate a new instance.
 #[pymodule]
 fn pyxmlgenerator(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyXMLGenerator>()?;

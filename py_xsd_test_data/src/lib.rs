@@ -17,6 +17,16 @@ fn handle_panic(error: Box<dyn Any>) -> PyErr {
     }
 }
 
+/// XSD Data Class containing information about a single XSD file
+///
+/// Includes data about an XSD file, including:
+///
+/// * Path to file
+/// * Data set it belongs to
+/// * Validity of XSD
+///
+/// No constructor is included, instances are created by the :py:class:`XSDTestData` class.
+///
 #[pyclass(name = "XSDData")]
 pub struct PyXSDData {
     data: XSDData,
@@ -24,18 +34,46 @@ pub struct PyXSDData {
 
 #[pymethods]
 impl PyXSDData {
+    /// Get the unique key associated with the XSD file
+    ///
+    /// Returns
+    /// -------
+    /// str
+    ///     Unique key for the file in the test set
+    ///
     pub fn key(&self) -> &str {
         self.data.get_key()
     }
 
+    /// Get the data set to which the XSD file belongs
+    ///
+    /// Returns
+    /// -------
+    /// str
+    ///     Data set name
+    ///
     pub fn data_set(&self) -> &str {
         self.data.get_data_set()
     }
 
+    /// Get the filepath of the XSD file
+    ///
+    /// Returns
+    /// -------
+    /// pathlib.Path
+    ///     Path to XSD file
+    ///
     pub fn path(&self) -> &PathBuf {
         self.data.get_path()
     }
 
+    /// Whether the XSD file is listed as valid
+    ///
+    /// Returns
+    /// -------
+    /// bool
+    ///     Validity of XSD
+    ///
     pub fn valid(&self) -> bool {
         self.data.is_valid()
     }
@@ -59,6 +97,34 @@ impl PyXSDTestDataIter {
     }
 }
 
+/// Class for managing XSD Test Data from the `xsdtests`_ database.
+///  
+/// The class manages the data in the `xsdtests`_ database.
+/// When initialised, the class searches for the database at the :py:data:`database_dir`. If found, it builds the object using the contents of this directory.
+///
+/// If the :py:data:`database_dir`` does not exist, the class searches for an archive file at
+/// :py:data:`archive_path`. If this is found, it extracts the contents to :py:data:`database_dir`.
+/// Otherwise, it downloads the archive from the `xsdtests`_ repo.
+///
+/// .. _xsdtests: https://github.com/w3c/xsdtests
+///
+/// Arguments
+/// ---------
+/// database_dir: pathlib.Path
+///     Path to the (current or target) directory for the database.
+/// archive_path: pathlib.Path
+///     Path to the zip file containing the database
+///
+/// Returns
+/// -------
+/// XSDTestData
+///     Data about all XSD files in the database
+///
+/// Raises
+/// ------
+/// RuntimeError
+///     Error while setting up the database
+///
 #[pyclass(name = "XSDTestData")]
 pub struct PyXSDTestData {
     inner: XSDTestData,
@@ -82,6 +148,19 @@ impl PyXSDTestData {
         Py::new(slf.py(), iter)
     }
 
+    /// Get the :py:class:`XSDData` for the XSD file with :py:data:`key`
+    ///
+    /// Arguments
+    /// ---------
+    /// key: str
+    ///     Key for the required XSD file
+    ///
+    /// Returns
+    /// -------
+    /// XSDData | None
+    ///     If the key is present, returns the :py:class:`XSDData` for the specified XSD.
+    ///     Otherwise returns `None`.
+    /// 
     fn get(&self, key: &str) -> Option<PyXSDData> {
         let data = self.inner.get(key)?;
 
@@ -131,7 +210,12 @@ fn version() -> String {
     format!("{}", env!("CARGO_PKG_VERSION"))
 }
 
-
+/// Module for managing XSD test data
+/// 
+/// This module provides methods for managing test data from the `xsdtests`_ database.
+/// The :py:class:`XSDTestData` class is used to initialise and manage the datasets.
+///
+/// .. _xsdtests: https://github.com/w3c/xsdtests
 #[pymodule]
 fn pyxsdtestdata(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyXSDTestData>()?;
