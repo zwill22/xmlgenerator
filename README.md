@@ -10,6 +10,8 @@
 [![Test Rust][rust-test-badge]][rust-test]
 [![Test Python][python-test-badge]][python-test]
 [![Coverage Upload][coverage-upload-badge]][coverage]
+[![Read the Docs][rtd-badge]][rtd]
+[![Documentation Status][doc-badge]][doc]
 [![CodeCov][codecov-badge]][codecov]
 [![Coverage][coverage-badge]][coverage]
 [![Coffee][buy-me-coffee]][coffee]
@@ -185,6 +187,8 @@ Not all features of the XSD specification have been implemented, if these featur
 [xml]: https://www.w3.org/TR/xml/
 [codecov]: https://about.codecov.io/
 [coverage]: https://app.codecov.io/gh/zwill22/xmlgenerator
+[rtd]: https://about.readthedocs.com/
+[doc]: https://xmlgenerator.readthedocs.io/en/latest
 
 <!-- Badges -->
 
@@ -203,3 +207,5 @@ Not all features of the XSD specification have been implemented, if these featur
 [uv-badge]: https://img.shields.io/badge/uv-%23DE5FE9.svg?style=for-the-badge&logo=uv&logoColor=white
 [codecov-badge]: https://img.shields.io/badge/Codecov-F01F7A?logo=codecov&logoColor=fff&style=for-the-badge
 [coverage-badge]: https://img.shields.io/codecov/c/github/zwill22/xmlgenerator?style=for-the-badge&logo=codecov
+[rtd-badge]: https://img.shields.io/badge/Read%20the%20Docs-8CA1AF?logo=readthedocs&logoColor=fff&labelColor=333&style=for-the-badge
+[doc-badge]: https://img.shields.io/readthedocs/xmlgenerator?style=for-the-badge
