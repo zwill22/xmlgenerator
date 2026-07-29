@@ -1,5 +1,5 @@
-PyXMLGenerator Documentation
-============================
+pyxmlgenerator
+==============
 
 .. automodule:: pyxmlgenerator
    :members:

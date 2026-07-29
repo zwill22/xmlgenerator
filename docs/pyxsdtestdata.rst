@@ -1,5 +1,5 @@
-PyXSDTestData Documentation
-============================
+pyxsdtestdata 
+==============
 
 .. automodule:: pyxsdtestdata
    :members:

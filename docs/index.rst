@@ -1,7 +1,7 @@
 PyXMLGenerator Documentation
 ============================
 
-This page contains the documentation for the `PyXMLGenerator`_ project.
+Welcome to the documentation for the PyXMLGenerator package.
 
 .. _PyXMLGenerator: https://github.com/zwill22/xmlgenerator
 
@@ -12,24 +12,12 @@ This page contains the documentation for the `PyXMLGenerator`_ project.
    :maxdepth: 2
    :caption: Contents:
    
-
    pyxmlgenerator
    pyxsdtestdata
-   py_xml_generator/README
-   py_xsd_test_data/README
-   reader/README
-   regex_translator/README
-   xml_generator/README
-   xsd_test_data/README
-   xsd_validator/README
+   about
    license_link
 
-.. seealso::
-
-   :doc: `contents`
-
-Indices and tables
-==================
+Index
+======
 * :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+
