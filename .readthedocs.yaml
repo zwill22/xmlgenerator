@@ -7,6 +7,9 @@ build:
   tools:
     python: "3.14"
     rust: "1.96"
+  jobs:
+    post_install:
+      - uv sync --all-packages --all-groups
 
   apt_packages:
     - cmake
@@ -16,5 +19,5 @@ python:
     - method: uv
       command: sync
       groups:
-        - doc 
+        - all
        
