@@ -69,7 +69,7 @@ jobs:
         run: |
           cargo llvm-cov show-env --sh > llvm-cov-env.sh
           source llvm-cov-env.sh
-          cargo llvm-cov report -p pyxmlgenerator --codecov --output-path codecov.json
+          cargo llvm-cov report --codecov --output-path codecov.json
 
       - name: Upload to codecov
         uses: codecov/codecov-action@v5
