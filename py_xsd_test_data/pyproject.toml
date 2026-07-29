@@ -20,6 +20,7 @@ dynamic = ["version"]
 
 [dependency-groups]
 dev = ["maturin"]
+doc = ["sphinx", "sphinx-rtd-theme", "myst-parser"]
 
 [tool.maturin]
 features = ["pyo3/extension-module"]

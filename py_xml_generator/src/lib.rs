@@ -4,8 +4,8 @@ use pyo3::prelude::*;
 use std::any::Any;
 use std::panic;
 use std::path::PathBuf;
-use xmlgenerator::XMLGenerator;
 use xmlgenerator::error::XMLGeneratorError;
+use xmlgenerator::XMLGenerator;
 
 create_exception!(pyxmlgenerator, InvalidPathError, PyException);
 create_exception!(pyxmlgenerator, XSDValidatorError, PyException);
@@ -96,6 +96,23 @@ fn handle_result<T>(result: Result<T, XMLGeneratorError>) -> PyResult<T> {
     }
 }
 
+/// Return the version of the XMLGenerator Rust crate
+///
+/// Returns
+/// -------
+/// str
+///    The version of the Rust crate
+///
+/// Raises
+/// ------
+/// None
+///   This function does not raise any exceptions
+///
+#[pyfunction]
+fn version() -> String {
+    format!("{}", env!("CARGO_PKG_VERSION"))
+}
+
 #[pyclass(name = "XMLGenerator")]
 pub struct PyXMLGenerator {
     inner: XMLGenerator,
@@ -177,5 +194,7 @@ fn pyxmlgenerator(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("XSDEncodingError", _py.get_type::<XSDEncodingError>())?;
     m.add("InvalidXSDNameError", _py.get_type::<InvalidXSDNameError>())?;
     m.add("LineEndingsError", _py.get_type::<LineEndingsError>())?;
+    m.add_function(wrap_pyfunction!(version, m)?)?;
+
     Ok(())
 }

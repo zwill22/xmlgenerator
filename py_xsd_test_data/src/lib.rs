@@ -120,10 +120,24 @@ impl Container {
     }
 }
 
+/// Return the version of the XMLGenerator Rust crate
+///
+/// Returns
+/// -------
+/// str
+///    The version of the Rust crate
+#[pyfunction]
+fn version() -> String {
+    format!("{}", env!("CARGO_PKG_VERSION"))
+}
+
+
 #[pymodule]
 fn pyxsdtestdata(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyXSDTestData>()?;
     m.add_class::<PyXSDData>()?;
+
+    m.add_function(wrap_pyfunction!(version, m)?)?;
 
     Ok(())
 }

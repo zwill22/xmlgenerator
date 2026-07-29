@@ -70,3 +70,4 @@ Otherwise, whether a file is valid depends entirely on whether `libxml2` interpr
 [license-badge]: https://img.shields.io/github/license/zwill22/xmlgenerator?style=for-the-badge
 [noai-badge]: https://custom-icon-badges.demolab.com/badge/No%20AI-2f2f2f?logo=non-ai&logoColor=white&style=for-the-badge
 [xml-badge]: https://img.shields.io/badge/XML-767C52?logo=xml&logoColor=fff&style=for-the-badge
+

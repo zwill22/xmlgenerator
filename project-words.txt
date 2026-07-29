@@ -1,6 +1,7 @@
 abstractmethod
 adoc
 alnum
+bysource
 cdylib
 chrono
 Clippy
@@ -21,6 +22,7 @@ lxml
 Marksfor
 Math
 minversion
+myst
 nargs
 nillable
 NMTOKEN
@@ -29,6 +31,7 @@ noncharacter
 Nonspacing
 pathlib
 pyclass
+pyfunction
 pymethods
 pymodule
 pytest
@@ -48,6 +51,7 @@ strf
 testpaths
 Timezone
 Titlecase
+undoc
 unic
 venv
 xmlgenerator

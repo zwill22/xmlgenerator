@@ -13,3 +13,4 @@ output.txt
 .coverage
 .vscode
 coverage.xml
+docs/_build
