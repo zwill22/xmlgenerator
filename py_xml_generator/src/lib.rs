@@ -7,26 +7,126 @@ use std::path::PathBuf;
 use xmlgenerator::error::XMLGeneratorError;
 use xmlgenerator::XMLGenerator;
 
-create_exception!(pyxmlgenerator, InvalidPathError, PyException);
-create_exception!(pyxmlgenerator, XSDValidatorError, PyException);
-create_exception!(pyxmlgenerator, DataTypeInformationError, PyException);
-create_exception!(pyxmlgenerator, DataTypeNotFoundError, PyException);
-create_exception!(pyxmlgenerator, XSDParserError, PyException);
-create_exception!(pyxmlgenerator, DataTypesFormatError, PyException);
-create_exception!(pyxmlgenerator, XMLBuilderError, PyException);
-create_exception!(pyxmlgenerator, InvalidXSDVersionError, PyException);
-create_exception!(pyxmlgenerator, InfiniteRecursionError, PyException);
-create_exception!(pyxmlgenerator, NoElementsError, PyException);
-create_exception!(pyxmlgenerator, InvalidXSDError, PyException);
-create_exception!(pyxmlgenerator, NoIndependentElementsError, PyException);
-create_exception!(pyxmlgenerator, MultipleXSDRootsError, PyException);
-create_exception!(pyxmlgenerator, TypeGenerationError, PyException);
-create_exception!(pyxmlgenerator, ImplementationError, PyException);
-create_exception!(pyxmlgenerator, RegexError, PyException);
-create_exception!(pyxmlgenerator, IncompatiblePatternError, PyException);
-create_exception!(pyxmlgenerator, InvalidXSDNameError, PyException);
-create_exception!(pyxmlgenerator, LineEndingsError, PyException);
-create_exception!(pyxmlgenerator, XSDEncodingError, PyException);
+create_exception!(
+    pyxmlgenerator,
+    InvalidPathError,
+    PyException,
+    "Invalid filepath or a non-existent file"
+);
+create_exception!(
+    pyxmlgenerator,
+    XSDValidatorError,
+    PyException,
+    "XSDValidator raised an error"
+);
+create_exception!(
+    pyxmlgenerator,
+    DataTypeInformationError,
+    PyException,
+    "No data found for custom type"
+);
+create_exception!(
+    pyxmlgenerator,
+    DataTypeNotFoundError,
+    PyException,
+    "Unable to find a given data type"
+);
+create_exception!(
+    pyxmlgenerator,
+    XSDParserError,
+    PyException,
+    "Error while parsing the XSD file"
+);
+create_exception!(
+    pyxmlgenerator,
+    DataTypesFormatError,
+    PyException,
+    "A data type is in an invalid format"
+);
+create_exception!(
+    pyxmlgenerator,
+    XMLBuilderError,
+    PyException,
+    "Error while building the final XML output"
+);
+create_exception!(
+    pyxmlgenerator,
+    InvalidXSDVersionError,
+    PyException,
+    "XSD specifies an invalid XML version"
+);
+create_exception!(
+    pyxmlgenerator,
+    InfiniteRecursionError,
+    PyException,
+    "Infinite recursion encountered"
+);
+create_exception!(
+    pyxmlgenerator,
+    NoElementsError,
+    PyException,
+    "No elements in XSD"
+);
+create_exception!(
+    pyxmlgenerator,
+    InvalidXSDError,
+    PyException,
+    "XSD is invalid"
+);
+create_exception!(
+    pyxmlgenerator,
+    NoIndependentElementsError,
+    PyException,
+    "No root element found in XSD"
+);
+create_exception!(
+    pyxmlgenerator,
+    MultipleXSDRootsError,
+    PyException,
+    "XSD contains multiple root elements"
+);
+create_exception!(
+    pyxmlgenerator,
+    TypeGenerationError,
+    PyException,
+    "Error generating a specific type"
+);
+create_exception!(
+    pyxmlgenerator,
+    ImplementationError,
+    PyException,
+    "Unimplemented feature in XSD"
+);
+create_exception!(
+    pyxmlgenerator,
+    RegexError,
+    PyException,
+    "Invalid XSD pattern or Regex"
+);
+create_exception!(
+    pyxmlgenerator,
+    IncompatiblePatternError,
+    PyException,
+    "XSD restricts type to incompatible Regex patterns"
+);
+create_exception!(
+    pyxmlgenerator,
+    InvalidXSDNameError,
+    PyException,
+    "XSD contains invalid name"
+);
+create_exception!(
+    pyxmlgenerator,
+    LineEndingsError,
+    PyException,
+    "Invalid line endings in XSD pattern"
+);
+create_exception!(
+    pyxmlgenerator,
+    XSDEncodingError,
+    PyException,
+    "XSD uses invalid encoding"
+);
 
 fn handle_error(error: XMLGeneratorError) -> PyErr {
     match error {
@@ -80,7 +180,7 @@ fn handle_input(input_string: String) -> PyResult<PathBuf> {
 fn handle_panic(error: Box<dyn Any>) -> PyErr {
     if let Some(s) = error.downcast_ref::<&str>() {
         let msg = s.to_string();
-        ImplementationError::new_err(msg)
+        PyRuntimeError::new_err(msg)
     } else if let Some(s) = error.downcast_ref::<String>() {
         let msg = format!("XMLGenerator panic error: {}", s);
         PyRuntimeError::new_err(msg)
@@ -96,23 +196,45 @@ fn handle_result<T>(result: Result<T, XMLGeneratorError>) -> PyResult<T> {
     }
 }
 
-/// Return the version of the XMLGenerator Rust crate
+/// Get the version of the XMLGenerator Rust crate
 ///
 /// Returns
 /// -------
 /// str
 ///    The version of the Rust crate
 ///
-/// Raises
-/// ------
-/// None
-///   This function does not raise any exceptions
-///
 #[pyfunction]
 fn version() -> String {
     format!("{}", env!("CARGO_PKG_VERSION"))
 }
 
+/// The main class which manages the XML generator
+///
+/// A single ``XMLGenerator`` class should be used for all required validations and generations.
+///
+/// Example
+/// -------
+///
+/// .. code-block:: python
+///
+///     from pyxmlgenerator import XMLGenerator
+///
+///     generator = XMLGenerator()
+///
+///     schema = "/path/to/schema.xsd"
+///
+///     # Validates the XSD file and generates an XML instance
+///     xml_string = generator.generate(schema)
+///
+///     print(xml_string)
+///
+/// This class is implemented in Rust and uses `libxml2`_ for validation using `Rust bindings`_.
+/// The original ``libxml2`` library is written in C and includes a global initialiser/deinitialiser that should not be initialised more than once at a time.
+/// The limitation is that only one instance of the class should be created at any one time
+///
+/// .. _libxml2: https://gitlab.gnome.org/GNOME/libxml2
+/// .. _Rust bindings: https://github.com/zwill22/libxml2-rs/
+///
 #[pyclass(name = "XMLGenerator")]
 pub struct PyXMLGenerator {
     inner: XMLGenerator,
@@ -128,6 +250,43 @@ impl PyXMLGenerator {
         }
     }
 
+    /// XSD file validator
+    ///
+    /// Arguments
+    /// ---------
+    /// filepath: str
+    ///     The path to the XSD file to be validated
+    ///
+    /// Raises
+    /// ------
+    /// RuntimeError
+    ///     If Rust code panics
+    /// InvalidPathError
+    ///     If ``filepath`` is invalid
+    /// XSDValidatorError
+    ///     If XSDValidator returns an error
+    /// InvalidXSDError
+    ///     If recursive elements are found
+    ///
+    /// Example
+    /// -------
+    ///
+    /// .. code-block:: python
+    ///
+    ///     from pyxmlgenerator import XMLGenerator
+    ///
+    ///     generator = XMLGenerator()
+    ///
+    ///     schema = "/path/to/schema.xsd"
+    ///
+    ///     generator.validate(schema)
+    ///
+    /// The XSD validator  wraps the `libxml2`_ C library.
+    /// An XSD file is invalid if this library finds it to be invalid.
+    /// The only additional checks track whether there is an infinite loop in the schema.
+    ///
+    /// .. _libxml2: https://gitlab.gnome.org/GNOME/libxml2
+    ///
     fn validate(&self, filepath: String) -> PyResult<()> {
         let path_buf = handle_input(filepath)?;
         match panic::catch_unwind(|| self.inner.validate(&path_buf)) {
@@ -136,6 +295,78 @@ impl PyXMLGenerator {
         }
     }
 
+    /// XML instance generator
+    ///
+    /// Arguments
+    /// ---------
+    /// filepath: str
+    ///     The path to the XSD file to be validated
+    /// seed : int | None = None
+    ///     Seed the random number generator (default: None)
+    ///
+    /// Raises
+    /// ------
+    /// RuntimeError
+    ///     Rust code panics
+    /// InvalidPathError
+    ///     Invalid ``filepath``
+    /// XSDValidatorError
+    ///     XSDValidator returns an error
+    /// DataTypeInformationError
+    ///     Unable to find any information for a custom type
+    /// DataTypeNotFoundError
+    ///     Generator cannot find a matching datatype for an attribute
+    /// XSDParserError
+    ///     The ``xsd-parser`` crate throws an error
+    /// DataTypesFormatError
+    ///     Data type is in an invalid format
+    /// XMLBuilderError
+    ///     The ``xml-builder`` crate encounters an error
+    /// InvalidXSDVersionError
+    ///     XSD has an XML other than 1.0 or 1.1
+    /// InfiniteRecursionError
+    ///     Infinite recursive element found
+    /// NoElementsError
+    ///     XSD does not contain any elements
+    /// InvalidXSDError
+    ///     XSD is invalid
+    /// NoIndependentElementsError
+    ///     XSD does not contain any root elements
+    /// MultipleXSDRootsError
+    ///     XSD contains multiple root elements
+    /// TypeGenerationError
+    ///     Generator is unable to generate a specific type
+    /// RegexError
+    ///     Regular expression error (XSD pattern or Rust)
+    /// IncompatiblePatternError
+    ///     Type is constrained to match two incompatible Regex patterns
+    /// XSDEncodingError
+    ///     XSD uses an unsupported encoding
+    /// ImplementationError
+    ///     Unimplemented feature
+    /// InvalidXSDNameError
+    ///     XSD contains an invalid name
+    /// LineEndingsError
+    ///     Regex contains invalid line endings
+    ///
+    /// Example
+    /// -------
+    ///
+    /// .. code-block:: python
+    ///
+    ///     from pyxmlgenerator import XMLGenerator
+    ///
+    ///     generator = XMLGenerator()
+    ///
+    ///     schema = "/path/to/schema.xsd"
+    ///
+    ///     xml_string = generator.generate(schema)
+    ///
+    ///     print(xml_string)
+    ///
+    /// Not all features of the XML schema specification are implemented.
+    /// Unimplemented features will return an error.
+    ///
     #[pyo3(signature = (filepath, seed = None))]
     fn generate(&self, filepath: String, seed: Option<u64>) -> PyResult<String> {
         let path_buf = handle_input(filepath)?;
@@ -147,9 +378,14 @@ impl PyXMLGenerator {
     }
 }
 
+/// A Python package for generating XML instances from an input XML Schema (XSD)
+///
+/// This package may be used to read an XML Schema (XSD) file, validate it and use it to generate an XML instance that follows the input schema.
+/// The package provides a class ``XMLGenerator`` which may be used to validate an XSD or use it to generate a new instance.
 #[pymodule]
 fn pyxmlgenerator(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyXMLGenerator>()?;
+
     m.add("InvalidPathError", _py.get_type::<InvalidPathError>())?;
     m.add("XSDValidatorError", _py.get_type::<XSDValidatorError>())?;
     m.add(
