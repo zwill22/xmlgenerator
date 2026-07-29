@@ -49,6 +49,9 @@ jobs:
       - name: Install llvm cov
         run: cargo install cargo-llvm-cov
 
+      - name: Run tests
+        run: cargo llvm-cov --json --output-path cov.json
+
       - name: Install PyXmlGenerator
         run: |
           cargo llvm-cov show-env --sh > llvm-cov-env.sh
@@ -74,7 +77,7 @@ jobs:
       - name: Upload to codecov
         uses: codecov/codecov-action@v5
         with:
-          files: ./coverage.xml,./py_xml_generator/codecov.json
+          files: ./cov.json,./coverage.xml,./py_xml_generator/codecov.json
           fail_ci_if_error: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
