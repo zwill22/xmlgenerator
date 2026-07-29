@@ -7,6 +7,11 @@
 [![Pytest][pytest-badge]][pytest]
 [![GitHub Actions][actions-badge]][repo-actions]
 [![Test Python][python-test-badge]][python-test]
+[![Coverage Upload][coverage-upload-badge]][coverage]
+[![Read the Docs][rtd-badge]][rtd]
+[![Documentation Status][doc-badge]][doc]
+[![CodeCov][codecov-badge]][codecov]
+[![Coverage][coverage-badge]][coverage]
 [![Coffee][buy-me-coffee]][coffee]
 [![License: MIT][license-badge]][license]
 [![No AI][noai-badge]][website]
@@ -66,6 +71,10 @@ This example uses Python's [xmlschema library][xmlschema] to validate output XML
 [pytest]: https://docs.pytest.org/en/stable/index.html
 [xml]: https://www.w3.org/TR/xml/
 [pyo3]: https://pyo3.rs/v0.29.0/
+[codecov]: https://about.codecov.io/
+[coverage]: https://app.codecov.io/gh/zwill22/xmlgenerator
+[rtd]: https://about.readthedocs.com/
+[doc]: https://xmlgenerator.readthedocs.io/en/latest
 
 <!-- Badges -->
 
@@ -79,3 +88,8 @@ This example uses Python's [xmlschema library][xmlschema] to validate output XML
 [noai-badge]: https://custom-icon-badges.demolab.com/badge/No%20AI-2f2f2f?logo=non-ai&logoColor=white&style=for-the-badge
 [xml-badge]: https://img.shields.io/badge/XML-767C52?logo=xml&logoColor=fff&style=for-the-badge
 [uv-badge]: https://img.shields.io/badge/uv-%23DE5FE9.svg?style=for-the-badge&logo=uv&logoColor=white
+[coverage-upload-badge]: https://img.shields.io/github/actions/workflow/status/zwill22/xmlgenerator/coverage.yml?style=for-the-badge&logo=codecov&logoColor=white&label=Coverage%20Upload
+[codecov-badge]: https://img.shields.io/badge/Codecov-F01F7A?logo=codecov&logoColor=fff&style=for-the-badge
+[coverage-badge]: https://img.shields.io/codecov/c/github/zwill22/xmlgenerator?style=for-the-badge&logo=codecov
+[rtd-badge]: https://img.shields.io/badge/Read%20the%20Docs-8CA1AF?logo=readthedocs&logoColor=fff&labelColor=333&style=for-the-badge
+[doc-badge]: https://img.shields.io/readthedocs/xmlgenerator?style=for-the-badge

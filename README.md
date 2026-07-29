@@ -18,8 +18,8 @@
 [![License: MIT][license-badge]][license]
 [![No AI][noai-badge]][website]
 
-This project is a Rust library which generates XML instances matching the provided XML Schema (XSD) input.
-Also included is a Python wrapper `py-xml-generator` allowing direct use from Python.
+This project provides a Python package `py-xml-generator` which generates XML instances matching the provided XML Schema (XSD) input.
+The package is written in Rust with a [PyO3][pyo3] Python wrapper allowing direct use from Python.
 The project includes several Cargo crates to achieve this goal:
 
 - [file-to-string](reader/README.md) - For reading text files
@@ -38,7 +38,7 @@ Additionally, the following Python packages are includes:
 System requirements:
 
 - [Cargo][rust] - Installed via Rustup
-- [Python][python] - Required for `pyxmlgenerator`
+- [Python][python] - Required for Python bindings `pyxmlgenerator`
 - [uv][uv] - Recommended for installation of Python packages (Optional)
 
 ## Build
@@ -67,55 +67,11 @@ To run the Python test suite, use:
 uv run pytest
 ```
 
-## Usage (Rust)
+## Usage
 
-The following is an example of a simplified program which reads a list of filepaths from command-line arguments and generates example XML output strings for each valid XSD.
+The library can be used either from Python or Rust. Here are examples of each:
 
-```rust
-use std::env;
-use std::path::PathBuf;
-use std::str::FromStr;
-use xmlgenerator:XMLGenerator;
-
-fn main() {
-    let generator =XMLGenerator::new();
-    let args: Vec<String> = env::args().collect();
-    if args.is_empty() {
-        println!("No files provided!");
-        println!("Usage: ./example [files] ...");
-        return;
-    }
-
-    println!("Reading {} input files...", args.len());
-    for arg in args {
-        let path = PathBuf::from_str(arg.as_str()).unwrap();
-
-        // Validate file
-        if let Err(error) = generator.validate(&path) {
-            println!("Invalid file: {}", path);
-            return;
-        }
-
-        println!("Valid input file: {}", path);
-        let output = match generator.generate(&path, None) {
-            Ok(out) => out,
-            Err(e) => {
-                eprintln!("Error running generator: {}", path);
-                eprintln!("Error: {}", e);
-                return;
-            }
-        };
-
-        println!("Output generated!");
-        println!("Output:");
-        println!(output);
-    }
-}
-```
-
-**NOTE:** _Only a single XMLGenerator` should be created. Multiple instances of this class cause undefined behaviour._
-
-## Python Example
+### Python
 
 The following example illustrates a similar workflow in Python, using the built-in [argparse](https://docs.python.org/3/library/argparse.html) and [pathlib](https://docs.python.org/3/library/pathlib.html) libraries to read and validate command-line input.
 
@@ -166,6 +122,54 @@ for path in paths:
 
 This example uses Python's [xmlschema library][xmlschema] to validate output XML strings.
 
+### Rust
+
+The following is an example of a simplified program which reads a list of filepaths from command-line arguments and generates example XML output strings for each valid XSD.
+
+```rust
+use std::env;
+use std::path::PathBuf;
+use std::str::FromStr;
+use xmlgenerator:XMLGenerator;
+
+fn main() {
+    let generator =XMLGenerator::new();
+    let args: Vec<String> = env::args().collect();
+    if args.is_empty() {
+        println!("No files provided!");
+        println!("Usage: ./example [files] ...");
+        return;
+    }
+
+    println!("Reading {} input files...", args.len());
+    for arg in args {
+        let path = PathBuf::from_str(arg.as_str()).unwrap();
+
+        // Validate file
+        if let Err(error) = generator.validate(&path) {
+            println!("Invalid file: {}", path);
+            return;
+        }
+
+        println!("Valid input file: {}", path);
+        let output = match generator.generate(&path, None) {
+            Ok(out) => out,
+            Err(e) => {
+                eprintln!("Error running generator: {}", path);
+                eprintln!("Error: {}", e);
+                return;
+            }
+        };
+
+        println!("Output generated!");
+        println!("Output:");
+        println!(output);
+    }
+}
+```
+
+**NOTE:** _Only a single XMLGenerator` should be created. Multiple instances of this class cause undefined behaviour._
+
 ## Limitations
 
 Not all features of the XSD specification have been implemented, if these features are encountered, an `unimplemented` error is thrown.
@@ -189,6 +193,7 @@ Not all features of the XSD specification have been implemented, if these featur
 [coverage]: https://app.codecov.io/gh/zwill22/xmlgenerator
 [rtd]: https://about.readthedocs.com/
 [doc]: https://xmlgenerator.readthedocs.io/en/latest
+[pyo3]: https://pyo3.rs/v0.29.0/
 
 <!-- Badges -->
 

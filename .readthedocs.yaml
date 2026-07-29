@@ -13,7 +13,7 @@ build:
 
   apt_packages:
     - cmake
-    - build-essential
+    - clang
 
 python:
   install:
