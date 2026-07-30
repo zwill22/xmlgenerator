@@ -103,7 +103,7 @@ pub struct XMLGenerator {
 impl Default for XMLGenerator {
     fn default() -> Self {
         let validator = XSDValidator::new(false);
-        let translator = RegexTranslator::new().unwrap();
+        let translator = RegexTranslator::new();
 
         XMLGenerator {
             validator,
@@ -164,7 +164,7 @@ impl XMLGenerator {
     ///             return true;
     ///         },
     ///         Err(e) => {
-    ///             eprintln!("XSDValidator error: {}", e);
+    ///             eprintln!("XSDValidator error: {:?}", e);
     ///             return false;
     ///         },
     ///     }

@@ -107,7 +107,7 @@ fn is_supported(character: char) -> bool {
     true
 }
 
-fn get_unicode_categories() -> Result<HashMap<String, Vec<char>>, RegexTranslationError> {
+fn get_unicode_categories() -> HashMap<String, Vec<char>> {
     let mut lists: HashMap<String, Vec<char>> = HashMap::new();
 
     for block in BlockIter::new() {
@@ -185,7 +185,7 @@ fn add(map: &mut HashMap<String, String>, key: &str, value: &str) {
     }
 }
 
-fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
+fn unicode_blocks() -> HashMap<String, String> {
     let mut map = HashMap::new();
 
     for block in BlockIter::new() {
@@ -202,11 +202,11 @@ fn unicode_blocks() -> Result<HashMap<String, String>, RegexTranslationError> {
         add(&mut map, &key, &range);
     }
 
-    Ok(map)
+    map
 }
 
-fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
-    let data = get_unicode_categories()?;
+fn unicode_categories(ascii: bool) -> HashMap<String, String> {
+    let data = get_unicode_categories();
 
     let mut map = HashMap::new();
     for (key, values) in data {
@@ -226,20 +226,20 @@ fn unicode_categories(ascii: bool) -> Result<HashMap<String, String>, RegexTrans
         map.insert(key.to_string(), string);
     }
 
-    Ok(map)
+    map
 }
 
-fn unicode_definitions(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
+fn unicode_definitions(ascii: bool) -> HashMap<String, String> {
     let mut blocks = if ascii {
         HashMap::new()
     } else {
-        unicode_blocks()?
+        unicode_blocks()
     };
-    let sets = unicode_categories(ascii)?;
+    let sets = unicode_categories(ascii);
 
     blocks.extend(sets);
 
-    Ok(blocks)
+    blocks
 }
 
 fn get_comp_set(set: &str, ascii: bool) -> String {
@@ -250,8 +250,8 @@ fn get_comp_set(set: &str, ascii: bool) -> String {
     format!(r"[^{}]", set)
 }
 
-fn get_unicode_mappings(ascii: bool) -> Result<HashMap<String, String>, RegexTranslationError> {
-    let unicode_blocks = unicode_definitions(ascii)?;
+fn get_unicode_mappings(ascii: bool) -> HashMap<String, String> {
+    let unicode_blocks = unicode_definitions(ascii);
 
     let mut output = HashMap::new();
 
@@ -268,7 +268,7 @@ fn get_unicode_mappings(ascii: bool) -> Result<HashMap<String, String>, RegexTra
         output.insert(comp_block, comp_set);
     }
 
-    Ok(output)
+    output
 }
 
 fn into_sets<Str: Display>(input: Vec<Str>) -> HashSet<String> {
@@ -329,8 +329,8 @@ fn apply_common_mappings(mappings: &mut HashMap<String, String>) {
     mappings.insert(S.to_string(), s_set.to_string());
 }
 
-fn get_ascii_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut mappings = get_unicode_mappings(true)?;
+fn get_ascii_mappings() -> HashMap<String, String> {
+    let mut mappings = get_unicode_mappings(true);
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z]";
@@ -361,11 +361,11 @@ fn get_ascii_mappings() -> Result<HashMap<String, String>, RegexTranslationError
 
     apply_common_mappings(&mut mappings);
 
-    Ok(mappings)
+    mappings
 }
 
-fn get_full_mappings() -> Result<HashMap<String, String>, RegexTranslationError> {
-    let mut mappings = get_unicode_mappings(false)?;
+fn get_full_mappings() -> HashMap<String, String> {
+    let mut mappings = get_unicode_mappings(false);
 
     const I: &str = r"\i";
     const I_SET: &str = r"[:A-Z_a-z\u00C0-\u00D6\u00D8-\u00F6\u00F8-\u02FF\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD\x{10000}-\x{EFFFF}]";
@@ -396,7 +396,7 @@ fn get_full_mappings() -> Result<HashMap<String, String>, RegexTranslationError>
 
     apply_common_mappings(&mut mappings);
 
-    Ok(mappings)
+    mappings
 }
 
 fn replace_negation_patterns(input: &str) -> Result<String, RegexTranslationError> {

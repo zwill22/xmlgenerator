@@ -44,7 +44,6 @@ mod tests {
         match error {
             RegexTranslationError::InvalidInput(e) => e.to_string(),
             RegexTranslationError::RegexError(e) => panic!("{}", e),
-            RegexTranslationError::FileReadError(e) => panic!("{}", e),
             RegexTranslationError::DataError(e) => panic!("{}", e),
             RegexTranslationError::UnicodeError(e) => panic!("{}", e),
             RegexTranslationError::SurrogatesError => format!("Surrogates in input: {}", input),
@@ -77,7 +76,7 @@ mod tests {
     #[fixture]
     #[once]
     fn translator() -> RegexTranslator {
-        RegexTranslator::new().expect("Unable to initialise RegexTranslator")
+        RegexTranslator::new()
     }
 
     #[fixture]

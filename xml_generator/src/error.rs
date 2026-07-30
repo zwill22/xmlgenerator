@@ -122,7 +122,6 @@ impl From<RegexTranslationError> for XMLGeneratorError {
         match value {
             RegexTranslationError::InvalidInput(str) => XMLGeneratorError::InvalidXSDError(str),
             RegexTranslationError::RegexError(str) => XMLGeneratorError::InvalidXSDError(str),
-            RegexTranslationError::FileReadError(str) => XMLGeneratorError::InvalidXSDError(str),
             RegexTranslationError::DataError(str) => XMLGeneratorError::RegexError(str),
             RegexTranslationError::UnicodeError(str) => XMLGeneratorError::RegexError(str),
             RegexTranslationError::SurrogatesError => {
