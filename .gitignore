@@ -14,3 +14,4 @@ output.txt
 .vscode
 coverage.xml
 docs/_build
+docs/crates

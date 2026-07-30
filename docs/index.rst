@@ -1,9 +1,7 @@
-PyXMLGenerator Documentation
+XMLGenerator Documentation
 ============================
 
-Welcome to the documentation for the PyXMLGenerator package.
-
-.. _PyXMLGenerator: https://github.com/zwill22/xmlgenerator
+Welcome to the documentation for the XMLGenerator package.
 
 .. include:: ../README.md
    :parser: myst_parser.sphinx_
@@ -14,6 +12,11 @@ Welcome to the documentation for the PyXMLGenerator package.
    
    pyxmlgenerator
    pyxsdtestdata
+   crates/file_to_string/lib
+   crates/regextranslator/lib
+   crates/xmlgenerator/lib
+   crates/xsdtestdata/lib
+   crates/xsdvalidator/lib
    about
    license_link
 

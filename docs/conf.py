@@ -21,7 +21,30 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "myst_parser",
+    "sphinxcontrib_rust",
 ]
+
+# See docs/compatibility for details on these extensions.
+myst_enable_extensions = {
+    "attrs_block",
+    "colon_fence",
+    "html_admonition",
+    "replacements",
+    "smartquotes",
+    "strikethrough",
+    "tasklist",
+}
+
+rust_crates = {
+    "file_to_string": "../reader",
+    "xsdtestdata": "../xsd_test_data",
+    "xsdvalidator": "../xsd_validator",
+    "regextranslator": "../regex_translator",
+    "xmlgenerator": "../xml_generator",
+}
+
+rust_doc_dir = "crates/"
+rust_rustdoc_fmt = "md"
 
 autodoc_typehints = "description"
 

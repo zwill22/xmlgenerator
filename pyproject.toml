@@ -13,4 +13,4 @@ pyxsdtestdata = { workspace = true }
 members = ["py_xml_generator", "py_xsd_test_data"]
 
 [dependency-groups]
-doc = ["sphinx", "sphinx-rtd-theme", "myst-parser"]
+doc = ["sphinx", "sphinx-rtd-theme", "myst-parser", "sphinxcontrib-rust"]
