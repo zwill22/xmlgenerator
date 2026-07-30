@@ -70,5 +70,6 @@ html_context = {
     "conf_py_path": "/docs/",
     "github_version": "main",
 }
+html_theme_options = {"navigation_depth": -1}
 
 autosectionlabel_prefix_document = True

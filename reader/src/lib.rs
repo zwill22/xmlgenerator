@@ -1,3 +1,9 @@
+//! Rust crate for reading text files into strings when the enccoding is unknown
+//! 
+//! This crate provides a single function [read_file] which attempts to read a text file.
+//! If it fails to read the file using the [std::fs::read_to_string] function, 
+//! it retries using various standard encodings until it finds one that works. 
+
 use encoding_rs::{Encoding, UTF_16LE};
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use std::fs::File;
@@ -53,6 +59,38 @@ fn read_file_encoding(
     }
 }
 
+/// Reads a file to a string for a file with unknown encoding
+/// 
+/// # Arguments
+/// 
+/// - `filepath` (`&PathBuf`) - Path to the file
+/// 
+/// # Returns
+/// 
+/// - `Result<String, Error>` - Returns the file string if no error is found
+/// 
+/// # Errors
+/// 
+/// - [std::io::Error] - If file cannot be decoded using any of the listed encodings
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use file_to_string::read_file;
+/// 
+/// fn read(file: &PathBuf) -> String {
+///     match read_file(file) {
+///         Ok(out) => {
+///             return out;
+///         },
+///         Err(e) => {
+///             eprintln!("Error reading file: {}", e);
+///             return "".to_string();
+///         }
+///     }
+/// }
+/// ```
+/// 
 pub fn read_file(filepath: &PathBuf) -> Result<String, Error> {
     let encodings = Encodings::generate();
 
