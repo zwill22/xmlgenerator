@@ -1,6 +1,6 @@
 //! Module containing the [XMLGeneratorError] struct
 //!
-//! All errors in the [crate] should raise one of these errors rather than panicing
+//! All errors in the [crate] should raise an [XMLGeneratorError] rather than panicking.
 //!
 use quick_xml::events::attributes::AttrError;
 use quick_xml::Error as QuickXMLError;
@@ -56,6 +56,18 @@ pub enum XMLGeneratorError {
     UnimplementedFeature(String),
 }
 
+/// Converts errors from [quick-xml] to [XMLGeneratorError::InvalidXSDError]
+/// 
+/// [quick-xml]: https://crates.io/crates/quick_xml
+/// 
+/// # Arguments
+/// 
+/// - `err` (`QuickXMLError`) - An error from [quick-xml].
+/// 
+/// # Returns
+/// 
+/// - [XMLGeneratorError] - An [XMLGeneratorError::InvalidXSDError]
+/// 
 impl From<QuickXMLError> for XMLGeneratorError {
     fn from(err: QuickXMLError) -> XMLGeneratorError {
         match err {
@@ -76,12 +88,34 @@ impl From<QuickXMLError> for XMLGeneratorError {
     }
 }
 
+/// Converts an `AttrError` from [quick-xml] into an [XMLGeneratorError::InvalidXSDError]
+/// 
+/// # Arguments
+/// 
+/// - `err` (`AttrError`) - An `AttrError` thrown by [quick-xml].
+/// 
+/// # Returns
+/// 
+/// - [XMLGeneratorError] - An [XMLGeneratorError::InvalidXSDError]
+/// 
 impl From<AttrError> for XMLGeneratorError {
     fn from(err: AttrError) -> XMLGeneratorError {
         XMLGeneratorError::InvalidXSDError(err.to_string())
     }
 }
 
+/// Converts an `IntersectError` from [regex-intersect] into an [XMLGeneratorError::RegexError]
+/// 
+/// [regex-intersect]: https://crates.io/crates/regex_intersect
+/// 
+/// # Arguments
+/// 
+/// - `error` (`IntersectError`) - An `IntersectError` thrown by [regex-intersect]
+/// 
+/// # Returns
+/// 
+/// - [XMLGeneratorError] - An [XMLGeneratorError::RegexError]
+/// 
 impl From<IntersectError> for XMLGeneratorError {
     fn from(error: IntersectError) -> XMLGeneratorError {
         match error {
@@ -91,8 +125,18 @@ impl From<IntersectError> for XMLGeneratorError {
     }
 }
 
+/// Converts am [XSDValidationError] into an [XMLGeneratorError]
+/// 
+/// # Arguments
+/// 
+/// - `value` (`XSDValidationError`) - An [XSDValidationError] from [xsdvalidator]
+/// 
+/// # Returns
+/// 
+/// - [XMLGeneratorError] - An [XMLGeneratorError::XSDValidatorError] or an [XMLGeneratorError::InvalidXSDError]
+/// 
 impl From<XSDValidationError> for XMLGeneratorError {
-    fn from(value: XSDValidationError) -> Self {
+    fn from(value: XSDValidationError) -> XMLGeneratorError {
         match value {
             XSDValidationError::PathError => XMLGeneratorError::InvalidPathError("".to_string()),
             XSDValidationError::StringError => {
@@ -117,8 +161,24 @@ impl From<XSDValidationError> for XMLGeneratorError {
     }
 }
 
+/// Converts a [RegexTranslationError] into an [XMLGeneratorError]
+/// 
+/// A [RegexTranslationError] is converted into one of the following:
+/// 
+/// - [XMLGeneratorError::InvalidXSDError] - if pattern is invalid
+/// - [XMLGeneratorError::RegexError] - if there are problems converting unicode to int
+/// - [XMLGeneratorError::UnimplementedFeature] - if surrogates are found
+/// 
+/// # Arguments
+/// 
+/// - `value` (`RegexTranslationError`) - An [RegexTranslationError] from [regextranslator]
+/// 
+/// # Returns
+/// 
+/// - [XMLGeneratorError] - An [XMLGeneratorError]
+///
 impl From<RegexTranslationError> for XMLGeneratorError {
-    fn from(value: RegexTranslationError) -> Self {
+    fn from(value: RegexTranslationError) -> XMLGeneratorError {
         match value {
             RegexTranslationError::InvalidInput(str) => XMLGeneratorError::InvalidXSDError(str),
             RegexTranslationError::RegexError(str) => XMLGeneratorError::InvalidXSDError(str),
@@ -131,8 +191,20 @@ impl From<RegexTranslationError> for XMLGeneratorError {
     }
 }
 
+/// Converts an `XMLError` from [xml-builder] into an [XMLGeneratorError::XMLBuilderError]
+/// 
+/// [xml-builder]: https://crates.io/crates/xml_builder
+/// 
+/// # Arguments
+/// 
+/// - `value` (`XMLError`) - An `XMLError` from [xml-builder]
+/// 
+/// # Returns
+/// 
+/// - [XMLGeneratorError] - An [XMLGeneratorError::XMLBuilderError]
+/// 
 impl From<XMLError> for XMLGeneratorError {
-    fn from(value: XMLError) -> Self {
+    fn from(value: XMLError) -> XMLGeneratorError {
         match value {
             XMLError::InsertError(str) => XMLGeneratorError::XMLBuilderError(str),
             XMLError::IOError(str) => XMLGeneratorError::XMLBuilderError(str),
@@ -140,6 +212,20 @@ impl From<XMLError> for XMLGeneratorError {
     }
 }
 
+/// Shortcut function to return an [XMLGeneratorError::UnimplementedFeature] error
+/// 
+/// # Arguments
+/// 
+/// - `name` (`&str`) - Name of the unimplemented feature
+/// 
+/// # Returns
+/// 
+/// - `Result<Type, XMLGeneratorError>` - A result object holding an [XMLGeneratorError::UnimplementedFeature] error
+/// 
+/// # Errors
+/// 
+/// - [XMLGeneratorError::UnimplementedFeature] - Always returned
+/// 
 pub(crate) fn unimplemented<Type>(name: &str) -> Result<Type, XMLGeneratorError> {
     Err(XMLGeneratorError::UnimplementedFeature(name.to_string()))
 }
