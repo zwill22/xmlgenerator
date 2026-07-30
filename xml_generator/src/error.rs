@@ -1,5 +1,9 @@
-use quick_xml::Error as QuickXMLError;
+//! Module containing the [XMLGeneratorError] struct
+//!
+//! All errors in the [crate] should raise one of these errors rather than panicing
+//!
 use quick_xml::events::attributes::AttrError;
+use quick_xml::Error as QuickXMLError;
 use regex_intersect::IntersectError;
 use regextranslator::RegexTranslationError;
 use xml_builder::XMLError;
