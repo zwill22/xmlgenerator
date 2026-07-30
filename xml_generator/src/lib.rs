@@ -19,7 +19,7 @@
 //!         },
 //!         Err(e) => {
 //!             eprintln!("Error generating output");
-//!             eprintln!("Error: {}", e);
+//!             eprintln!("Error: {:?}", e);
 //!         },
 //!     };
 //! }
@@ -76,17 +76,17 @@ mod xsd_type;
 ///
 ///     // Validate XSD
 ///     if let Err(e) = generator.validate(filepath) {
-///         panic!("Invalid XSD: {}", e);
+///         panic!("Invalid XSD: {:?}", e);
 ///     }
 ///
 ///     // Generate output
 ///     match generator.generate(filepath, None) {
-///         Ok(xml_output) => xml_output;
+///         Ok(xml_output) => {
 ///             println!("Successfully generated XML output");
 ///             return xml_output;
 ///         },
 ///         Err(e) => {
-///             panic!("Error generating output: {}", e);
+///             panic!("Error generating output: {:?}", e);
 ///         },
 ///     };
 /// }
@@ -154,6 +154,7 @@ impl XMLGenerator {
     /// # Examples
     ///
     /// ```
+    /// use std::path::PathBuf;
     /// use xmlgenerator::XMLGenerator;
     ///
     /// fn validate_xsd(filepath: &PathBuf) -> bool {
@@ -244,12 +245,12 @@ impl XMLGenerator {
     ///     let generator: XMLGenerator = XMLGenerator::new();
     ///
     ///     match generator.generate(filepath, None) {
-    ///         Ok(xml_output) => xml_output;
+    ///         Ok(xml_output) => {
     ///             println!("Successfully generated XML output");
     ///             println!("{}", xml_output);
     ///         },
     ///         Err(e) => {
-    ///             eprintln!("Error generating XML: {}", e);
+    ///             eprintln!("Error generating XML: {:?}", e);
     ///         },
     ///     };
     /// }

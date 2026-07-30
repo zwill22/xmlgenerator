@@ -4,6 +4,7 @@
 //! However, the syntax differs from the one used in Rust's [regex] crate in several ways.
 //! This crate provides methods to translate from the XSD pattern to a Rust-style pattern.
 //!
+//! [regex]: https://crates.io/crates/regex
 
 extern crate alloc;
 
@@ -36,10 +37,12 @@ pub enum RegexTranslationError {
 }
 
 /// Convert an error from [regexml] to a [RegexTranslationError::InvalidInput] error
+/// 
+/// [regexml]: https://crates.io/crates/regexml
 ///
 /// # Arguments
 ///
-/// - `e` ([regexml::Error]) - A [regexml] error
+/// - `e` (`regexml::Error`) - A [regexml] error
 ///
 /// # Returns
 ///
@@ -63,16 +66,16 @@ impl From<regexml::Error> for RegexTranslationError {
     }
 }
 
-/// Converts a [regex::Error] into a [RegexTranslationError::RegexError]
+/// Converts a `regex::Error` into a [RegexTranslationError::RegexError]
 ///
 /// # Arguments
 ///
-/// - `e` ([regex::Error]) - A [regex] error
+/// - `e` (`regex::Error``) - A [regex] error
 ///
 /// # Returns
 ///
 /// - [RegexTranslationError] - A [RegexTranslationError::RegexError]
-///
+/// 
 impl From<regex::Error> for RegexTranslationError {
     fn from(e: regex::Error) -> Self {
         match e {
@@ -87,11 +90,11 @@ impl From<regex::Error> for RegexTranslationError {
     }
 }
 
-/// Converts a [ParseIntError] into a [RegexTranslationError::UnicodeError]
+/// Converts a `ParseIntError` into a [RegexTranslationError::UnicodeError]
 ///
 /// # Arguments
 ///
-/// - `e` ([ParseIntError]) - A [ParseIntError] from [std::num]
+/// - `e` (`ParseIntError``) - A `ParseIntError` from `std::num`
 ///
 /// # Returns
 ///
@@ -533,17 +536,12 @@ fn dot_replace(input: &str) -> Result<String, RegexTranslationError> {
 /// # Example
 ///
 /// ```rust
-/// use regextranslator;
+/// use regextranslator::RegexTranslator;
 ///
 /// fn translate_xsd_to_rust_regex(input: &str) -> String {
-///     let translator = match RegexTranslator::new() {
-///         Ok(rt) => rt,
-///         Err(e) => {
-///             panic!("Unable to initialise translator: {}", e);
-///         }
-///     };
+///     let translator = RegexTranslator::new();
 ///
-///     match translator.translate(input) {
+///     match translator.translate(input, false) {
 ///         Ok(output) => {
 ///             return output;
 ///         },
@@ -669,7 +667,7 @@ impl RegexTranslator {
     /// fn run_translator(input: &str) -> Result<String, RegexTranslationError> {
     ///     let translator = RegexTranslator::new();
     ///
-    ///     let unicode = translator.requires_unicode(input)?;
+    ///     let unicode = translator.requires_unicode(input);
     ///
     ///     translator.translate(input, !unicode)
     /// }
@@ -700,10 +698,10 @@ impl RegexTranslator {
     ///
     /// The function takes the `input` pattern, and checks whether it is a valid `xsd::pattern` using the [regexml] crate.
     /// It then translates the pattern into one that is compatible with Rust's [regex] crate.
-    /// If `ascii = true`, the translator uses the [RegexTranslator::ascii_mappings] to translate patterns.
-    /// If `ascii = false`, the translator uses the full [RegexTranslator::unicode_mappings] to translate patterns.
+    /// If `ascii = true`, the translator uses `ascii_mappings` to translate patterns.
+    /// If `ascii = false`, the translator uses the full `unicode_mappings` to translate patterns.
     /// Any input that contains an unsupported pattern will return an error.
-    /// Once the pattern is translated, it is verified using [regex::Regex].
+    /// Once the pattern is translated, it is verified using `regex::Regex`.
     ///
     /// # Arguments
     ///
@@ -726,7 +724,7 @@ impl RegexTranslator {
     /// # Examples
     ///
     /// ```
-    /// use regextranslator;
+    /// use regextranslator::RegexTranslator;
     /// 
     /// fn translate_pattern(pattern: &str) -> String {
     ///     let translator = RegexTranslator::new();
