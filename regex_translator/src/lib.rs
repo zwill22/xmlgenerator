@@ -1,3 +1,10 @@
+//! Crate for translating an `xsd::pattern` to a Rust Regex pattern
+//!
+//! The `xsd:pattern` specification is a form of regular expression.
+//! However, the syntax differs from the one used in Rust's [regex] crate in several ways.
+//! This crate provides methods to translate from the XSD pattern to a Rust-style pattern.
+//!
+
 extern crate alloc;
 
 use core::fmt::Display;
@@ -13,16 +20,31 @@ use unic_ucd_category::GeneralCategory;
 
 mod test;
 
+/// Enum for handling different errors in the [RegexTranslator]
 #[derive(Debug)]
 pub enum RegexTranslationError {
+    /// The input is not a valid `xsd::pattern`
     InvalidInput(String),
+    /// Error occurs during translation
     RegexError(String),
-    FileReadError(String),
+    /// Error parsing character data.
     DataError(String),
+    /// Error converting unicode character to int
     UnicodeError(String),
+    /// Pattern contains surrogates
     SurrogatesError,
 }
 
+/// Convert an error from [regexml] to a [RegexTranslationError::InvalidInput] error
+///
+/// # Arguments
+///
+/// - `e` ([regexml::Error]) - A [regexml] error
+///
+/// # Returns
+///
+/// - [RegexTranslationError] - A [RegexTranslationError::InvalidInput] error
+///
 impl From<regexml::Error> for RegexTranslationError {
     fn from(e: regexml::Error) -> Self {
         match e {
@@ -41,6 +63,16 @@ impl From<regexml::Error> for RegexTranslationError {
     }
 }
 
+/// Converts a [regex::Error] into a [RegexTranslationError::RegexError]
+///
+/// # Arguments
+///
+/// - `e` ([regex::Error]) - A [regex] error
+///
+/// # Returns
+///
+/// - [RegexTranslationError] - A [RegexTranslationError::RegexError]
+///
 impl From<regex::Error> for RegexTranslationError {
     fn from(e: regex::Error) -> Self {
         match e {
@@ -55,6 +87,16 @@ impl From<regex::Error> for RegexTranslationError {
     }
 }
 
+/// Converts a [ParseIntError] into a [RegexTranslationError::UnicodeError]
+///
+/// # Arguments
+///
+/// - `e` ([ParseIntError]) - A [ParseIntError] from [std::num]
+///
+/// # Returns
+///
+/// - [RegexTranslationError] - A [RegexTranslationError::UnicodeError]
+///
 impl From<ParseIntError> for RegexTranslationError {
     fn from(e: ParseIntError) -> Self {
         RegexTranslationError::UnicodeError(e.to_string())
@@ -66,7 +108,6 @@ impl Display for RegexTranslationError {
         match self {
             RegexTranslationError::InvalidInput(e) => write!(f, "Invalid input: {}", e),
             RegexTranslationError::RegexError(e) => write!(f, "Regex error: {}", e),
-            RegexTranslationError::FileReadError(e) => write!(f, "File read error: {}", e),
             RegexTranslationError::DataError(e) => write!(f, "Data error: {}", e),
             RegexTranslationError::SurrogatesError => write!(f, "Surrogate error"),
             RegexTranslationError::UnicodeError(e) => write!(f, "Unicode error: {}", e),
@@ -164,7 +205,7 @@ fn get_unicode_categories() -> HashMap<String, Vec<char>> {
         }
     }
 
-    Ok(lists)
+    lists
 }
 
 fn add(map: &mut HashMap<String, String>, key: &str, value: &str) {
@@ -471,6 +512,48 @@ fn dot_replace(input: &str) -> Result<String, RegexTranslationError> {
     Ok(result.to_string())
 }
 
+/// Regex translator struct manages translation between Regex types
+///
+/// The struct manages methods for converting from `xsd::pattern` to [regex].
+/// This includes mappings for ASCII only translations (`ascii_mappings`),
+/// and mappings for full translations (`unicode_mappings`).
+/// It also includes two sets of unsupported patterns, including `surrogates` and `unsupported`.
+///
+/// A new struct should be initialised using [RegexTranslator::new].
+/// Translations can then be processed using [RegexTranslator::translate].
+/// Another method [RegexTranslator::requires_unicode] is provided to determine whether the input pattern contains any patterns that require non-ASCII translation.
+///
+/// # Fields
+///
+/// - `ascii_mappings` (`HashMap<String, String>`) - A map of translations (ASCII only)
+/// - `unicode_mappings` (`HashMap<String, String>`) - A full map of translations
+/// - `unsupported` (`HashSet<String>`) - Set of unsupported patterns
+/// - `surrogates` (`HashSet<String>`) - Set of surrogate patterns
+///
+/// # Example
+///
+/// ```rust
+/// use regextranslator;
+///
+/// fn translate_xsd_to_rust_regex(input: &str) -> String {
+///     let translator = match RegexTranslator::new() {
+///         Ok(rt) => rt,
+///         Err(e) => {
+///             panic!("Unable to initialise translator: {}", e);
+///         }
+///     };
+///
+///     match translator.translate(input) {
+///         Ok(output) => {
+///             return output;
+///         },
+///         Err(e) => {
+///             panic!("Error translating input: {}", e);
+///         },
+///     }
+/// }
+/// ```
+///
 #[derive(Default)]
 pub struct RegexTranslator {
     ascii_mappings: HashMap<String, String>,
@@ -480,15 +563,30 @@ pub struct RegexTranslator {
 }
 
 impl RegexTranslator {
-    pub fn new() -> Result<Self, RegexTranslationError> {
-        let translator = Self {
-            ascii_mappings: get_ascii_mappings()?,
-            unicode_mappings: get_full_mappings()?,
+    /// Constructor for the [RegexTranslator], should always be used to initialise an instance of the struct.
+    ///
+    /// This method collects all the data about the differences between the Regex flavours.
+    /// It creates the mappings and sets necessary to perform the translations and check for unsupported patterns.
+    /// It is recommended to only initialise one instance, since multiple instances may consume resources.
+    ///
+    /// # Returns
+    ///
+    /// - `Self` - Returns a [RegexTranslator] instance
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use regextranslator::RegexTranslator;
+    ///
+    /// let _ = RegexTranslator::new();
+    /// ```
+    pub fn new() -> Self {
+        Self {
+            ascii_mappings: get_ascii_mappings(),
+            unicode_mappings: get_full_mappings(),
             unsupported: get_unsupported(),
-            surrogates: get_surrogates(/* &str */),
-        };
-
-        Ok(translator)
+            surrogates: get_surrogates(),
+        }
     }
 
     fn handle_surrogates(&self, input: &str) -> Result<(), RegexTranslationError> {
@@ -553,6 +651,30 @@ impl RegexTranslator {
         Ok(output)
     }
 
+    /// Check if an input pattern requires full Unicode mappings
+    ///
+    /// # Arguments
+    ///
+    /// - `pattern` (`&str`) - Input XSD-style regex pattern
+    ///
+    /// # Returns
+    ///
+    /// - `bool` - Whether a full unicode translation is required
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use regextranslator::{RegexTranslator, RegexTranslationError};
+    ///
+    /// fn run_translator(input: &str) -> Result<String, RegexTranslationError> {
+    ///     let translator = RegexTranslator::new();
+    ///
+    ///     let unicode = translator.requires_unicode(input)?;
+    ///
+    ///     translator.translate(input, !unicode)
+    /// }
+    /// ```
+    ///
     pub fn requires_unicode(&self, pattern: &str) -> bool {
         for def in self.unicode_mappings.keys() {
             if self.ascii_mappings.contains_key(def) {
@@ -574,6 +696,52 @@ impl RegexTranslator {
         }
     }
 
+    /// Translates `input` pattern to Rust [regex] compatible version
+    ///
+    /// The function takes the `input` pattern, and checks whether it is a valid `xsd::pattern` using the [regexml] crate.
+    /// It then translates the pattern into one that is compatible with Rust's [regex] crate.
+    /// If `ascii = true`, the translator uses the [RegexTranslator::ascii_mappings] to translate patterns.
+    /// If `ascii = false`, the translator uses the full [RegexTranslator::unicode_mappings] to translate patterns.
+    /// Any input that contains an unsupported pattern will return an error.
+    /// Once the pattern is translated, it is verified using [regex::Regex].
+    ///
+    /// # Arguments
+    ///
+    /// - `input` (`&str`) - Input pattern (`xsd::pattern`)
+    /// - `ascii` (`bool`) - Only use ASCII translations
+    ///
+    /// # Returns
+    ///
+    /// - `Result<String, RegexTranslationError>` - Returns a translated regex pattern on success or a [RegexTranslationError] on failure
+    ///
+    /// # Errors
+    ///
+    /// - [RegexTranslationError::InvalidInput] - The input pattern is not a valid `xsd::pattern` 
+    /// - [RegexTranslationError::RegexError] - Error during translation
+    /// - [RegexTranslationError::DataError] - Error parsing character data
+    /// - [RegexTranslationError::UnicodeError] - Error converting character to int
+    /// - [RegexTranslationError::SurrogatesError] - pattern contains surrogates
+    /// 
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use regextranslator;
+    /// 
+    /// fn translate_pattern(pattern: &str) -> String {
+    ///     let translator = RegexTranslator::new();
+    /// 
+    ///     match translator.translate(pattern, false) {
+    ///         Ok(output) => {
+    ///             return output;
+    ///         },
+    ///         Err(e) => {
+    ///             panic!("Unable to translate pattern");
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    /// 
     pub fn translate(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {
         self.validate_input(input)?;
 
