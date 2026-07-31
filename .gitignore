@@ -5,3 +5,13 @@ uv.lock
 schema.xsd
 /target
 Cargo.lock
+xsdtests-master
+xsdtests.zip
+output.txt
+.pytest_cache
+.DS_Store
+.coverage
+.vscode
+coverage.xml
+docs/_build
+docs/crates

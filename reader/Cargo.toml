@@ -1,0 +1,13 @@
+[package]
+name = "file_to_string"
+categories = ["parsing", "text-processing", "encoding"]
+description = "Crate for reading text files to string"
+edition.workspace = true
+keywords = ["Text", "Parser", "Encoding", "String"]
+license-file.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+encoding_rs = "0.8"
+encoding_rs_io = "0.1"

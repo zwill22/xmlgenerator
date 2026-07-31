@@ -1,0 +1,23 @@
+version: 2
+sphinx:
+   configuration: docs/conf.py
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.14"
+    rust: "1.96"
+  jobs:
+    post_install:
+      - uv sync --all-packages --all-groups
+
+  apt_packages:
+    - cmake
+    - clang
+
+python:
+  install:
+    - method: uv
+      command: sync
+      groups: all
+       

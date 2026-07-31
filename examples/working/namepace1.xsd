@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+Root element contains Head element
+-->
+
+<xsd:schema
+        xmlns="example/Namespace"
+        xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+        targetNamespace="example/Namespace"
+>
+
+    <xsd:element name="root">
+        <xsd:complexType>
+            <xsd:sequence>
+                <xsd:element name="Head" type="HeadType"/>
+            </xsd:sequence>
+        </xsd:complexType>
+    </xsd:element>
+
+
+    <xsd:complexType name="HeadType">
+        <xsd:sequence>
+            <xsd:element name="Ear"/>
+            <xsd:element name="Eye"/>
+            <xsd:element name="Mouth"/>
+            <xsd:element name="Nose"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+</xsd:schema>

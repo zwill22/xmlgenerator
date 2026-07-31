@@ -1,0 +1,83 @@
+name: Coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+defaults:
+  run:
+    shell: bash
+    working-directory: py_xml_generator
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Rust
+        if: ${{ env.ACT }}
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Set up Rust
+        run: rustup show
+
+      - name: Setup clang
+        if: ${{ env.ACT }}
+        uses: rlalik/setup-cpp-compiler@master
+        with:
+          compiler: clang-latest
+
+      - name: Setup cmake
+        if: ${{ env.ACT }}
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: "3.22"
+
+      - name: UV setup
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: 3.12
+          activate-environment: "true"
+
+      - name: Install llvm cov
+        run: cargo install cargo-llvm-cov
+
+      - name: Run tests
+        run: cargo llvm-cov --json --output-path cov.json
+
+      - name: Install PyXmlGenerator
+        run: |
+          cargo llvm-cov show-env --sh > llvm-cov-env.sh
+          source llvm-cov-env.sh
+          uv run maturin develop
+
+      - name: Run pytest with coverage
+        uses: nick-fields/retry@v4.0.0
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          command: |
+            cargo llvm-cov show-env --sh > llvm-cov-env.sh
+            source llvm-cov-env.sh
+            uv run pytest --cov --cov-report=xml
+
+      - name: Get rust coverage report
+        run: |
+          cargo llvm-cov show-env --sh > llvm-cov-env.sh
+          source llvm-cov-env.sh
+          cargo llvm-cov report --codecov --output-path codecov.json
+
+      - name: Upload to codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./cov.json,./coverage.xml,./py_xml_generator/codecov.json
+          fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

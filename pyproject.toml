@@ -1,0 +1,16 @@
+[project]
+name = "xmlgenerator"
+version = "0.1.0"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = ["xmlgenerator", "pyxsdtestdata"]
+
+[tool.uv.sources]
+xmlgenerator = { workspace = true }
+pyxsdtestdata = { workspace = true }
+
+[tool.uv.workspace]
+members = ["py_xml_generator", "py_xsd_test_data"]
+
+[dependency-groups]
+doc = ["sphinx", "sphinx-rtd-theme", "myst-parser", "sphinxcontrib-rust"]

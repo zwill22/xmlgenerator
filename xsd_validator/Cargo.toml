@@ -1,0 +1,20 @@
+[package]
+name = "xsdvalidator"
+categories.workspace = true
+description = "XML Schema (XSD) file validation"
+edition.workspace = true
+keywords = ["XSD", "Validation"]
+license-file.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+file_to_string = { workspace = true }
+libc = "0.2.175"
+libxml2-rs = { git = "https://github.com/zwill22/libxml2-rs.git" }
+roxmltree = "0.21.1"
+
+[dev-dependencies]
+rstest = "0.26.1"
+workspace_root = "0.2.0"
+xsdtestdata = { workspace = true }

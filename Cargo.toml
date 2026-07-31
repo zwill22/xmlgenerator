@@ -1,10 +1,30 @@
-[package]
-name = "xmlgenerator"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+resolver = "3"
+members = [
+    "py_xml_generator",
+    "py_xsd_test_data",
+    "reader",
+    "regex_translator",
+    "xml_generator",
+    "xsd_test_data",
+    "xsd_validator",
+]
+default-members = ["xsd_validator", "regex_translator", "xml_generator"]
 
-[dependencies]
-xsd-parser = "1.2.0"
-syn = { version = "2.0.104", features = ["full"] }
-xml-builder = "0.5.4"
-fake = "4.3.0"
+[workspace.package]
+version = "0.2.0"
+edition = "2024"
+license-file = "LICENSE"
+repository = "https://github.com/zwill22/xmlgenerator"
+categories = ["development-tools", "development-tools::testing"]
+description = "Generate XML instances from an XML Schema (XSD)"
+keywords = ["XML", "XSD", "Testing", "Validation", "File generation"]
+
+
+[workspace.dependencies]
+file_to_string = { path = "reader" }
+xsdtestdata = { path = "xsd_test_data" }
+xsdvalidator = { path = "xsd_validator" }
+regextranslator = { path = "regex_translator" }
+xmlgenerator = { path = "xml_generator" }
+pyxsdtestdata = { path = "py_xsd_test_data" }
