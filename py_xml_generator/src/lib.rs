@@ -196,7 +196,7 @@ fn handle_result<T>(result: Result<T, XMLGeneratorError>) -> PyResult<T> {
     }
 }
 
-/// Get the version of the XMLGenerator Rust crate
+/// Get the version of the :rust:crate:`xmlgenerator` Rust crate
 ///
 /// Returns
 /// -------
@@ -228,7 +228,7 @@ fn version() -> String {
 ///
 ///     print(xml_string)
 ///
-/// This class is implemented in Rust and uses `libxml2`_ for validation using `Rust bindings`_.
+/// This class is a wrapper the :rust:struct:`xmlgenerator::XMLGenerator` Rust struct, which uses `libxml2`_ for validation via `Rust bindings`_.
 /// The original ``libxml2`` library is written in C and includes a global initialiser/deinitialiser that should not be initialised more than once at a time.
 /// The limitation is that only one instance of the class should be created at any one time
 ///
@@ -251,6 +251,8 @@ impl PyXMLGenerator {
     }
 
     /// XSD file validator
+    /// 
+    /// This method wraps the :rust:fn:`xmlgenerator::XMLGenerator::validate` method
     ///
     /// Arguments
     /// ---------
@@ -281,7 +283,8 @@ impl PyXMLGenerator {
     ///
     ///     generator.validate(schema)
     ///
-    /// The XSD validator  wraps the `libxml2`_ C library.
+    /// The validator uses the :rust:struct:`xsdvalidator::XSDValidator` Rust struct.
+    /// This struct wraps the `libxml2`_ C library via Rust bindings. 
     /// An XSD file is invalid if this library finds it to be invalid.
     /// The only additional checks track whether there is an infinite loop in the schema.
     ///
@@ -297,6 +300,8 @@ impl PyXMLGenerator {
 
     /// XML instance generator
     ///
+    /// This method  wraps the :rust:fn:`xmlgenerator::XMLGenerator::generate` method.
+    /// 
     /// Arguments
     /// ---------
     /// filepath: str
@@ -382,6 +387,7 @@ impl PyXMLGenerator {
 ///
 /// This package may be used to read an XML Schema (XSD) file, validate it and use it to generate an XML instance that follows the input schema.
 /// The package provides a class :py:class:`XMLGenerator` which may be used to validate an XSD or use it to generate a new instance.
+/// The package is a Python wrapper for the :rust:crate:`xmlgenerator` Rust crate.
 #[pymodule]
 fn pyxmlgenerator(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyXMLGenerator>()?;

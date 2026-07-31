@@ -26,6 +26,7 @@ fn handle_panic(error: Box<dyn Any>) -> PyErr {
 /// * Validity of XSD
 ///
 /// No constructor is included, instances are created by the :py:class:`XSDTestData` class.
+/// The class provides Python bindings for the rust:struct:`xsdtestdata::XSDData` Rust struct and its methods.
 ///
 #[pyclass(name = "XSDData")]
 pub struct PyXSDData {
@@ -105,6 +106,8 @@ impl PyXSDTestDataIter {
 /// If the :py:data:`database_dir`` does not exist, the class searches for an archive file at
 /// :py:data:`archive_path`. If this is found, it extracts the contents to :py:data:`database_dir`.
 /// Otherwise, it downloads the archive from the `xsdtests`_ repo.
+/// 
+/// This class is a wrapper for the :rust:struct:`xsdtestdata::XSDTestData`.
 ///
 /// .. _xsdtests: https://github.com/w3c/xsdtests
 ///
@@ -199,7 +202,7 @@ impl Container {
     }
 }
 
-/// Return the version of the XMLGenerator Rust crate
+/// Return the version of the :rust:crate:`xmlgenerator` Rust crate
 ///
 /// Returns
 /// -------
@@ -210,10 +213,11 @@ fn version() -> String {
     format!("{}", env!("CARGO_PKG_VERSION"))
 }
 
-/// Module for managing XSD test data
+/// Package for managing XSD test data
 /// 
-/// This module provides methods for managing test data from the `xsdtests`_ database.
+/// This package provides methods for managing test data from the `xsdtests`_ database.
 /// The :py:class:`XSDTestData` class is used to initialise and manage the datasets.
+/// This package is a wrapper for the :rust:crate:`xsdtestdata` Rust crate.
 ///
 /// .. _xsdtests: https://github.com/w3c/xsdtests
 #[pymodule]

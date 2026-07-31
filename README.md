@@ -18,26 +18,28 @@
 [![License: MIT][license-badge]][license]
 [![No AI][noai-badge]][website]
 
-This project provides a Python package `py-xml-generator` which generates XML instances matching the provided XML Schema (XSD) input.
-The package is written in Rust with a [PyO3][pyo3] Python wrapper allowing direct use from Python.
-The project includes several Cargo crates to achieve this goal:
+This project provides a Python package [pyxmlgenerator](py_xml_generator/README.md),
+which generates XML instances matching the provided XML Schema (XSD) input.
+The package is written in Rust with [PyO3][pyo3] Python bindings allowing direct use from Python.
+The `pyxmlgenerator` package is a wrapper for the [xmlgenerator](xml_generator/README.md) Rust crate,
+which generates the XML from a given schema.
 
-- [file-to-string](reader/README.md) - For reading text files
-- [xsd-validator](xsd_validator/README.md) - For validating input XSD
-- [xsd-test-data](xsd_test_data/README.md) - Test data manager
-- [regex-translator](regex_translator/README.md) - For translating from XSD pattern style regular expressions to Rust style
-- [xml-generator](xml_generator/README.md) - The main crate, which generates the XML from a given schema
+The project includes several additional Cargo crates to achieve this goal:
 
-Additionally, the following Python packages are includes:
+- [file_to_string](reader/README.md) - For reading text files
+- [xsdvalidator](xsd_validator/README.md) - For validating input XSD
+- [regextranslator](regex_translator/README.md) - For translating from XSD pattern style regular expressions to Rust style
+- [xsdtestdata](xsd_test_data/README.md) - Test data manager for the [xsdtests] database
 
-- [py-xsd-test-data](py_xsd_test_data/README.md) - Python wrapper for the `xsd-test-data` module, allowing it to be used within Python tests directly
-- [py-xml-generator](py_xml_generator/README.md) - Python bindings for the `xml-generator` crate
+Additionally, the project also includes a Python wrapper for the `xsdtestdata` crate - [pyxsdtestdata](py_xsd_test_data/README.md).
+This allows the test data to be accessed directly from Python.
 
 ## Dependencies
 
 System requirements:
 
 - [Cargo][rust] - Installed via Rustup
+- [libxml2-rs] - Rust bindings for the [libxml2][libxml2] C library 
 - [Python][python] - Required for Python bindings `pyxmlgenerator`
 - [uv][uv] - Recommended for installation of Python packages (Optional)
 
@@ -194,6 +196,9 @@ Not all features of the XSD specification have been implemented, if these featur
 [rtd]: https://about.readthedocs.com/
 [doc]: https://xmlgenerator.readthedocs.io/en/latest
 [pyo3]: https://pyo3.rs/v0.29.0/
+[xsdtests]: https://github.com/w3c/xsdtests
+[libxml2-rs]: https://github.com/zwill22/libxml2-rs
+[libxml2]: https://gitlab.gnome.org/GNOME/libxml2
 
 <!-- Badges -->
 
