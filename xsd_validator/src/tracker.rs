@@ -9,7 +9,7 @@ use std::collections::HashSet;
 /// This is because a repeated cycle would cause infinite recursion in the tree.
 ///
 /// [roxmltree]: https://crates.io/crates/roxmltree
-/// 
+///
 /// # Fields
 ///
 /// - `values` (`HashSet<u32>`) - Set of unique values for all parent nodes
@@ -100,8 +100,8 @@ impl Tracker {
     /// use xsdvalidator::tracker::Tracker;
     /// use roxmltree::Node;
     ///
-    /// fn check_node(tracker: &Tracker, node: &Node) {
-    ///     let result =  tracker.check_node(&root);
+    /// fn check_node(tracker: &mut Tracker, node: &Node) {
+    ///     let result =  tracker.check_node(node);
     ///
     ///     match result {
     ///         Ok(_) => {
@@ -109,6 +109,7 @@ impl Tracker {
     ///         },
     ///         Err(_) => {
     ///             eprintln!("Infinite recursion detected!");
+    ///         },
     ///     }
     /// }
     /// ```
