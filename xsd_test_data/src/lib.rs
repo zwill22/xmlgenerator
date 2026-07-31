@@ -1,3 +1,49 @@
+//! Crate that manages test data from the [xsdtests] database
+//! 
+//! [xsdtests]: https://github.com/w3c/xsdtests
+//! 
+//! The crate provides the following structs:
+//!  
+//! - [XSDTestData](struct@XSDTestData) - For fetching and managing the test data
+//! - [XSDData](struct@XSDData) - For storing data on a particular test case (file)
+//! 
+//! # Examples
+//! 
+//! Obtaining test data:
+//! 
+//! ```rust
+//! use xsdtestdata::XSDTestData;
+//! 
+//! fn fetch_xsd_test_data(root_directory: PathBuf) {
+//!     let db_path = root_dir.join("xsdtests-master");
+//!     let archive_path = root_dir.join("xsd_tests.zip");
+//!     
+//!     // Checks whether test data already exists either
+//!     // already extracted at `db_path` or archived at `xsd_tests.zip`.
+//!     // If neither of these locations already exist, then it
+//!     // downloads `xsd_tests.zip`
+//!     XSDTestData::new(&db_root, &archive_path)
+//! }
+//! ```
+//! 
+//! Running tests:
+//! 
+//! ```rust
+//! use xsdtestdata::XSDTestData;
+//! 
+//! fn run_tests(xsd_test_data: &XSDTestData) {
+//!     xsd_test_data.iter().for_each(|case| {
+//!         let valid = case.is_valid();
+//!         let file = case.get_path();
+//! 
+//!         if valid {
+//!             assert!(file.exists());
+//!         }
+//!     });
+//! }
+//! ```
+//! 
+
 use file_to_string::read_file;
 use reqwest::blocking;
 use roxmltree::{Document, Node, ParsingOptions};
@@ -8,15 +54,54 @@ use std::ops::AddAssign;
 use std::path::{Path, PathBuf};
 use zip::read::root_dir_common_filter;
 
+/// Handles all errors that occur when using the test data
 #[derive(Debug)]
 pub enum XSDTestDataError {
+    /// Error parsing test data file
     ParseError(String),
+    /// Error reading archive (zip) file 
     ArchiveError,
+    /// Error extracting (unzipping) archive (zip) file
     ArchiveExtractionError,
+    /// Invalid file path 
     InvalidFileError(String),
+    /// Unable to read file
     FileReadError(String),
 }
 
+/// Struct to hold data for a specific test case (file)
+/// 
+/// # Fields
+/// 
+/// - `key` (`String`) - Unique key in database describing the case
+/// - `data_set` (`String`) - Name of dataset the file belongs to
+/// - `path` (`PathBuf`) - Path to XSD file
+/// - `valid` (`bool`) - Whether the test data lists the file as valid
+/// 
+/// # Examples
+/// 
+/// ```rust
+/// use xsdtestdata::XSDData;
+/// 
+/// fn check_data(data: &XSDData) {
+///     let data_set = data.get_data_set();
+///     let valid = data.is_valid();
+///     let path = data.get_path();
+/// 
+///     if data_set == "non-existent data-set" {
+///         panic!("This set shouldn't exist");
+///     }
+/// 
+///     if !path.exists() {
+///         panic!("Path does not exist");
+///     }
+/// 
+///     if valid {
+///         println!("File is valid");
+///     }
+/// }
+/// ```
+/// 
 #[derive(Clone)]
 pub struct XSDData {
     key: String,
@@ -26,18 +111,42 @@ pub struct XSDData {
 }
 
 impl XSDData {
+    /// Whether the test file is listed as valid
+    /// 
+    /// # Returns
+    /// 
+    /// - `bool` - Listed validity
+    /// 
     pub fn is_valid(&self) -> bool {
         self.valid
     }
 
+    /// Get the name of the data set the file belongs to
+    /// 
+    /// # Returns
+    /// 
+    /// - `&str` - Data set name
+    ///
     pub fn get_data_set(&self) -> &str {
         &self.data_set
     }
 
+    /// Get unique key for test case
+    /// 
+    /// # Returns
+    /// 
+    /// - `&str` - Test case key
+    /// 
     pub fn get_key(&self) -> &str {
         &self.key
     }
 
+    /// Get test file path
+    /// 
+    /// # Returns
+    /// 
+    /// - `&PathBuf` - Path to test file
+    /// 
     pub fn get_path(&self) -> &PathBuf {
         &self.path
     }
@@ -285,9 +394,43 @@ fn file_path(db_root: &Path, path_string: &str) -> PathBuf {
     db_root.join(path_string)
 }
 
+/// Struct to manage the XSD test files from [xsdtests]
+/// 
+/// The struct should be constructor [XSDTestData::new] which checks for the test data at the provided 
+/// locations and downloads the necessary files if required.
+/// 
+/// # Fields
+/// 
+/// - `data` (`Vec<XSDData>`) - Data on all test files in a vector
+/// 
+/// # Example
+/// 
+/// ```rust
+/// use std::path::PathBuf;
+/// use xsdtestdata::XSDTestData;
+/// 
+/// fn fetch_test_data(root_dir: PathBuf) {
+///     let db_root = root_dir.join("xsdtests-master");
+///     
+///     let archive_path = root_dir.join("xsdtests.zip");
+/// 
+///     let data = XSDTestData::new(&db_root, &archive_path);
+/// 
+///     data.print_stats();
+/// }
+/// ```
 #[derive(Default, Clone)]
 pub struct XSDTestData {
     data: Vec<XSDData>,
+}
+
+/// Enables use of `lsh += rhs`
+impl AddAssign<&XSDTestData> for XSDTestData {
+    fn add_assign(&mut self, rhs: &XSDTestData) {
+        for data in rhs.data.iter() {
+            self.push(data.clone());
+        }
+    }
 }
 
 impl XSDTestData {
@@ -307,17 +450,7 @@ impl XSDTestData {
 
         self.data.push(data);
     }
-}
 
-impl AddAssign<&XSDTestData> for XSDTestData {
-    fn add_assign(&mut self, rhs: &XSDTestData) {
-        for data in rhs.data.iter() {
-            self.push(data.clone());
-        }
-    }
-}
-
-impl XSDTestData {
     fn add(&mut self, results: &XSDTestData, ignore: &[PathBuf]) {
         results.data.iter().for_each(|result| {
             if ignore.contains(&result.path) {
@@ -352,6 +485,42 @@ impl XSDTestData {
         output
     }
 
+    /// Initialise a new [XSDTestData](struct@XSDTestData)  struct
+    /// 
+    /// This is the main constructor for the [XSDTestData](struct@XSDTestData) struct. 
+    /// It takes two arguments `db_path` and `archive_path`.
+    /// The constructor checks for the database at `db_path`,
+    /// if it already exists, it builds the struct using these files.
+    /// 
+    /// If there is no directory at `db_path`, the method checks whether there
+    /// is a compressed archive of the database at `archive_path`.
+    /// If there is a zip file at `archive_path`, it unzips it to `db_path`
+    /// and uses the data to construct the object.
+    /// Otherwise, it downloads the [xsdtests] repo archive zip to `archive_path`
+    /// and then extracts it to `db_path`.
+    /// 
+    /// # Arguments
+    /// 
+    /// - `db_path` (`&PathBuf`) - Path to the database root directory
+    /// - `archive_path` (`&PathBuf`) - Path to the archive (zip) of the database
+    /// 
+    /// # Returns
+    /// 
+    /// - [XSDTestData](struct@XSDTestData) - A struct to manager the XSD test data
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use std::path::PathBuf;
+    /// use xsdtestdata::XSDTestData;
+    /// 
+    /// fn get_test_data(root: &PathBuf) -> XSDTestData {
+    ///     let db_path = root.join("xsdtests-master");
+    ///     let archive = root.join("xsdtests.zip");
+    ///     
+    ///     XSDTestData::new(&db_path, &archive)
+    /// }
+    /// ```
     pub fn new(db_path: &PathBuf, archive_path: &PathBuf) -> XSDTestData {
         // TODO Remove ignores
         let ignore = vec![
@@ -375,6 +544,27 @@ impl XSDTestData {
         data
     }
 
+    /// Print information about the structure of the test data
+    /// 
+    /// Prints stats about the database structure, including:
+    /// 
+    /// - Number of valid schemas
+    /// - Number of invalid schemas
+    /// - Total number of schemas
+    /// - Table of these values for each data set
+    /// 
+    /// # Examples
+    /// 
+    /// ```rust
+    /// use std::path::PathBuf;
+    /// use xsdtestdata::XSDTestData;
+    /// 
+    /// fn print_data(db: &PathBuf, archive: &PathBuf) {
+    ///     let data = XSDTestData::new(&db, &archive);
+    /// 
+    ///     data.print_stats();
+    /// }
+    /// ```
     pub fn print_stats(&self) {
         let total = self.total();
         let valid = self.data.iter().filter(|data| data.valid).count();
@@ -431,16 +621,79 @@ impl XSDTestData {
         }
     }
 
+    /// Get the test case with key `key`
+    /// 
+    /// Returns a reference to the [XSDData](struct@XSDData) for the test case with `key`. 
+    /// The value is optional and the method returns `None` if the key is not in the data.
+    /// 
+    /// # Arguments
+    /// 
+    /// - `key` (`&str`) - Unique key for the desired test case
+    /// 
+    /// # Returns
+    /// 
+    /// - `Option<&XSDData>` - Reference to the test case with matching key, or `None` if the key is not present.
+    /// 
+    /// # Examples
+    /// 
+    /// ```
+    /// use xsdtestdata::XSDTestData;
+    /// 
+    /// fn check_key(data: &XSDTestData, key: &str) {
+    ///     match data.get(key) {
+    ///         Some(case) => {
+    ///             println!("Found test data for key: {}", key);
+    ///             println!("Test case in data set: {}", case.get_data_set());
+    ///         },
+    ///         None => {
+    ///             println!("Key {} is not present in the XSD test data", key);
+    ///         },
+    ///     }
+    /// }
+    /// ```
     pub fn get(&self, key: &str) -> Option<&XSDData> {
         self.data.iter().find(|data| data.key == key)
     }
+
+    /// Convert [XSDTestData](struct@XSDTestData) into an iterator
+    /// 
+    /// Allows the test data to be iterated over so that each test case can be checked in turn
+    /// 
+    /// # Returns
+    /// 
+    /// - `XSDTestDataIterator<'_>` - Iterator over [XSDTestData](struct@XSDTestData)
+    /// 
+    /// # Example
+    /// 
+    /// ```rust
+    /// use xsdtestdata::XSDTestData;
+    /// 
+    /// fn check_cases(xsd_test_data: &XSDTestData) {
+    ///     xsd_test_data.iter().for_each(|case| {
+    ///         let path = case.get_path();
+    /// 
+    ///         assert!(path.exists());
+    ///     });
+    /// }
+    /// ```
+    /// 
+    pub fn iter(&'_ self) -> XSDTestDataIterator<'_> {
+        XSDTestDataIterator {
+            test_data: self,
+            index: 0,
+        }
+    }
+
 }
 
+
+/// Iterator for [XSDTestData](struct@XSDTestData)
 pub struct XSDTestDataIterator<'a> {
     test_data: &'a XSDTestData,
     index: usize,
 }
 
+/// Iterate to next entry in the [XSDTestData](struct@XSDTestData) iterator  
 impl<'a> Iterator for XSDTestDataIterator<'a> {
     type Item = &'a XSDData;
     fn next(&mut self) -> Option<Self::Item> {
@@ -454,19 +707,12 @@ impl<'a> Iterator for XSDTestDataIterator<'a> {
     }
 }
 
-impl XSDTestData {
-    pub fn iter(&'_ self) -> XSDTestDataIterator<'_> {
-        XSDTestDataIterator {
-            test_data: self,
-            index: 0,
-        }
-    }
-}
-
+/// An `IntoIterator` for [XSDTestData](struct@XSDTestData)
 pub struct XSDTestDataIntoIterator {
     test_data: XSDTestData,
 }
 
+/// Iterate `IntoIterator` for [XSDTestData](struct@XSDTestData)
 impl Iterator for XSDTestDataIntoIterator {
     type Item = XSDData;
 
@@ -481,6 +727,7 @@ impl Iterator for XSDTestDataIntoIterator {
     }
 }
 
+/// Create an `IntoIterator` for [XSDTestData](struct@XSDTestData)
 impl IntoIterator for XSDTestData {
     type Item = XSDData;
     type IntoIter = XSDTestDataIntoIterator;
