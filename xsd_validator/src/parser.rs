@@ -4,7 +4,7 @@ use libxml2_rs::{
     xmlErrorPtr, xmlSchemaNewParserCtxt, xmlSchemaParse, xmlSchemaParserCtxtPtr,
     xmlSchemaSetParserStructuredErrors,
 };
-use std::ffi::{CStr, CString, c_char, c_void};
+use std::ffi::{c_char, c_void, CStr, CString};
 use std::path::Path;
 
 extern "C" fn structured_error_handler(user_data: *mut c_void, error: xmlErrorPtr) {
@@ -30,7 +30,9 @@ extern "C" fn structured_error_handler(user_data: *mut c_void, error: xmlErrorPt
 fn get_cstring(str: &str) -> Result<CString, XSDValidationError> {
     match CString::new(str.to_string()) {
         Ok(c) => Ok(c),
-        Err(_) => Err(XSDValidationError::StringError),
+        Err(_) => Err(XSDValidationError::LibXML2InterfaceError(
+            "Error reading C string".to_string(),
+        )),
     }
 }
 
@@ -50,7 +52,9 @@ impl Parser {
         let context_ptr = unsafe { xmlSchemaNewParserCtxt(file_ptr) };
 
         if context_ptr.is_null() {
-            return Err(XSDValidationError::GenerateContextError);
+            return Err(XSDValidationError::LibXML2InterfaceError(
+                "Error generating XML Schema Parser context".to_string(),
+            ));
         }
 
         Ok(Self(context_ptr))

@@ -1,9 +1,8 @@
 #[derive(Debug)]
 pub enum XSDValidationError {
     PathError,
-    StringError,
+    LibXML2InterfaceError(String),
     OutputRedirectError(String),
-    GenerateContextError,
     ParseError(String),
     ReadFileError,
     XSDRecursionError,

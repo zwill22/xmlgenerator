@@ -139,14 +139,11 @@ impl From<XSDValidationError> for XMLGeneratorError {
     fn from(value: XSDValidationError) -> XMLGeneratorError {
         match value {
             XSDValidationError::PathError => XMLGeneratorError::InvalidPathError("".to_string()),
-            XSDValidationError::StringError => {
-                XMLGeneratorError::XSDValidatorError("Cannot read path string".to_string())
+            XSDValidationError::LibXML2InterfaceError(e) => {
+                XMLGeneratorError::XSDValidatorError(format!("LibXML2 interface error: {}", e))
             }
             XSDValidationError::OutputRedirectError(e) => {
                 XMLGeneratorError::XSDValidatorError(e.to_string())
-            }
-            XSDValidationError::GenerateContextError => {
-                XMLGeneratorError::XSDValidatorError("Cannot generate context".to_string())
             }
             XSDValidationError::ParseError(e) => {
                 XMLGeneratorError::XSDValidatorError(e.to_string())

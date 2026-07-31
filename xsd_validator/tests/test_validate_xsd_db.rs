@@ -9,12 +9,9 @@ mod tests {
     fn check_error(error: &XSDValidationError, path: &Path) -> String {
         match error {
             XSDValidationError::PathError => panic!("Error resolving path: {:?}", path),
-            XSDValidationError::StringError => panic!("Error converting path to string"),
+            XSDValidationError::LibXML2InterfaceError(e) => panic!("Error interfacing with libxml2: {}", e),
             XSDValidationError::ReadFileError => panic!("Error reading file: {:?}", path),
             XSDValidationError::OutputRedirectError(e) => panic!("Error redirecting stderr: {}", e),
-            XSDValidationError::GenerateContextError => {
-                panic!("Error generating context for file: {:?}", path)
-            }
             XSDValidationError::XSDRecursionError => {
                 format!("File includes recursive loop: {:?}", path)
             }
