@@ -6,7 +6,7 @@
 [![License: MIT][license-badge]][license]
 [![No AI][noai-badge]][website]
 
-This crate translates non-standard `xsd:pattern` syntax to a regular expression (regex) pattern compatible with Rust's [regex crate][regex-rust].
+This crate translates non-standard `xs:pattern` syntax to a regular expression (regex) pattern compatible with Rust's [regex crate][regex-rust].
 
 The XSD specification provides a pattern syntax for specifying the format of string types.
 This syntax is a form of regular expression (regex), however, it differs from the Rust regex syntax in several ways.

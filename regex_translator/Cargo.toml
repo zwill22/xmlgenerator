@@ -4,7 +4,7 @@ categories.workspace = true
 description = "Translator for XSD patterns into Rust-style Regular Expressions"
 edition.workspace = true
 keywords = [
-    "xsd::pattern",
+    "xs:pattern",
     "Regular Expressions",
     "Rust",
     "XSD",
