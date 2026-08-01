@@ -91,12 +91,6 @@ jobs:
       - name: Fetch repo
         uses: actions/checkout@v7
 
-      - name: Download base package
-        uses: actions/download-artifact@v8
-        with:
-          path: dist
-          merge-multiple: true
-
       - name: Set up UV
         uses: astral-sh/setup-uv@v6
         with:
