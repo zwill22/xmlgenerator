@@ -8,7 +8,7 @@ on:
       - "dev"
 
 jobs:
-  source-dist:
+  build-source-distribution:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -108,7 +108,7 @@ jobs:
           path: dist/*.whl
 
   publish-to-pypi:
-    needs: ["base-package", "build-wheels"]
+    needs: ["build-source-distribution", "build-wheels"]
     runs-on: ubuntu-latest
     environment:
       name: pypi
