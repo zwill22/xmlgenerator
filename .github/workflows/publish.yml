@@ -89,6 +89,7 @@ jobs:
         run: |
           vcpkg install libxml2
           vcpkg integrate install
+          echo "CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $env:GITHUB_ENV
         
       - name: Build wheel
         run: uv build --all-packages
