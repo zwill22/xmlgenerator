@@ -1,0 +1,141 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - v**
+
+jobs:
+  base-package:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: UV setup
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install Dependencies
+        run: |
+          uv sync --all-packages --all-groups
+
+      - name: Build sdist and wheel
+        run: |
+          uv build --all-packages
+
+      - name: Test sdist
+        run: |
+          uv pip install --force-reinstall --verbose dist/*.tar.gz
+          echo "import pyxmlgenerator; print(pyxmlgenerator.version())" | uv run -
+
+      - name: Upload base package
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist
+
+  build-wheels:
+    needs: [base-package]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job_config:
+          [
+            linux-x64,
+            linux-arm64,
+            linux-musl-x64,
+            linux-musl-arm64,
+            macos-x64,
+            macos-arm64,
+            win-x64,
+            win-arm64,
+          ]
+        include:
+            # Linux (x86-64)
+          - job_config: linux-x64
+            os: ubuntu-24.04
+            architecture: x86-64
+            target: x86_64-unknown-linux-gnu
+            # Linux (arm64)
+          - job_config: linux-arm64
+            os: ubuntu-24.04-arm
+            architecture: aarch64
+            target: aarch64-unknown-linux-gnu
+
+            # macOS (x86-64)
+          - job_config: macos-x64
+            os: macos-26-intel
+            architecture: x86-64
+            target: x86_64-apple-darwin
+            # macOS (arm64)
+          - job_config: macos-arm64
+            os: macos-26
+            architecture: aarch64
+            target: aarch64-apple-darwin
+
+            # Windows (x86-64)
+          - job_config: win-x64
+            os: windows-2025
+            architecture: x86-64
+            target: x86_64-pc-windows-msvc
+            # Windows (arm64)
+          - job_config: win-arm64
+            os: windows-11-arm
+            architecture: aarch64
+            target: aarch64-pc-windows-msvc
+
+    steps:
+      - name: Fetch repo
+        uses: actions/checkout@v7
+
+      - name: Download base package
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Set up UV
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: "true"
+
+      - name: Build wheel
+        run: uv build --all-packages 
+
+      - name: Test wheel
+        run: |
+          uv pip install --force-reinstall --verbose dist/*.whl
+          echo "import pyxmlgenerator; print(pyxmlgenerator.version())" | uv run -
+
+      - name: Upload wheel
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist/*.whl
+
+  publish-to-pypi:
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download base package
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Publish
+        run: uv publish
