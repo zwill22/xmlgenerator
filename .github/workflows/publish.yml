@@ -19,6 +19,8 @@ jobs:
 
       - name: UV setup
         uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: "true"
 
       - name: Build sdist and wheel
         run: |
@@ -90,6 +92,8 @@ jobs:
           vcpkg install libxml2
           vcpkg integrate install
           echo "CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $env:GITHUB_ENV
+          Get-ChildItem -Include parser.h -File -Recurse
+          Get-ChildItem env:
         
       - name: Build wheel
         run: uv build --all-packages
