@@ -118,6 +118,7 @@ jobs:
           path: dist/*.whl
 
   publish-to-pypi:
+    needs: ["base-package", "build-wheels"]
     runs-on: ubuntu-latest
     environment:
       name: pypi
