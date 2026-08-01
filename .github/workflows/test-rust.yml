@@ -19,27 +19,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Rust Toolchain
+      - name: Setup Environment
         if: ${{ env.ACT }}
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - name: Setup Rust
-        run: rustup update
-
-      - name: Setup Clippy
-        if: ${{ env.ACT }}
-        run: rustup component add clippy
-
-      - name: Setup clang
-        if: ${{ env.ACT }}
-        uses: rlalik/setup-cpp-compiler@master
-        with:
-          compiler: clang-latest
-
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version: "3.22"
+        run: . .github/workflows/act_setup.sh
 
       - name: Build
         run: cargo build --verbose

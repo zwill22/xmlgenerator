@@ -23,6 +23,7 @@ lxml
 Marksfor
 Math
 minversion
+msvc
 myst
 nargs
 nillable
@@ -35,6 +36,7 @@ pyclass
 pyfunction
 pymethods
 pymodule
+pypi
 pytest
 pyxmlgenerator
 pyxsdtestdata
@@ -47,6 +49,7 @@ rngs
 roxmltree
 rstest
 Rustup
+sdist
 Seedable
 strf
 testpaths
