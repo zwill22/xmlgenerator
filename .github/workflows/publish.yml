@@ -8,7 +8,7 @@ on:
       - "dev"
 
 jobs:
-  base-package:
+  source-dist:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -39,7 +39,6 @@ jobs:
           path: dist/*.tar.gz
 
   build-wheels:
-    needs: [base-package]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -83,12 +82,6 @@ jobs:
     steps:
       - name: Fetch repo
         uses: actions/checkout@v7
-
-      - name: Download base package
-        uses: actions/download-artifact@v8
-        with:
-          path: dist/*.tar.gz
-          merge-multiple: true
 
       - name: Set up UV
         uses: astral-sh/setup-uv@v6
