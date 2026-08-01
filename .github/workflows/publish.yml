@@ -20,10 +20,6 @@ jobs:
       - name: UV setup
         uses: astral-sh/setup-uv@v6
 
-      - name: Install Dependencies
-        run: |
-          uv sync --all-packages --all-groups
-
       - name: Build sdist and wheel
         run: |
           uv build --all-packages
