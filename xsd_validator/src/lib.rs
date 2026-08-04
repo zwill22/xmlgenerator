@@ -11,7 +11,7 @@
 pub use crate::error::XSDValidationError;
 use crate::parser::Parser;
 use crate::recursion::recursion_check;
-use crate::warning_handler::WarningHandler;
+use gag::Gag;
 use libxml2_rs::{xmlCleanupParser, xmlInitParser};
 use std::env::{current_dir, set_current_dir};
 use std::path::PathBuf;
@@ -22,7 +22,6 @@ mod parser;
 mod recursion;
 mod schema;
 pub mod tracker;
-mod warning_handler;
 
 /// Struct needed for validating XSD files by providing an interface to [libxml2-rs]
 ///
@@ -124,15 +123,14 @@ impl XSDValidator {
         let parser = Parser::new(path)?;
         parser.setup_error_handler(&mut errors);
 
-        let mut warning_handler = WarningHandler::new();
+        let valid = match self.warnings {
+            true => parser.parse(),
+            false => {
+                let _gag = Gag::stderr().ok();
 
-        if !self.warnings {
-            warning_handler.redirect()?;
-        }
-
-        let valid = parser.parse();
-
-        warning_handler.restore();
+                parser.parse()
+            }
+        };
 
         for error in &errors {
             if error.to_lowercase().contains("skipping") {
@@ -219,11 +217,11 @@ impl XSDValidator {
 }
 
 /// Destructor for [XSDValidator]
-/// 
+///
 /// This is necessary to call `xmlCleanupParser()` from [libxml2].
 /// This is the opposite of the `xmlInitParser()` function in the constructor,
 /// and should always be called before `xmlInitParser()` is called a second time.
-/// 
+///
 impl Drop for XSDValidator {
     fn drop(&mut self) {
         unsafe { xmlCleanupParser() }
