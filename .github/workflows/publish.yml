@@ -85,16 +85,35 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: "true"
+      
+      - name: Setup vcpkg cache
+        if: contains(matrix.os, 'windows')
+        uses: actions/cache@v4
+        id: vcpkg-cache
+        with:
+          path: C:\vcpkg
+          key: vcpkg-libxml2
 
       - name: Install libxml2 (Windows)
         if: contains(matrix.os, 'windows')
+        shell: pwsh
         run: |
           vcpkg install libxml2
           vcpkg integrate install
-          echo "CMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $env:GITHUB_ENV
-          Get-ChildItem -Include parser.h -File -Recurse
-          Get-ChildItem env:
-        
+
+      - name: Setup environment (Windows)
+        if: contains(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          $arch = $Env:RUNNER_ARCH.ToLower()
+          $root = $Env:VCPKG_INSTALLATION_ROOT
+          echo "VCPKG_INSTALLATION_ROOT = $root"
+          echo "architecture = $arch"
+          echo "CMAKE_TOOLCHAIN_FILE=$root\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+          echo "LIBXML2_INCLUDE_DIR=$root\installed\$arch-windows\include\libxml2\" >> $env:GITHUB_ENV
+          echo "LIBXML2_LIBRARY_DIR=$root\installed\$arch-windows\lib\" >> $env:GITHUB_ENV
+          "$root\installed\$arch-windows\bin\" | Out-File -FilePath "$env:GITHUB_PATH" -Append
+
       - name: Build wheel
         run: uv build --all-packages
 
