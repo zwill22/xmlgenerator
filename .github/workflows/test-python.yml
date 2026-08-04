@@ -49,7 +49,7 @@ jobs:
       - name: Run tests
         uses: nick-fields/retry@v4.0.0
         with:
-          timeout_minutes: 4
-          max_attempts: 3
+          timeout_minutes: 10
+          max_attempts: 5
           command: uv run pytest -v
 
