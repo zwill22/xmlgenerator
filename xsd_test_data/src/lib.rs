@@ -390,10 +390,6 @@ fn get_attribute(node: &Node, name: String) -> String {
     panic!("attribute not found");
 }
 
-fn file_path(db_root: &Path, path_string: &str) -> PathBuf {
-    db_root.join(path_string)
-}
-
 /// Struct to manage the XSD test files from [xsdtests]
 /// 
 /// The struct should be constructor [XSDTestData::new] which checks for the test data at the provided 
@@ -524,12 +520,12 @@ impl XSDTestData {
     pub fn new(db_path: &PathBuf, archive_path: &PathBuf) -> XSDTestData {
         // TODO Remove ignores
         let ignore = vec![
-            file_path(db_path, "msData/particles/particlesZ012.xsd"),
-            file_path(db_path, "msData/particles/particlesZ015.xsd"),
-            file_path(db_path, "msData/particles/particlesZ020.xsd"),
-            file_path(db_path, "msData/regex/reG17.xsd"),
-            file_path(db_path, "msData/regex/reJ25.xsd"),
-            file_path(db_path, "saxonData/XmlVersions/xv009.xsd"),
+            db_path.join("msData").join("particles").join("particlesZ012.xsd"),
+            db_path.join("msData").join("particles").join("particlesZ015.xsd"),
+            db_path.join("msData").join("particles").join("particlesZ020.xsd"),
+            db_path.join("msData").join("regex").join("reG17.xsd"),
+            db_path.join("msData").join("regex").join("reJ25.xsd"),
+            db_path.join("saxonData").join("XmlVersions").join("xv009.xsd"),
         ];
         check_repo(db_path, archive_path);
 
