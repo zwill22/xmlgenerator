@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - v**
-    branches:
-      - "dev"
 
 jobs:
   build-source-distribution:
@@ -117,15 +115,33 @@ jobs:
       - name: Build wheel
         run: uv build --all-packages
 
-      - name: Test wheel
+      - name: Reinstall wheel (macOS/Linux)
+        if: contains(matrix.os, 'windows') == false
+        shell: bash
         run: |
           uv pip install --force-reinstall --verbose dist/*.whl
+
+      - name: Reinstall wheel (Windows)
+        if: contains(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          uv pip install --force-reinstall --verbose dist\*.whl
+
+      - name: Test wheel
+        run: |
           echo "import pyxmlgenerator; print(pyxmlgenerator.version())" | uv run -
 
-      - name: Upload wheel
+      - name: Upload wheel (macOS/Linux)
+        if: contains(matrix.os, 'windows') == false
         uses: actions/upload-artifact@v7
         with:
           path: dist/*.whl
+
+      - name: Upload wheel (Windows)
+        if: contains(matrix.os, 'windows')
+        uses: actions/upload-artifact@v7
+        with:
+          path: dist\*.whl
 
   publish-to-pypi:
     needs: ["build-source-distribution", "build-wheels"]
