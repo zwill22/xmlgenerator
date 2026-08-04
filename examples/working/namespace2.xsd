@@ -5,9 +5,9 @@ Root element contains reference to Head element
 -->
 
 <xsd:schema
-        xmlns="example/Namespace"
+        xmlns="exampleNamespace"
         xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-        targetNamespace="example/Namespace"
+        targetNamespace="exampleNamespace"
 >
 
     <xsd:element name="root">
