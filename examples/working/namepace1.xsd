@@ -5,9 +5,9 @@ Root element contains Head element
 -->
 
 <xsd:schema
-        xmlns="exampleNamespace"
+        xmlns="https://www.example.com/Namespace"
         xmlns:xsd="http://www.w3.org/2001/XMLSchema"
-        targetNamespace="exampleNamespace"
+        targetNamespace="https://www.example.com/Namespace"
 >
 
     <xsd:element name="root">
