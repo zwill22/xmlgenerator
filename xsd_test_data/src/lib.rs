@@ -246,7 +246,8 @@ fn get_validity(node: &Node) -> Option<bool> {
 }
 
 fn get_key_and_group(root: &PathBuf, full_path: &Path) -> (String, String) {
-    let path = full_path.strip_prefix(root).unwrap();
+    let root_path = canonicalize(root).unwrap();
+    let path = full_path.strip_prefix(root_path).unwrap();
 
     let mut group = "other".to_string();
     if let Some(component) = path.components().next() {
