@@ -61,7 +61,7 @@ Otherwise, whether a file is valid depends entirely on whether `libxml2` interpr
 [website]: https://zmwill.uk
 [xml]: https://www.w3.org/TR/xml/
 [libxml2]: https://gitlab.gnome.org/GNOME/libxml2
-[libxml2-rs]: https://github.com/zwill22/libxml2-rs
+[libxml2-rs]: https://crates.io/crates/libxml2-rs
 
 <!-- Badges -->
 

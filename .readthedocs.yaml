@@ -9,6 +9,7 @@ build:
     rust: "1.96"
   jobs:
     post_install:
+      - cargo install --root /home/docs/.asdf sphinx-rustdocgen
       - uv sync --all-packages --all-groups
 
   apt_packages:

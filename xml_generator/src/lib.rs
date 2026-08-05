@@ -56,14 +56,14 @@ mod xsd_type;
 /// The main generator, should only be initialised once
 ///
 /// The [XMLGenerator](struct@XMLGenerator) struct contains all the tools necessary to generate an XML string from an XSD file.
-/// It uses an [XSDValidator] to validate the input and a [RegexTranslator] to translate `xsd::pattern` to Rust Regex.
+/// It uses an [XSDValidator] to validate the input and a [RegexTranslator] to translate `xs:pattern` to Rust Regex.
 /// A single instance of this class should be initialised using the [XMLGenerator::new] method.
 /// It can then be used to validate multiple XSD files and generate XML files from them using the [XMLGenerator::validate] and [XMLGenerator::generate] methods respectively.
 ///
 /// # Fields
 ///
 /// - `validator` (`XSDValidator`) - [XSDValidator] to validate input XSD files
-/// - `translator` (`RegexTranslator`) - [RegexTranslator] to translate any `xsd:pattern` to Rust Regex
+/// - `translator` (`RegexTranslator`) - [RegexTranslator] to translate any `xs:pattern` to Rust Regex
 ///
 /// # Example
 ///

@@ -197,7 +197,7 @@ Not all features of the XSD specification have been implemented, if these featur
 [doc]: https://xmlgenerator.readthedocs.io/en/latest
 [pyo3]: https://pyo3.rs/v0.29.0/
 [xsdtests]: https://github.com/w3c/xsdtests
-[libxml2-rs]: https://github.com/zwill22/libxml2-rs
+[libxml2-rs]: https://crates.io/crates/libxml2-rs
 [libxml2]: https://gitlab.gnome.org/GNOME/libxml2
 
 <!-- Badges -->

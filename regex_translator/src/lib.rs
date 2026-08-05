@@ -1,6 +1,6 @@
-//! Crate for translating an `xsd::pattern` to a Rust Regex pattern
+//! Crate for translating an `xs:pattern` to a Rust Regex pattern
 //!
-//! The `xsd:pattern` specification is a form of regular expression.
+//! The `xs:pattern` specification is a form of regular expression.
 //! However, the syntax differs from the one used in Rust's [regex] crate in several ways.
 //! This crate provides methods to translate from the XSD pattern to a Rust-style pattern.
 //!
@@ -24,7 +24,7 @@ mod test;
 /// Enum for handling different errors in the [RegexTranslator]
 #[derive(Debug)]
 pub enum RegexTranslationError {
-    /// The input is not a valid `xsd::pattern`
+    /// The input is not a valid `xs:pattern`
     InvalidInput(String),
     /// Error occurs during translation
     RegexError(String),
@@ -517,7 +517,7 @@ fn dot_replace(input: &str) -> Result<String, RegexTranslationError> {
 
 /// Regex translator struct manages translation between Regex types
 ///
-/// The struct manages methods for converting from `xsd::pattern` to [regex].
+/// The struct manages methods for converting from `xs:pattern` to [regex].
 /// This includes mappings for ASCII only translations (`ascii_mappings`),
 /// and mappings for full translations (`unicode_mappings`).
 /// It also includes two sets of unsupported patterns, including `surrogates` and `unsupported`.
@@ -696,7 +696,7 @@ impl RegexTranslator {
 
     /// Translates `input` pattern to Rust [regex] compatible version
     ///
-    /// The function takes the `input` pattern, and checks whether it is a valid `xsd::pattern` using the [regexml] crate.
+    /// The function takes the `input` pattern, and checks whether it is a valid `xs:pattern` using the [regexml] crate.
     /// It then translates the pattern into one that is compatible with Rust's [regex] crate.
     /// If `ascii = true`, the translator uses `ascii_mappings` to translate patterns.
     /// If `ascii = false`, the translator uses the full `unicode_mappings` to translate patterns.
@@ -705,7 +705,7 @@ impl RegexTranslator {
     ///
     /// # Arguments
     ///
-    /// - `input` (`&str`) - Input pattern (`xsd::pattern`)
+    /// - `input` (`&str`) - Input pattern (`xs:pattern`)
     /// - `ascii` (`bool`) - Only use ASCII translations
     ///
     /// # Returns
@@ -714,7 +714,7 @@ impl RegexTranslator {
     ///
     /// # Errors
     ///
-    /// - [RegexTranslationError::InvalidInput] - The input pattern is not a valid `xsd::pattern` 
+    /// - [RegexTranslationError::InvalidInput] - The input pattern is not a valid `xs:pattern` 
     /// - [RegexTranslationError::RegexError] - Error during translation
     /// - [RegexTranslationError::DataError] - Error parsing character data
     /// - [RegexTranslationError::UnicodeError] - Error converting character to int

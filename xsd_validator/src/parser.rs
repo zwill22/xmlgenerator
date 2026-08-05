@@ -1,13 +1,17 @@
 use crate::error::XSDValidationError;
 use crate::schema::Schema;
 use libxml2_rs::{
-    xmlErrorPtr, xmlSchemaNewParserCtxt, xmlSchemaParse, xmlSchemaParserCtxtPtr,
+    xmlError, xmlSchemaNewParserCtxt, xmlSchemaParse, xmlSchemaParserCtxtPtr,
     xmlSchemaSetParserStructuredErrors,
 };
-use std::ffi::{c_char, c_void, CStr, CString};
+use std::ffi::{CStr, CString, c_char, c_void};
 use std::path::Path;
 
-extern "C" fn structured_error_handler(user_data: *mut c_void, error: xmlErrorPtr) {
+unsafe extern "C" fn structured_error_handler(
+    user_data: *mut c_void,
+    #[cfg(not(target_os = "windows"))] error: *mut xmlError,
+    #[cfg(target_os = "windows")] error: *const xmlError,
+) {
     if error.is_null() {
         return;
     }

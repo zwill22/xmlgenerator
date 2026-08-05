@@ -11,8 +11,9 @@ version.workspace = true
 [dependencies]
 file_to_string = { workspace = true }
 libc = "0.2.175"
-libxml2-rs = { git = "https://github.com/zwill22/libxml2-rs.git" }
+libxml2-rs = "0.1.1"
 roxmltree = "0.21.1"
+gag = "1.0.0"
 
 [dev-dependencies]
 rstest = "0.26.1"

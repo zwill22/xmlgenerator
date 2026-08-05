@@ -13,34 +13,45 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Setup Rust Toolchain
+      - name: Setup Environment
         if: ${{ env.ACT }}
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+        run: . .github/workflows/act_setup.sh
 
-      - name: Setup Rust
-        run: rustup update
-
-      - name: Setup Clippy
-        if: ${{ env.ACT }}
-        run: rustup component add clippy
-
-      - name: Setup clang
-        if: ${{ env.ACT }}
-        uses: rlalik/setup-cpp-compiler@master
+      - name: Setup vcpkg libxml2 Cache
+        if: contains(matrix.os, 'windows')
+        uses: actions/cache@v4
+        id: vcpkg-cache
         with:
-          compiler: clang-latest
+          path: C:\vcpkg
+          key: vcpkg-libxml2
 
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2
-        with:
-          cmake-version: "3.22"
+      - name: Install libxml2 (Windows)
+        if: contains(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          vcpkg install libxml2
+          vcpkg integrate install
 
+
+      - name: Setup environment (Windows)
+        if: contains(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          echo "CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+          echo "LIBXML2_INCLUDE_DIR=C:\vcpkg\installed\x64-windows\include\libxml2\" >> $env:GITHUB_ENV
+          echo "LIBXML2_LIBRARY_DIR=C:\vcpkg\installed\x64-windows\lib\" >> $env:GITHUB_ENV
+          "C:\vcpkg\installed\x64-windows\bin\" | Out-File -FilePath "$env:GITHUB_PATH" -Append
+   
       - name: Build
         run: cargo build --verbose
 
