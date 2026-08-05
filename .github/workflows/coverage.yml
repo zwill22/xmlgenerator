@@ -16,9 +16,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check Rust
+      - name: Setup Environment
         if: ${{ env.ACT }}
-        uses: . .github/workflows/act_setup.sh
+        run: . .github/workflows/act_setup.sh
 
       - name: UV setup
         uses: astral-sh/setup-uv@v6
