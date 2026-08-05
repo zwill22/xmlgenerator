@@ -30,7 +30,7 @@ jobs:
         run: cargo install cargo-llvm-cov
 
       - name: Run tests
-        run: cargo llvm-cov --json --output-path cov.json
+        run: cargo llvm-cov --codecov --output-path cov.json
 
       - name: Install PyXmlGenerator
         run: |
@@ -48,16 +48,10 @@ jobs:
             source llvm-cov-env.sh
             uv run pytest --cov --cov-report=xml
 
-      - name: Get rust coverage report
-        run: |
-          cargo llvm-cov show-env --sh > llvm-cov-env.sh
-          source llvm-cov-env.sh
-          cargo llvm-cov report --codecov --output-path codecov.json
-
       - name: Upload to codecov
         uses: codecov/codecov-action@v5
         with:
-          files: ./cov.json,./coverage.xml,./py_xml_generator/codecov.json
+          files: ./cov.json,./coverage.xml
           fail_ci_if_error: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
