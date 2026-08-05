@@ -36,7 +36,7 @@ jobs:
         run: |
           cargo llvm-cov show-env --sh > llvm-cov-env.sh
           source llvm-cov-env.sh
-          uv run maturin develop
+          uv sync --all-packages --all-groups
 
       - name: Run pytest with coverage
         uses: nick-fields/retry@v4.0.0
