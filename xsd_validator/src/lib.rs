@@ -4,7 +4,7 @@
 //! It also checks whether the XSD contains any infinite loops using the [tracker::Tracker] struct.
 //! All relevant functionality is provided in the [XSDValidator] struct, which manages the [libxml2] interface.
 //!
-//! [rust bindings]: https://github.com/zwill22/libxml2-rs
+//! [rust bindings]: https://crates.io/crates/libxml2-rs
 //! [libxml2]: https://gitlab.gnome.org/GNOME/libxml2
 //!
 //!
@@ -31,7 +31,7 @@ pub mod tracker;
 /// [libxml2] parser globally and should not be called more than once before calling
 /// the `xmlCleanupParser()` function in the destructor.
 ///
-/// [libxml2-rs]: https://github.com/zwill22/libxml2-rs
+/// [libxml2-rs]: https://crates.io/crates/libxml2-rs
 ///
 /// # Fields
 ///

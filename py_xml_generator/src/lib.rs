@@ -233,7 +233,7 @@ fn version() -> String {
 /// The limitation is that only one instance of the class should be created at any one time
 ///
 /// .. _libxml2: https://gitlab.gnome.org/GNOME/libxml2
-/// .. _Rust bindings: https://github.com/zwill22/libxml2-rs/
+/// .. _Rust bindings: https://crates.io/crates/libxml2-rs
 ///
 #[pyclass(name = "XMLGenerator")]
 pub struct PyXMLGenerator {
