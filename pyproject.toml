@@ -6,7 +6,7 @@ license = { file = "LICENSE" }
 dependencies = ["pyxmlgenerator", "pyxsdtestdata"]
 
 [tool.uv.sources]
-xmlgenerator = { workspace = true }
+pyxmlgenerator = { workspace = true }
 pyxsdtestdata = { workspace = true }
 
 [tool.uv.workspace]
