@@ -41,6 +41,7 @@ pytest
 pyxmlgenerator
 pyxsdtestdata
 qname
+regexml
 regextranslator
 repr
 reqwest

@@ -18,7 +18,7 @@ license-file = "LICENSE"
 repository = "https://github.com/zwill22/xmlgenerator"
 categories = ["development-tools", "development-tools::testing"]
 description = "Generate XML instances from an XML Schema (XSD)"
-keywords = ["XML", "XSD", "Testing", "Validation", "File generation"]
+keywords = ["XML", "XSD", "Testing", "Validation", "Generator", "Generation"]
 
 
 [workspace.dependencies]

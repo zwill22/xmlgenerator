@@ -4,12 +4,14 @@ categories.workspace = true
 description = "Translator for XSD patterns into Rust-style Regular Expressions"
 edition.workspace = true
 keywords = [
-    "xs:pattern",
-    "Regular Expressions",
+    "Pattern",
+    "Regular",
+    "Expressions",
     "Rust",
     "XSD",
     "Regex",
     "Translator",
+    "Flavours"
 ]
 license-file.workspace = true
 repository.workspace = true
