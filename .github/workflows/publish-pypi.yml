@@ -125,7 +125,8 @@ jobs:
         if: contains(matrix.os, 'windows')
         shell: pwsh
         run: |
-          uv pip install --force-reinstall --verbose dist\*.whl
+          $wheels = Get-ChildItem -Path dist -Recurse -Include *.whl
+          uv pip install --force-reinstall --verbose $wheels
 
       - name: Test wheel
         run: |
