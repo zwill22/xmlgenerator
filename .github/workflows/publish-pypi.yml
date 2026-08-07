@@ -92,34 +92,18 @@ jobs:
           path: C:\vcpkg
           key: vcpkg-libxml2
 
-      - name: Install libxml2 (Windows)
-        if: contains(matrix.os, 'windows')
-        shell: pwsh
-        run: |
-          vcpkg install libxml2
-          vcpkg integrate install
-
       - name: Setup environment (Windows)
-        if: contains(matrix.os, 'windows')
-        shell: pwsh
-        run: |
-          $arch = $Env:RUNNER_ARCH.ToLower()
-          $root = $Env:VCPKG_INSTALLATION_ROOT
-          echo "VCPKG_INSTALLATION_ROOT = $root"
-          echo "architecture = $arch"
-          echo "CMAKE_TOOLCHAIN_FILE=$root\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
-          echo "LIBXML2_INCLUDE_DIR=$root\installed\$arch-windows\include\libxml2\" >> $env:GITHUB_ENV
-          echo "LIBXML2_LIBRARY_DIR=$root\installed\$arch-windows\lib\" >> $env:GITHUB_ENV
-          "$root\installed\$arch-windows\bin\" | Out-File -FilePath "$env:GITHUB_PATH" -Append
+        if contains(matrix.os, 'windows')
+        run: . .github/setup-windows.ps1
 
       - name: Build wheel
         run: uv build --all-packages
 
+        # Setup delvewheel (Windows equivalent of auditwheel)
       - name: Consolidate wheel (Windows)
         if: contains(matrix.os, 'windows')
         shell: pwsh
         run: |
-          # delvewheel - Windows equivalent of auditwheel
           uv pip install delvewheel
           $wheels = Get-ChildItem -Path dist -Recurse -Include *.whl
           uv run delvewheel repair $wheels

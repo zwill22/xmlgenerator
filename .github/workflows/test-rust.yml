@@ -23,35 +23,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Setup Environment
-        if: ${{ env.ACT }}
-        run: . .github/workflows/act_setup.sh
-
-      - name: Setup vcpkg libxml2 Cache
+      - name: Setup vcpkg libxml Cache
         if: contains(matrix.os, 'windows')
-        uses: actions/cache@v4
+        uses: actions/cache@v3
         id: vcpkg-cache
         with:
           path: C:\vcpkg
           key: vcpkg-libxml2
 
-      - name: Install libxml2 (Windows)
-        if: contains(matrix.os, 'windows')
-        shell: pwsh
-        run: |
-          vcpkg install libxml2
-          vcpkg integrate install
+      - name: Setup Environment (Act)
+        if: ${{ env.ACT }}
+        run: . .github/setup-act.sh
 
-
-      - name: Setup environment (Windows)
+      - name: Setup Environment (Windows)
         if: contains(matrix.os, 'windows')
-        shell: pwsh
-        run: |
-          echo "CMAKE_TOOLCHAIN_FILE=C:\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
-          echo "LIBXML2_INCLUDE_DIR=C:\vcpkg\installed\x64-windows\include\libxml2\" >> $env:GITHUB_ENV
-          echo "LIBXML2_LIBRARY_DIR=C:\vcpkg\installed\x64-windows\lib\" >> $env:GITHUB_ENV
-          "C:\vcpkg\installed\x64-windows\bin\" | Out-File -FilePath "$env:GITHUB_PATH" -Append
-   
+        run: . .github/setup-windows.ps1
+
       - name: Build
         run: cargo build --verbose
 

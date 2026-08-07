@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest]
         python-version:
           - "3.10"
           - "3.11"
@@ -24,14 +24,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - name: Setup Environment
+      - name: Setup vcpkg libxml Cache
+        if: contains(matrix.os, 'windows')
+        uses: actions/cache@v3
+        id: vcpkg-cache
+        with:
+          path: C:\vcpkg
+          key: vcpkg-libxml2
+
+      - name: Setup Environment (Act)
         if: ${{ env.ACT }}
-        run: . .github/workflows/act_setup.sh
+        run: . .github/setup-act.sh
 
-      - name: Set up Rust
-        run: rustup show
+      - name: Setup Environment (Windows)
+        if: contains(matrix.os, 'windows')
+        run: . .github/setup-windows.ps1
 
       - name: UV setup
         uses: astral-sh/setup-uv@v6
