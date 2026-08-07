@@ -1,4 +1,10 @@
 import pytest
+import os
+
+if os.name == "nt":
+    for path in os.environ["PATH"].split(";"):
+        os.add_dll_directory(str(path))
+
 
 from pathlib import Path
 from .common import get_project_root
