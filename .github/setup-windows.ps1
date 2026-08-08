@@ -28,7 +28,7 @@ $lib_dir = "$root\installed\$arch-windows\lib\"
 Write-Output "LIBXML2_LIBRARY_DIR = $lib_dir"
 Write-Output "LIBXML2_LIBRARY_DIR=$lib_dir" >> $env:GITHUB_ENV
 
-$dll_dir = "$root\installed\$arch-windows\lib\"
+$dll_dir = "$root\installed\$arch-windows\bin\"
 Write-Output "LIBXML2_DLL_DIR = $dll_dir"
 $dll_dir | Out-File -FilePath $env:GITHUB_PATH -Append
 Write-Output "LIBXML2_DLL_DIR added to PATH"
