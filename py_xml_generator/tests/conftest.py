@@ -3,7 +3,10 @@ import os
 
 if os.name == "nt":
     for path in os.environ["PATH"].split(";"):
-        os.add_dll_directory(str(path))
+        try:
+            os.add_dll_directory(str(path))
+        except FileNotFoundError:
+            pass
 
 
 from pathlib import Path
