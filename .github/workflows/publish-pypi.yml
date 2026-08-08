@@ -93,7 +93,7 @@ jobs:
           key: vcpkg-libxml2
 
       - name: Setup environment (Windows)
-        if contains(matrix.os, 'windows')
+        if: contains(matrix.os, 'windows')
         run: . .github/setup-windows.ps1
 
       - name: Build wheel
