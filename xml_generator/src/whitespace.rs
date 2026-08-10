@@ -1,30 +1,45 @@
-use crate::XMLGeneratorError;
+use crate::{error::unimplemented, XMLGeneratorError};
 use line_ending::LineEnding;
 use regex::Regex;
 
-fn check_line_ending(pattern: &str, ending: &str) -> Result<(), XMLGeneratorError> {
-    if pattern.contains(ending) {
+fn check_lf_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
+    if pattern.contains(r"\r") {
         return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
     }
 
     Ok(())
 }
 
-fn check_crlf_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
-    let stripped = pattern.replace("\\r\\n", "");
+fn check_crlf_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
+    let stripped = pattern.replace(r"\r\n", r"");
 
-    if stripped.contains("\\r") || stripped.contains("\\n") {
+    if stripped != pattern {
+        return unimplemented("CRLF line endings");
+    }
+
+    if stripped.contains(r"\r") {
         return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
     }
 
     Ok(())
+}
+
+fn check_cr_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
+    if pattern.contains(r"\n") {
+        return Err(XMLGeneratorError::LineEndingsError(pattern.to_string()));
+    }
+
+    match pattern.find(r"\r") {
+        Some(_) => unimplemented("CR line endings"),
+        None => Ok(()),
+    }
 }
 
 pub(crate) fn check_line_endings(pattern: &str) -> Result<(), XMLGeneratorError> {
     match LineEnding::from_current_platform() {
-        LineEnding::LF => check_line_ending(pattern, r"\r"),
-        LineEnding::CRLF => check_crlf_endings(pattern),
-        LineEnding::CR => check_line_ending(pattern, r"\n"),
+        LineEnding::LF => check_lf_line_endings(pattern),
+        LineEnding::CRLF => check_crlf_line_endings(pattern),
+        LineEnding::CR => check_cr_line_endings(pattern),
     }
 }
 

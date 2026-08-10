@@ -32,6 +32,7 @@ NMTOKENS
 noncharacter
 Nonspacing
 pathlib
+pycache
 pyclass
 pyfunction
 pymethods

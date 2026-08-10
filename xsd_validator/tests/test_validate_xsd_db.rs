@@ -55,7 +55,7 @@ mod tests {
     fn test_data() -> XSDTestData {
         let root = get_workspace_root();
         let db_root = root.join("xsdtests-master");
-        let archive_path = root.join("xsd_tests.zip");
+        let archive_path = root.join("xsdtests.zip");
 
         XSDTestData::new(&db_root, &archive_path)
     }

@@ -1,39 +1,14 @@
-name: Publish to PyPI
+name: Check wheel building 
 
 on:
   push:
-    tags:
-      - v**
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  build-source-distribution:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: UV setup
-        uses: astral-sh/setup-uv@v6
-        with:
-          activate-environment: "true"
-
-      - name: Build sdist and wheel
-        run: |
-          uv build --all-packages
-
-      - name: Test sdist
-        run: |
-          uv pip install --force-reinstall --verbose dist/*.tar.gz
-          echo "import pyxmlgenerator; print(pyxmlgenerator.version())" | uv run -
-
-      - name: Upload base package
-        uses: actions/upload-artifact@v7
-        with:
-          path: dist/*.tar.gz
-
   build-wheels:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -124,34 +99,3 @@ jobs:
       - name: Test wheel
         run: |
           uv run tools/import_check.py
-
-      - name: Upload wheel (macOS/Linux)
-        uses: actions/upload-artifact@v7
-        with:
-          path: dist/*.whl
-
-  publish-to-pypi:
-    needs: ["build-source-distribution", "build-wheels"]
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-
-    permissions:
-      id-token: write
-      contents: read
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Download base package
-        uses: actions/download-artifact@v8
-        with:
-          path: dist
-          merge-multiple: true
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-
-      - name: Publish
-        run: uv publish

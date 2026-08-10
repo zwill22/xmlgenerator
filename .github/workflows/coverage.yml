@@ -18,7 +18,7 @@ jobs:
 
       - name: Setup Environment
         if: ${{ env.ACT }}
-        run: . .github/workflows/act_setup.sh
+        run: . .github/setup-act.sh
 
       - name: UV setup
         uses: astral-sh/setup-uv@v6

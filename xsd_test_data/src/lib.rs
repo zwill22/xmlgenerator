@@ -16,12 +16,12 @@
 //! 
 //! fn fetch_xsd_test_data(root_directory: PathBuf) {
 //!     let db_path = root_dir.join("xsdtests-master");
-//!     let archive_path = root_dir.join("xsd_tests.zip");
+//!     let archive_path = root_dir.join("xsdtests.zip");
 //!     
 //!     // Checks whether test data already exists either
-//!     // already extracted at `db_path` or archived at `xsd_tests.zip`.
+//!     // already extracted at `db_path` or archived at `xsdtests.zip`.
 //!     // If neither of these locations already exist, then it
-//!     // downloads `xsd_tests.zip`
+//!     // downloads `xsdtests.zip`
 //!     XSDTestData::new(&db_root, &archive_path)
 //! }
 //! ```
@@ -519,22 +519,25 @@ impl XSDTestData {
     /// }
     /// ```
     pub fn new(db_path: &PathBuf, archive_path: &PathBuf) -> XSDTestData {
-        // TODO Remove ignores
-        let ignore = vec![
-            db_path.join("msData").join("particles").join("particlesZ012.xsd"),
-            db_path.join("msData").join("particles").join("particlesZ015.xsd"),
-            db_path.join("msData").join("particles").join("particlesZ020.xsd"),
-            db_path.join("msData").join("regex").join("reG17.xsd"),
-            db_path.join("msData").join("regex").join("reJ25.xsd"),
-            db_path.join("saxonData").join("XmlVersions").join("xv009.xsd"),
-        ];
         check_repo(db_path, archive_path);
 
-        let suite = db_path.join("suite.xml");
-        let mut data = XSDTestData::parse_test_data(&suite, db_path, &ignore);
+        let path = db_path.canonicalize().expect("Cannot canonicalise path");
 
-        let extra_suite = db_path.join("extra-suite.xml");
-        let extra_data = XSDTestData::parse_test_data(&extra_suite, db_path, &ignore);
+        // TODO Remove ignores
+        let ignore = vec![
+            path.join("msData").join("particles").join("particlesZ012.xsd"),
+            path.join("msData").join("particles").join("particlesZ015.xsd"),
+            path.join("msData").join("particles").join("particlesZ020.xsd"),
+            path.join("msData").join("regex").join("reG17.xsd"),
+            path.join("msData").join("regex").join("reJ25.xsd"),
+            path.join("saxonData").join("XmlVersions").join("xv009.xsd"),
+        ];
+
+        let suite = path.join("suite.xml");
+        let mut data = XSDTestData::parse_test_data(&suite, &path, &ignore);
+
+        let extra_suite = path.join("extra-suite.xml");
+        let extra_data = XSDTestData::parse_test_data(&extra_suite, &path, &ignore);
 
         data += &extra_data;
 
