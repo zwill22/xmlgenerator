@@ -16,12 +16,12 @@
 //! 
 //! fn fetch_xsd_test_data(root_directory: PathBuf) {
 //!     let db_path = root_dir.join("xsdtests-master");
-//!     let archive_path = root_dir.join("xsd_tests.zip");
+//!     let archive_path = root_dir.join("xsdtests.zip");
 //!     
 //!     // Checks whether test data already exists either
-//!     // already extracted at `db_path` or archived at `xsd_tests.zip`.
+//!     // already extracted at `db_path` or archived at `xsdtests.zip`.
 //!     // If neither of these locations already exist, then it
-//!     // downloads `xsd_tests.zip`
+//!     // downloads `xsdtests.zip`
 //!     XSDTestData::new(&db_root, &archive_path)
 //! }
 //! ```
