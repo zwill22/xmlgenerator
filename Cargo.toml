@@ -12,7 +12,7 @@ members = [
 default-members = ["xsd_validator", "regex_translator", "xml_generator"]
 
 [workspace.package]
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 license-file = "LICENSE"
 repository = "https://github.com/zwill22/xmlgenerator"
@@ -22,9 +22,9 @@ keywords = ["XML", "XSD", "Testing", "Validation", "Generator", "Generation"]
 
 
 [workspace.dependencies]
-file_to_string = { path = "reader", version = "0.2.1" }
-xsdtestdata = { path = "xsd_test_data", version = "0.2.1" }
-xsdvalidator = { path = "xsd_validator", version = "0.2.1" }
-regextranslator = { path = "regex_translator", version = "0.2.1" }
-xmlgenerator = { path = "xml_generator", version = "0.2.1" }
-pyxsdtestdata = { path = "py_xsd_test_data", version = "0.2.1" }
+file_to_string = { path = "reader", version = "0.2.2" }
+xsdtestdata = { path = "xsd_test_data", version = "0.2.2" }
+xsdvalidator = { path = "xsd_validator", version = "0.2.2" }
+regextranslator = { path = "regex_translator", version = "0.2.2" }
+xmlgenerator = { path = "xml_generator", version = "0.2.2" }
+pyxsdtestdata = { path = "py_xsd_test_data", version = "0.2.2" }
