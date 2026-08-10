@@ -1,0 +1,101 @@
+name: Check wheel building 
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-wheels:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job_config:
+          [linux-x64, linux-arm64, macos-x64, macos-arm64, win-x64, win-arm64]
+        include:
+          # Linux (x86-64)
+          - job_config: linux-x64
+            os: ubuntu-24.04
+            architecture: x86-64
+            target: x86_64-unknown-linux-gnu
+            # Linux (arm64)
+          - job_config: linux-arm64
+            os: ubuntu-24.04-arm
+            architecture: aarch64
+            target: aarch64-unknown-linux-gnu
+
+            # macOS (x86-64)
+          - job_config: macos-x64
+            os: macos-26-intel
+            architecture: x86-64
+            target: x86_64-apple-darwin
+            # macOS (arm64)
+          - job_config: macos-arm64
+            os: macos-26
+            architecture: aarch64
+            target: aarch64-apple-darwin
+
+            # Windows (x86-64)
+          - job_config: win-x64
+            os: windows-2025
+            architecture: x86-64
+            target: x86_64-pc-windows-msvc
+            # Windows (arm64)
+          - job_config: win-arm64
+            os: windows-11-arm
+            architecture: aarch64
+            target: aarch64-pc-windows-msvc
+
+    steps:
+      - name: Fetch repo
+        uses: actions/checkout@v7
+
+      - name: Set up UV
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: "true"
+
+      - name: Setup vcpkg cache
+        if: contains(matrix.os, 'windows')
+        uses: actions/cache@v4
+        id: vcpkg-cache
+        with:
+          path: C:\vcpkg
+          key: vcpkg-libxml2
+
+      - name: Setup environment (Windows)
+        if: contains(matrix.os, 'windows')
+        run: . .github/setup-windows.ps1
+
+      - name: Build wheel
+        run: uv build --all-packages
+
+        # Setup delvewheel (Windows equivalent of auditwheel)
+      - name: Consolidate wheel (Windows)
+        if: contains(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          uv pip install delvewheel
+          $wheels = Get-ChildItem -Path dist -Recurse -Include *.whl
+          uv run delvewheel repair $wheels
+
+      - name: Reinstall wheel (macOS/Linux)
+        if: contains(matrix.os, 'windows') == false
+        shell: bash
+        run: |
+          uv pip install --force-reinstall --verbose dist/*.whl
+
+      - name: Reinstall wheel (Windows)
+        if: contains(matrix.os, 'windows')
+        shell: pwsh
+        run: |
+          $wheels = Get-ChildItem -Path dist -Recurse -Include *.whl
+          uv pip install --force-reinstall --verbose $wheels
+
+      - name: Test wheel
+        run: |
+          uv run tools/import_check.py
