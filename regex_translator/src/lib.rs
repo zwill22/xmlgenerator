@@ -10,7 +10,6 @@ extern crate alloc;
 
 use core::fmt::Display;
 
-use line_ending::LineEnding;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::num::ParseIntError;
@@ -37,7 +36,7 @@ pub enum RegexTranslationError {
 }
 
 /// Convert an error from [regexml] to a [RegexTranslationError::InvalidInput] error
-/// 
+///
 /// [regexml]: https://crates.io/crates/regexml
 ///
 /// # Arguments
@@ -75,7 +74,7 @@ impl From<regexml::Error> for RegexTranslationError {
 /// # Returns
 ///
 /// - [RegexTranslationError] - A [RegexTranslationError::RegexError]
-/// 
+///
 impl From<regex::Error> for RegexTranslationError {
     fn from(e: regex::Error) -> Self {
         match e {
@@ -362,15 +361,10 @@ fn apply_common_mappings(mappings: &mut HashMap<String, String>) {
 
     mappings.insert(D.to_string(), D_SET.to_string());
 
-    // Whitespace
+    // Whitespace (no line endings)
     const S: &str = r"\s";
-    let s_set = match LineEnding::from_current_platform() {
-        LineEnding::LF => r"[\t \n]",
-        LineEnding::CRLF => r"[\t ]|(?:\r\n)",
-        LineEnding::CR => r"[\t \r]",
-    };
-
-    mappings.insert(S.to_string(), s_set.to_string());
+    const S_SET: &str = r"[\t ]";
+    mappings.insert(S.to_string(), S_SET.to_string());
 }
 
 fn get_ascii_mappings() -> HashMap<String, String> {
@@ -714,21 +708,21 @@ impl RegexTranslator {
     ///
     /// # Errors
     ///
-    /// - [RegexTranslationError::InvalidInput] - The input pattern is not a valid `xs:pattern` 
+    /// - [RegexTranslationError::InvalidInput] - The input pattern is not a valid `xs:pattern`
     /// - [RegexTranslationError::RegexError] - Error during translation
     /// - [RegexTranslationError::DataError] - Error parsing character data
     /// - [RegexTranslationError::UnicodeError] - Error converting character to int
     /// - [RegexTranslationError::SurrogatesError] - pattern contains surrogates
-    /// 
+    ///
     ///
     /// # Examples
     ///
     /// ```
     /// use regextranslator::RegexTranslator;
-    /// 
+    ///
     /// fn translate_pattern(pattern: &str) -> String {
     ///     let translator = RegexTranslator::new();
-    /// 
+    ///
     ///     match translator.translate(pattern, false) {
     ///         Ok(output) => {
     ///             return output;
@@ -739,7 +733,7 @@ impl RegexTranslator {
     ///     }
     /// }
     /// ```
-    /// 
+    ///
     pub fn translate(&self, input: &str, ascii: bool) -> Result<String, RegexTranslationError> {
         self.validate_input(input)?;
 
