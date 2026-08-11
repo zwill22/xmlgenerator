@@ -12,13 +12,13 @@ members = [
 default-members = ["xsd_validator", "regex_translator", "xml_generator"]
 
 [workspace.package]
-version = "0.2.3"
+version = "0.2.4"
 edition = "2024"
 license-file = "LICENSE"
 repository = "https://github.com/zwill22/xmlgenerator"
 categories = ["development-tools", "development-tools::testing"]
 description = "Generate XML instances from an XML Schema (XSD)"
-keywords = ["XML", "XSD", "Testing", "Validation", "Generator", "Generation"]
+keywords = ["XML", "XSD", "Testing", "Validation", "Generator"]
 
 
 [workspace.dependencies]

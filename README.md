@@ -1,9 +1,12 @@
 # XMLGenerator
 
 [![Rust][rust-badge]][rust]
+[![Crates.io Version][crates-badge]][crates-repo]
 [![Python][python-badge]][python]
+[![PyPI Version][pypi-version-badge]][pypi-link]
 [![XML][xml-badge]][xml]
 [![GitHub][github-badge]][repo]
+[![GitHub Release][github-release-badge]][github-release]
 [![uv][uv-badge]][uv]
 [![Pytest][pytest-badge]][pytest]
 [![GitHub Actions][actions-badge]][repo-actions]
@@ -199,6 +202,9 @@ Not all features of the XSD specification have been implemented, if these featur
 [xsdtests]: https://github.com/w3c/xsdtests
 [libxml2-rs]: https://crates.io/crates/libxml2-rs
 [libxml2]: https://gitlab.gnome.org/GNOME/libxml2
+[crates-repo]: https://crates.io/xml-generator
+[github-release]: https://github.com/zwill22/xmlgenerator/releases/latest
+[pypi-link]: https://pypi.org/project/pyxmlgenerator/
 
 <!-- Badges -->
 
@@ -219,3 +225,6 @@ Not all features of the XSD specification have been implemented, if these featur
 [coverage-badge]: https://img.shields.io/codecov/c/github/zwill22/xmlgenerator?style=for-the-badge&logo=codecov
 [rtd-badge]: https://img.shields.io/badge/Read%20the%20Docs-8CA1AF?logo=readthedocs&logoColor=fff&labelColor=333&style=for-the-badge
 [doc-badge]: https://img.shields.io/readthedocs/xmlgenerator?style=for-the-badge
+[crates-badge]: https://img.shields.io/crates/v/xmlgenerator?style=for-the-badge&logo=rust
+[github-release-badge]: https://img.shields.io/github/v/release/zwill22/xmlgenerator?display_name=tag&style=for-the-badge&logo=github
+[pypi-version-badge]: https://img.shields.io/pypi/v/pyxmlgenerator?style=for-the-badge&logo=pypi
